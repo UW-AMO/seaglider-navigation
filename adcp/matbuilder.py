@@ -72,7 +72,7 @@ def adcp_select(times, depths, ddat, adat):
     turnaround = depth_df.ascending.idxmax()
     deepest = depth_df.loc[turnaround, 'depth']
     rising_times = adat['time'] > turnaround
-    adcp_depths = adat['Z']
+    adcp_depths = adat['Z'].copy()
     adcp_depths[:,rising_times] = 2*deepest - adat['Z'][:,rising_times]
     d_list = list(depths)
     idxdepth = [d_list.index(d) for d in adcp_depths[valid_obs]]
@@ -81,11 +81,3 @@ def adcp_select(times, depths, ddat, adat):
                                  (range(len(idxdepth)), idxdepth)),
                                 shape=mat_shape)
     return A, B
-
-
-#def _depth_func(ddat):
-#    """Provides interpolation function for vehicle depths at any time."""
-#    depth_times = ddat['depth'].index.to_numpy()
-#    depths = ddat['depth'].depth.to_numpy()
-#    depth_func = scipy.interpolate.interp1d(depth_times, depths, fill_value=0)
-#    return depth_func
