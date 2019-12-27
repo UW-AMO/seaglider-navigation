@@ -1,0 +1,7 @@
+# We want to exclude all data.  Data is usually not itself part of a package
+# as it takes up a lot of space, isn't edited in a text editor, and doesn't
+# represent the functionality we're building.  If a project has a lot of data,
+# it's common to ship it separately, e.g. a onedrive site.
+* 
+!example.csv
+!.gitignore
