@@ -14,7 +14,8 @@ from . import dataprep as dp
 
 def uv_select(times, depths, ddat):
     """Creates the matrices that will select the appropriate V_otg
-    and current  values for comparing with hydrodynamic model uv measurements.
+    and current  values for comparing with hydrodynamic model
+    uv measurements.
     
     Parameters:
         times ([numpy.datetime64,]) : all of the sample times to predict
@@ -72,12 +73,8 @@ def adcp_select(times, depths, ddat, adat):
     deepest = depth_df.loc[turnaround, 'depth']
     rising_times = adat['time'] > turnaround
     adcp_depths = adat['Z']
-    print(adcp_depths[0,420])
     adcp_depths[:,rising_times] = 2*deepest - adat['Z'][:,rising_times]
-    print('I\'m here')
-    print(adcp_depths[0,420])
     d_list = list(depths)
-    print(adcp_depths[0,420])
     idxdepth = [d_list.index(d) for d in adcp_depths[valid_obs]]
     mat_shape = (len(idxdepth), len(depths))
     B = scipy.sparse.coo_matrix((np.ones(len(idxdepth)),
