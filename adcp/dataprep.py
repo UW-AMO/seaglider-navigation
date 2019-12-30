@@ -50,6 +50,8 @@ def load_dive(run_num):
     gpsdf = _array_dict2df(gps)
     depthdf = _array_dict2df(depth)
     uvdf = _array_dict2df(uv)
+    uvdf = uvdf.reset_index().drop_duplicates(subset=['time'], keep='last')
+    uvdf = uvdf.set_index('time')
     rangedf = _array_dict2df(ranges)
     return dict(gps=gpsdf, depth=depthdf, uv=uvdf, range=rangedf)
     
