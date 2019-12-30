@@ -81,3 +81,146 @@ def adcp_select(times, depths, ddat, adat):
                                  (range(len(idxdepth)), idxdepth)),
                                 shape=mat_shape)
     return A, B
+
+def gps_select(times, ddat):
+    """Creates the matrix that will select the appropriate position
+    for comparing with GPS measurements
+    
+    Parameters:
+        times ([numpy.datetime64,]) : all of the sample times to predict
+            V_otg for.  returned by dataprep.timepoints()
+        ddat (dict): the recorded dive data returned by load_dive()
+        
+    Returns:
+        Nupmy array to multiply the X_otg vector.
+    """
+    gps_times = ddat['gps'].index.unique().to_numpy()
+    idxgps = [k for k, t in enumerate(times) if t in gps_times]
+    mat_shape = (len(idxgps), len(times))
+    A = scipy.sparse.coo_matrix((np.ones(len(idxgps)),
+                                 (np.ones(len(idxgps)),idxgps)),
+                                shape=mat_shape)
+    return A
+
+def range_select(times, ddat):
+    """Creates the matrix that will select the appropriate position
+    for comparing with range measurements
+    
+    Parameters:
+        times ([numpy.datetime64,]) : all of the sample times to predict
+            V_otg for.  returned by dataprep.timepoints()
+        ddat (dict): the recorded dive data returned by load_dive()
+        
+    Returns:
+        Nupmys arrays to multiply the X_otg vectors.
+    """
+    range_times = ddat['range'].index.unique().to_numpy()
+    idxrange = [k for k, t in enumerate(times) if t in range_times]
+    mat_shape = (len(idxrange), len(times))
+    A = scipy.sparse.coo_matrix((np.ones(len(idxrange)),
+                                 (np.ones(len(idxrange)),idxrange)),
+                                shape=mat_shape)
+    return A
+
+def vehicle_Q(times, rho=1):
+    """Creates the covariance matrix for smoothing the vehicle with time
+    scale rho.
+    """
+    delta_times = times[1:]-times[:-1]
+    dts = delta_times.astype(float)/1e9
+    Qs = [rho*np.array([[dt, dt**2/2],[dt**2/2, dt**3/3]]) for dt in dts]
+    return scipy.sparse.block_diag(Qs)
+
+def vehicle_G(times):
+    """Creates the update matrix for smoothing the vehicle"""
+    delta_times = times[1:]-times[:-1]
+    dts = delta_times.astype(float)/1e9
+    Gs = [np.array([[-1, 0],[-dt, -1]]) for dt in dts]
+    return scipy.sparse.block_diag(Gs)
+
+def depth_Q(depths, eta=1):
+    """Creates the covariance matrix for smoothing the currint with depth
+    scale eta.
+    """
+    delta_depths = depths[1:]-depths[:-1]
+    return np.diag(delta_depths).astype(float)
+
+def depth_G(depths):
+    """Creates the update matrix for smoothing the current"""
+    length = len(depths)
+    return scipy.sparse.spdiags((-np.ones(length), np.ones(length)),
+                                diags=(0,1), m=length-1, n=length)
+def get_zttw(ddat, direction='north'):
+    """Select the hydrodynamic measurements vector in the specified 
+    direction.
+    """
+    if direction in ['u','north', 'u_north']:
+        return ddat['uv'].u_north
+    elif direction in ['v','east', 'v_east']:
+        return ddat['uv'].v_east
+    else:
+        return None
+    
+def get_zadcp(adat, direction='north'):
+    """Select the adcp measurements vector in the specified 
+    direction.
+    """
+    valid_obs = np.isfinite(adat['UV'])
+    if direction in ['u','north', 'u_north']:
+        return adat['UV'][valid_obs].imag
+    elif direction in ['v','east', 'v_east']:
+        return adat['UV'][valid_obs].real
+    else:
+        return None
+    
+def get_zgps(ddat, direction='north'):
+    """Select the GPS measurements vector in the specified 
+    direction.
+    """
+    if direction in ['u','north', 'u_north', 'gps_ny_north']:
+        return ddat['gps'].gps_ny_north
+    elif direction in ['v','east', 'v_east', 'gps_nx_east']:
+        return ddat['gps'].gps_nx_east
+    else:
+        return None
+
+def get_zrange(ddat):
+    """Select the range measurements vector as well as the range
+    offset vectors
+    
+    Returns:
+        Tuple of Numpy arrays. The first is the range measurement
+        vector.  The second is the source position east of the origin.
+        The third is the source position north of the origin.  All
+        units in meters.
+    """
+    r = ddat['range'].range
+    y = ddat['range'].src_pos_n
+    x = ddat['range'].src_pos_e
+    return r, y, x
+
+def v_select(timesteps):
+    """Creates the matrix that selects the v entries of 
+    [v1, x1, v2, x2, v3, ...].
+    
+    Parameters:
+        timesteps (int) : number of timesteps
+    """
+    mat_shape = (timesteps, 2*timesteps)
+    return scipy.sparse.coo_matrix((np.ones(timesteps),
+                                    (range(timesteps), 
+                                     range(0,2*timesteps, 2))),
+                                    shape=mat_shape)
+
+def x_select(timesteps):
+    """Creates the matrix that selects the x entries of 
+    [v1, x1, v2, x2, v3, ...].
+    
+    Parameters:
+        timesteps (int) : number of timesteps
+    """
+    mat_shape = (timesteps, 2*timesteps)
+    return scipy.sparse.coo_matrix((np.ones(timesteps),
+                                    (range(timesteps), 
+                                     range(1,2*timesteps, 2))),
+                                    shape=mat_shape)
