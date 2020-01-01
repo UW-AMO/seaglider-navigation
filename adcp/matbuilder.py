@@ -98,7 +98,7 @@ def gps_select(times, ddat):
     idxgps = [k for k, t in enumerate(times) if t in gps_times]
     mat_shape = (len(idxgps), len(times))
     A = scipy.sparse.coo_matrix((np.ones(len(idxgps)),
-                                 (np.ones(len(idxgps)),idxgps)),
+                                 (range(len(idxgps)),idxgps)),
                                 shape=mat_shape)
     return A
 
@@ -118,7 +118,7 @@ def range_select(times, ddat):
     idxrange = [k for k, t in enumerate(times) if t in range_times]
     mat_shape = (len(idxrange), len(times))
     A = scipy.sparse.coo_matrix((np.ones(len(idxrange)),
-                                 (np.ones(len(idxrange)),idxrange)),
+                                 (range(len(idxrange)),idxrange)),
                                 shape=mat_shape)
     return A
 
@@ -136,14 +136,17 @@ def vehicle_G(times):
     delta_times = times[1:]-times[:-1]
     dts = delta_times.astype(float)/1e9
     Gs = [np.array([[-1, 0],[-dt, -1]]) for dt in dts]
-    return scipy.sparse.block_diag(Gs)
+    G = scipy.sparse.block_diag(Gs)
+    m = len(delta_times)*2
+    append_me = scipy.sparse.coo_matrix(([],([],[])), (m,2))
+    return scipy.sparse.hstack((G, append_me))
 
-def depth_Q(depths, eta=1):
+def depth_Q(depths, rho=1):
     """Creates the covariance matrix for smoothing the currint with depth
     scale eta.
     """
     delta_depths = depths[1:]-depths[:-1]
-    return np.diag(delta_depths).astype(float)
+    return rho*np.diag(delta_depths).astype(float)
 
 def depth_G(depths):
     """Creates the update matrix for smoothing the current"""
@@ -178,9 +181,9 @@ def get_zgps(ddat, direction='north'):
     direction.
     """
     if direction in ['u','north', 'u_north', 'gps_ny_north']:
-        return ddat['gps'].gps_ny_north
+        return ddat['gps'].gps_ny_north.to_numpy()
     elif direction in ['v','east', 'v_east', 'gps_nx_east']:
-        return ddat['gps'].gps_nx_east
+        return ddat['gps'].gps_nx_east.to_numpy()
     else:
         return None
 
@@ -194,9 +197,9 @@ def get_zrange(ddat):
         The third is the source position north of the origin.  All
         units in meters.
     """
-    r = ddat['range'].range
-    y = ddat['range'].src_pos_n
-    x = ddat['range'].src_pos_e
+    r = ddat['range'].range.to_numpy()
+    y = ddat['range'].src_pos_n.to_numpy()
+    x = ddat['range'].src_pos_e.to_numpy()
     return r, y, x
 
 def v_select(timesteps):
