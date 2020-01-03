@@ -152,36 +152,35 @@ def f(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     NV = nv_select(m, n)
     EC = ec_select(m, n)
     NC = nc_select(m, n)
-    def f_eval(X):
-        ev_vec = Gv @ EV @ X
-        nv_vec = Gv @ NV @ X
-        kalman_vehicle = ev_vec.T @ Qv @ ev_vec + nv_vec.T @ Qv @ nv_vec
-        ec_vec = Gc @ EC @ X
-        nc_vec = Gc @ NC @ X
-        kalman_current = ec_vec.T @ Qc @ ec_vec + nc_vec.T @ Qc @ nc_vec
-        
-        e_ttw_vels = A_ttw @ Vs @ EV @ X - B_ttw @ EC @ X
-        n_ttw_vels = A_ttw @ Vs @ NV @ X - B_ttw @ NC @ X
-        zttw_error = rho_t*(np.linalg.norm(zttw_n-n_ttw_vels
-                                    )+np.linalg.norm(zttw_e-e_ttw_vels))
-        e_adcp_vels = B_adcp @ EC @ X - A_adcp @ Vs @ EV @ X
-        n_adcp_vels = B_adcp @ NC @ X - A_adcp @ Vs @ NV @ X
-        zadcp_error = rho_a*(np.linalg.norm(zadcp_n-n_adcp_vels
-                                    )+np.linalg.norm(zadcp_e-e_adcp_vels))
-
-        e_pos = A_gps @ Xs @ EV @ X
-        n_pos = A_gps @ Xs @ NV @ X
-        zgps_error = rho_g*(np.linalg.norm(zgps_e-e_pos)+
-                            np.linalg.norm(zgps_n-n_pos))
-
-        xv = A_range @ Xs @ EV @ X
-        yv = A_range @ Xs @ NV @ X
-        ranges = np.sqrt((zx-xv) ** 2 + (zy-yv) ** 2)
-        range_error = rho_r*np.linalg.norm(zr-ranges)
-        return (kalman_vehicle + kalman_current + 
-                zttw_error + zadcp_error + 
-                zgps_error + range_error)
+    kalman_mat = (EV.T @ Gv.T @ Qv @ Gv @ EV +
+                  NV.T @ Gv.T @ Qv @ Gv @ NV +
+                  EC.T @ Gc.T @ Qc @ Gc @ EC +
+                  NC.T @ Gc.T @ Qc @ Gc @ NC)
     
+    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
+    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
+    e_adcp_select = B_adcp @ EC - A_adcp @ Vs @ EV
+    n_adcp_select = B_adcp @ NC - A_adcp @ Vs @ NV
+    e_gps_select = A_gps @ Xs @ EV
+    n_gps_select = A_gps @ Xs @ NV
+    e_range_select = A_range @ Xs @ EV 
+    n_range_select = A_range @ Xs @ NV
+
+    def f_eval(X):
+        kalman_error = X.T @ kalman_mat @ X
+        hydrodynamic_error = rho_t*(np.linalg.norm(zttw_n-n_ttw_select @ X) +
+                                   np.linalg.norm(zttw_e-e_ttw_select @ X))
+        adcp_error = rho_a*(np.linalg.norm(zadcp_n-n_adcp_select @ X) +
+                                   np.linalg.norm(zadcp_e-e_adcp_select @ X))
+        gps_error = rho_g*(np.linalg.norm(zgps_n-n_gps_select @ X) +
+                                   np.linalg.norm(zgps_e-e_gps_select @ X))
+        if rho_r != 0:
+            ranges = np.sqrt((zx- e_range_select @ X) ** 2 + 
+                             (zy-n_range_select @ X) ** 2)
+            range_error = rho_r*np.linalg.norm(zr-ranges)
+        else: range_error=0
+        return (kalman_error + hydrodynamic_error + adcp_error +
+                gps_error + range_error)
     return f_eval
 def g(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1, 
                                   rho_a=1, rho_g=1, rho_r=0):
@@ -221,38 +220,53 @@ def g(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     EC = ec_select(m, n)
     NC = nc_select(m, n)
 
+    kalman_mat = (EV.T @ Gv.T @ Qv @ Gv @ EV +
+                  NV.T @ Gv.T @ Qv @ Gv @ NV +
+                  EC.T @ Gc.T @ Qc @ Gc @ EC +
+                  NC.T @ Gc.T @ Qc @ Gc @ NC)
+    
+    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
+    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
+    e_ttw_mat = 2 * e_ttw_select.T @ e_ttw_select 
+    e_ttw_constant = 2*e_ttw_select.T @ zttw_e
+    n_ttw_mat = 2 * n_ttw_select.T @ n_ttw_select 
+    n_ttw_constant = 2*n_ttw_select.T @ zttw_n
+
+    e_adcp_select = B_adcp @ EC - A_adcp @ Vs @ EV
+    n_adcp_select = B_adcp @ NC - A_adcp @ Vs @ NV
+    e_adcp_mat = 2* e_adcp_select.T @ e_adcp_select
+    e_adcp_constant = 2 * e_adcp_select.T @ zadcp_e
+    n_adcp_mat = 2* n_adcp_select.T @ n_adcp_select
+    n_adcp_constant = 2 * n_adcp_select.T @ zadcp_n
+    
+    e_gps_select = A_gps @ Xs @ EV
+    n_gps_select = A_gps @ Xs @ NV
+    e_gps_mat = 2* e_gps_select.T @ e_gps_select
+    e_gps_constant = 2 * e_gps_select.T @ zgps_e
+    n_gps_mat = 2* n_gps_select.T @ n_gps_select
+    n_gps_constant = 2 * n_gps_select.T @ zgps_n
+
+    A1 = A_range @ Xs @ EV 
+    A2 = A_range @ Xs @ NV
+
+
     def g_eval(X):
-        ev_mat = Gv @ EV
-        nv_mat = Gv @ NV
-        kalman_vehicle = 2* ev_mat.T @ Qv @ ev_mat @ X + 2* nv_mat.T @ Qv @ nv_mat @ X
-        ec_mat = Gc @ EC
-        nc_mat = Gc @ NC
-        kalman_current = 2* ec_mat.T @ Qc @ ec_mat @ X + 2* nc_mat.T @ Qc @ nc_mat @ X
+        kalman_error = 2* kalman_mat @ X
         
-        e_ttw_mat = A_ttw @ Vs @ EV - B_ttw @ EC
-        n_ttw_mat = A_ttw @ Vs @ NV - B_ttw @ NC
-        zttw_error = rho_t*(
-                        2* e_ttw_mat.T @ e_ttw_mat @ X - 2*e_ttw_mat.T @ zttw_e +
-                        2* n_ttw_mat.T @ n_ttw_mat @ X - 2*n_ttw_mat.T @ zttw_n)
-        e_adcp_mat = B_adcp @ EC - A_adcp @ Vs @ EV
-        n_adcp_mat = B_adcp @ NC - A_adcp @ Vs @ NV
+        zttw_error = rho_t*(e_ttw_mat @ X - e_ttw_constant+
+                            n_ttw_mat @ X - n_ttw_constant)
         zadcp_error = rho_a*(
-                        2* e_adcp_mat.T @ e_adcp_mat @ X - 2*e_adcp_mat.T @ zadcp_e +
-                        2* n_adcp_mat.T @ n_adcp_mat @ X - 2*n_adcp_mat.T @ zadcp_n)
-
-        e_mat = A_gps @ Xs @ EV
-        n_mat = A_gps @ Xs @ NV
-        zgps_error = rho_g*(
-                        2* e_mat.T @ e_mat @ X - 2*e_mat.T @ zgps_e +
-                        2* n_mat.T @ n_mat @ X - 2*n_mat.T @ zgps_n)
-
-        A1 = A_range @ Xs @ EV
-        A2 = A_range @ Xs @ NV
-        denominator = np.sqrt((A1 @ X - zx)**2 +(A2 @ X - zy)**2)
-        factor1 = (np.ones(len(zr)) - zr/denominator)
-        factor2 = (2*A1.T.multiply(A1 @ X - zx) + 2*A2.T.multiply(A2 @ X - zy))
-        range_error = factor2 * factor1
-        return (kalman_vehicle + kalman_current + 
+                        e_adcp_mat @ X - e_adcp_constant +
+                        n_adcp_mat @ X - n_adcp_constant)
+        zgps_error = rho_g*(e_gps_mat @ X - e_gps_constant +
+                            n_gps_mat @ X - n_gps_constant)
+        if rho_r != 0:
+            denominator = np.sqrt((A1 @ X - zx)**2 +(A2 @ X - zy)**2)
+            factor1 = (np.ones(len(zr)) - zr/denominator)
+            factor2 = (2*A1.T.multiply(A1 @ X - zx) + 2*A2.T.multiply(A2 @ X - zy))
+            range_error = factor2 * factor1
+        else: range_error = 0
+        return (kalman_error + 
                 zttw_error + zadcp_error + 
                 zgps_error + range_error)
 
@@ -291,33 +305,29 @@ def h(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     EC = ec_select(m, n)
     NC = nc_select(m, n) 
 
-    def h_eval(X):
-        ev_mat = Gv @ EV
-        nv_mat = Gv @ NV
-        kalman_vehicle = ev_mat.T @ Qv @ ev_mat + nv_mat.T @ Qv @ nv_mat
-        ec_mat = Gc @ EC
-        nc_mat = Gc @ NC
-        kalman_current = ec_mat.T @ Qc @ ec_mat + nc_mat.T @ Qc @ nc_mat
-        
-        e_ttw_mat = A_ttw @ Vs @ EV - B_ttw @ EC
-        n_ttw_mat = A_ttw @ Vs @ NV - B_ttw @ NC
-        zttw_error = rho_t*(
-                        2* e_ttw_mat.T @ e_ttw_mat +
-                        2* n_ttw_mat.T @ n_ttw_mat)
-        
-        e_adcp_mat = B_adcp @ EC - A_adcp @ Vs @ EV
-        n_adcp_mat = B_adcp @ NC - A_adcp @ Vs @ NV
-        zadcp_error = rho_a*(
-                        2* e_adcp_mat.T @ e_adcp_mat +
-                        2* n_adcp_mat.T @ n_adcp_mat)
+    kalman_mat = (EV.T @ Gv.T @ Qv @ Gv @ EV +
+                  NV.T @ Gv.T @ Qv @ Gv @ NV +
+                  EC.T @ Gc.T @ Qc @ Gc @ EC +
+                  NC.T @ Gc.T @ Qc @ Gc @ NC)
 
-        e_mat = A_gps @ Xs @ EV
-        n_mat = A_gps @ Xs @ NV
-        zgps_error = rho_g*(
-                        2* e_mat.T @ e_mat +
-                        2* n_mat.T @ n_mat)
-        
-        return (kalman_vehicle + kalman_current + 
-                zttw_error + zadcp_error + 
-                zgps_error)
+    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
+    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
+    e_ttw_mat = 2 * e_ttw_select.T @ e_ttw_select 
+    n_ttw_mat = 2 * n_ttw_select.T @ n_ttw_select 
+
+    e_adcp_select = B_adcp @ EC - A_adcp @ Vs @ EV
+    n_adcp_select = B_adcp @ NC - A_adcp @ Vs @ NV
+    e_adcp_mat = 2* e_adcp_select.T @ e_adcp_select
+    n_adcp_mat = 2* n_adcp_select.T @ n_adcp_select
+
+    e_gps_select = A_gps @ Xs @ EV
+    n_gps_select = A_gps @ Xs @ NV
+    e_gps_mat = 2* e_gps_select.T @ e_gps_select
+    n_gps_mat = 2* n_gps_select.T @ n_gps_select
+
+    def h_eval(X):        
+        zttw_error = rho_t*(e_ttw_mat + n_ttw_mat)
+        zadcp_error = rho_a*(e_adcp_mat + n_adcp_mat)
+        zgps_error = rho_g*(e_gps_mat + n_gps_mat)
+        return (kalman_mat + zttw_error + zadcp_error + zgps_error)
     return h_eval
