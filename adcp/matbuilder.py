@@ -146,7 +146,7 @@ def depth_Q(depths, rho=1):
     scale eta.
     """
     delta_depths = depths[1:]-depths[:-1]
-    return rho*np.diag(delta_depths).astype(float)
+    return rho*scipy.sparse.diags(delta_depths, dtype=float)
 
 def depth_G(depths):
     """Creates the update matrix for smoothing the current"""
