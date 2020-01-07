@@ -71,7 +71,7 @@ def adcp_select(times, depths, ddat, adat):
     depth_df = dp._depth_interpolator(times, ddat)
     turnaround = depth_df.ascending.idxmax()
     deepest = depth_df.loc[turnaround, 'depth']
-    rising_times = adat['time'] > turnaround
+    rising_times = pd.to_datetime(adat['time']) > turnaround
     adcp_depths = adat['Z'].copy()
     adcp_depths[:,rising_times] = 2*deepest - adat['Z'][:,rising_times]
     d_list = list(depths)

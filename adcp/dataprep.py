@@ -123,7 +123,7 @@ def depthpoints(adat, ddat):
     turnaround = depth_df.ascending.idxmax()
     deepest = depth_df.loc[turnaround, 'depth']
     
-    descending = (adat['time'] <= turnaround)
+    descending = (pd.to_datetime(adat['time']) <= turnaround)
     down_depths = adat['Z'][:,descending].flatten()
     up_depths = 2*deepest - adat['Z'][:,~descending].flatten()
     depth_arrays = (down_depths, up_depths, depth_df.to_numpy().flatten())

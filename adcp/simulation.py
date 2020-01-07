@@ -8,7 +8,6 @@ import random
 
 import numpy as np
 import pandas as pd
-import scipy.sparse
 
 from . import matbuilder as mb
 
@@ -44,12 +43,13 @@ def simulate(duration = pd.Timedelta('3 hours'), max_depth = 750, n_dives = 1,
 
     midpoint = timepoints[n_timepoints//2+1]    
     if n_timepoints % 2 == 1:
-        depths = np.concatenate((depths_down.tolist(), [max_depth], 
+        depths = np.concatenate((depths_down.tolist(), [max_depth],
                                  depths_up.tolist()))
     else:
         depths = np.concatenate((depths_down.tolist(), depths_up.tolist()))
 
-    depth_df = pd.DataFrame(depths, index=timepoints, columns = ['depth']) 
+    depth_df = pd.DataFrame(depths, index=pd.Index(timepoints, name='time'),
+                            columns = ['depth']) 
     down_adcp_times = adcp_times[adcp_times <=midpoint]
     down_adcp_points = depth_df.loc[down_adcp_times
                                     ].depth.to_numpy().reshape((-1,1))
@@ -104,11 +104,11 @@ def simulate(duration = pd.Timedelta('3 hours'), max_depth = 750, n_dives = 1,
     deltax_otg_e = (delta_t * v_df.v_otg_e.to_numpy()[1:]).total_seconds()
     v_df['dx_otg_n'] = np.nan
     v_df['dx_otg_e'] = np.nan
+    v_df = v_df.set_index('time')
     v_df.loc[timepoints[1:],'dx_otg_n'] = deltax_otg_n
     v_df.loc[timepoints[1:],'dx_otg_e'] = deltax_otg_e
 
     ### Calculate & simulate z_ttw, z_adcp, and z_gps
-    v_df = v_df.set_index('time')
     z_ttw_n = np.random.normal(loc = v_df.loc[ttw_times, 'ttw_n'], scale=rho_t)
     z_ttw_e = np.random.normal(loc = v_df.loc[ttw_times, 'ttw_e'], scale=rho_t)
     def n_curr_selector(depth):
@@ -151,13 +151,18 @@ def simulate(duration = pd.Timedelta('3 hours'), max_depth = 750, n_dives = 1,
                           index=pd.Index(ttw_times, name='time'),
                           columns=['u_north','v_east'])
 
-    ddat = {'gps':gps_df, 'depth':depth_df.loc[
-            gps_times.union(range_times).union(ttw_times).sort_values()],
+    depth_df[depth_df['depth']>max_depth
+             ] = 2*max_depth - depth_df[depth_df['depth']>max_depth]
+    ddat = {'gps':gps_df,
+            'depth':depth_df.loc[pd.Index(
+                    gps_times.union(range_times).union(ttw_times).sort_values(
+                            ), name='time')],
             'uv':ttw_df, 'range':range_df}
 
     ### Construct dataframes & dictionaries for ADCP data
     adat = {'time':adcp_times.to_numpy(), 
-            'Z': np.vstack((down_adcp_depths, 2*max_depth - (up_adcp_depths))),
+            'Z': np.vstack((
+                    down_adcp_depths, 2*max_depth - (up_adcp_depths))).T,
             'UV': (z_adcp_e+z_adcp_n*1j).T}
 
-    return adat, ddat
+    return ddat, adat
