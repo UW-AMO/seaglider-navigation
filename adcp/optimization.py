@@ -17,8 +17,10 @@ in turn stacked on top of a similar northerly current vector.
 
 import numpy as np
 import scipy.sparse
+from scipy.optimize import minimize
 
 from . import matbuilder as mb
+from . import dataprep as dp
 
 def init_x(times, depths, ddat):
     ev0, nv0 = initial_kinematics(times, ddat)
@@ -98,6 +100,113 @@ def nc_select(m, n):
         n (int) : number of depthpoints
     """
     return scipy.sparse.eye(n, 4*m+2*n, 4*m+n)
+
+def backsolve(ddat, adat, rho_v=1, rho_c=1, rho_t=1, rho_a=1, rho_g=1):
+    """Solves the linear least squares problem
+
+    Returns:
+        tuple of solution vector, NV, EV, NC, EC, Xs, and Vs selector
+        matrices.
+    """
+    times = dp.timepoints(adat, ddat)
+    depths = dp.depthpoints(adat, ddat)
+    A, b = solve_mats(times, depths, ddat, adat, rho_v=rho_v, rho_c=rho_c,
+                      rho_t=rho_t, rho_a=rho_a, rho_g=rho_g)
+    x = scipy.sparse.linalg.spsolve(A, b)
+    Vs = mb.v_select(len(times))
+    Xs = mb.x_select(len(times))
+    m = len(times)
+    n = len(depths)
+    EV = ev_select(m, n)
+    NV = nv_select(m, n)
+    EC = ec_select(m, n)
+    NC = nc_select(m, n)
+
+    return x, (NV, EV, NC, EC, Xs, Vs)
+
+def solve_mats(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
+                                                          rho_a=1, rho_g=1):
+    """Create A, b for which Ax=b solves linear least squares problem
+
+    Parameters:
+        times ([numpy.datetime64,]) : all of the sample times to predict
+            V_otg for.  returned by dataprep.timepoints()
+        depths([int]) : all of the sample depths to predict current for.
+            returned by dataprep.depthpoints()
+        ddat (dict): the recorded dive data returned by load_dive()
+        adat (dict): the recorded ADCP data returned by load_adcp()
+        rho_v (float): weight for velocity kalman filter, equal to
+            differential covariance of driving gaussian process.
+        rho_c (float): weight for current kalman filter, equal to
+                differential covariance of driving gaussian process.
+        rho_t (float): weight for hydrodynamic model measurement error
+        rho_a (float): weight for ADCP measurement error
+        rho_g (float): weight for GPS measurement error
+        rho_r (float): weight for range measurement error
+
+    Returns:
+        tuple of numpy arrays, (A,b)
+    """
+    Gv = mb.vehicle_G(times)
+    Gc = mb.depth_G(depths)
+    if rho_v != 0:
+        Qvinv = mb.vehicle_Qinv(times, rho=rho_v)
+    else:
+        Qvinv = scipy.sparse.csr_matrix((2*(len(times)-1), 2*(len(times)-1)))
+    if rho_c != 0:
+        Qcinv = mb.depth_Qinv(depths, rho=rho_c)
+    else:
+        Qcinv = scipy.sparse.csr_matrix((len(depths)-1, len(depths)-1))
+    zttw_e = mb.get_zttw(ddat, 'east')
+    zttw_n = mb.get_zttw(ddat, 'north')
+    A_ttw, B_ttw = mb.uv_select(times, depths, ddat)
+    Vs = mb.v_select(len(times))
+
+    zadcp_e = mb.get_zadcp(adat, 'east')
+    zadcp_n = mb.get_zadcp(adat, 'north')
+    A_adcp, B_adcp = mb.adcp_select(times, depths, ddat, adat)
+
+    zgps_e = mb.get_zgps(ddat, 'east')
+    zgps_n = mb.get_zgps(ddat, 'north')
+    A_gps = mb.gps_select(times, ddat)
+    Xs = mb.x_select(len(times))
+
+    m = len(times)
+    n = len(depths)
+    EV = ev_select(m, n)
+    NV = nv_select(m, n)
+    EC = ec_select(m, n)
+    NC = nc_select(m, n)
+    kalman_mat = (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
+                  NV.T @ Gv.T @ Qvinv @ Gv @ NV +
+                  EC.T @ Gc.T @ Qcinv @ Gc @ EC +
+                  NC.T @ Gc.T @ Qcinv @ Gc @ NC)
+
+    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
+    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
+    e_adcp_select = B_adcp @ EC - A_adcp @ Vs @ EV
+    n_adcp_select = B_adcp @ NC - A_adcp @ Vs @ NV
+    e_gps_select = A_gps @ Xs @ EV
+    n_gps_select = A_gps @ Xs @ NV
+
+    A = (  kalman_mat
+         + rho_t*n_ttw_select.T @ n_ttw_select
+         + rho_t*e_ttw_select.T @ e_ttw_select
+         + rho_a*n_adcp_select.T @ n_adcp_select
+         + rho_a*e_adcp_select.T @ e_adcp_select
+         + rho_g*n_gps_select.T @ n_gps_select
+         + rho_g*e_gps_select.T @ e_gps_select
+         )
+
+    b = (  rho_a*n_adcp_select.T @ zadcp_n
+         + rho_a*e_adcp_select.T @ zadcp_e
+         + rho_t*n_ttw_select.T @ zttw_n
+         + rho_t*e_ttw_select.T @ zttw_e
+         + rho_g*n_gps_select.T @ zgps_n
+         + rho_g*e_gps_select.T @ zgps_e
+        )
+
+    return A, b
 
 def f(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1, 
                                   rho_a=1, rho_g=1, rho_r=0):
@@ -352,3 +461,36 @@ def h(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
         zgps_error = rho_g*(e_gps_mat + n_gps_mat)
         return (kalman_mat + zttw_error + zadcp_error + zgps_error)
     return h_eval
+
+def grad_test(x0, eps, f, g):
+    """Tests the gradient and objective function calculation.  For small
+    epsilon = ||x1-x0||, 2[f(x1)-f(x0)] should equal <x1-x0, g(x1)-g(x0)>
+
+    Parameters:
+        x0 (numpy array): test point 1
+        eps (float): norm of x1-x0.  x1 randomly generated from this value.
+        f (function): objective function with single argument
+        g (function): gradient function with single argument
+
+    Returns:
+        Tuple of LHS, RHS, and ||x1-x0||.  The first two
+        should be close to equal.
+    """
+    x1 = x0+np.random.normal(scale=eps/len(x0), size = len(x0))
+    LHS = 2*(f(x1)-f(x0))
+    RHS = (x1-x0).dot(g(x1)+g(x0))
+    return LHS, RHS, np.linalg.norm(x1-x0)
+
+def solve(ddat, adat, rho_v=1, rho_c=1, rho_t=1, rho_a=1, rho_g=1, rho_r=0,
+          method='BFGS'):
+    times = dp.timepoints(adat, ddat)
+    depths = dp.depthpoints(adat, ddat)
+    x0 = init_x(times, depths, ddat)
+    ffunc = f(times, depths, ddat, adat, rho_v=rho_v, rho_c=rho_c, rho_t=rho_t,
+             rho_a=rho_a, rho_g=rho_g, rho_r=rho_r)
+    gfunc = g(times, depths, ddat, adat, rho_v=rho_v, rho_c=rho_c, rho_t=rho_t,
+             rho_a=rho_a, rho_g=rho_g, rho_r=rho_r)
+    if method.lower()=='bfgs':
+        sol = minimize(x0, ffunc, method='BFGS', jac=gfunc)
+
+    return sol
