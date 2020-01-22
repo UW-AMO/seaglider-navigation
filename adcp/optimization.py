@@ -127,8 +127,14 @@ def f(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     """
     Gv = mb.vehicle_G(times)
     Gc = mb.depth_G(depths)
-    Qv = mb.vehicle_Q(times, rho=rho_v)
-    Qc = mb.depth_Q(depths, rho=rho_c)
+    if rho_v != 0:
+        Qvinv = mb.vehicle_Qinv(times, rho=rho_v)
+    else:
+        Qvinv = scipy.sparse.csr_matrix((2*(len(times)-1), 2*(len(times)-1)))
+    if rho_c != 0:
+        Qcinv = mb.depth_Qinv(depths, rho=rho_c)
+    else:
+        Qcinv = scipy.sparse.csr_matrix((len(depths)-1, len(depths)-1))
     zttw_e = mb.get_zttw(ddat, 'east')
     zttw_n = mb.get_zttw(ddat, 'north')
     A_ttw, B_ttw = mb.uv_select(times, depths, ddat)
@@ -152,10 +158,10 @@ def f(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     NV = nv_select(m, n)
     EC = ec_select(m, n)
     NC = nc_select(m, n)
-    kalman_mat = (EV.T @ Gv.T @ Qv @ Gv @ EV +
-                  NV.T @ Gv.T @ Qv @ Gv @ NV +
-                  EC.T @ Gc.T @ Qc @ Gc @ EC +
-                  NC.T @ Gc.T @ Qc @ Gc @ NC)
+    kalman_mat = (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
+                  NV.T @ Gv.T @ Qvinv @ Gv @ NV +
+                  EC.T @ Gc.T @ Qcinv @ Gc @ EC +
+                  NC.T @ Gc.T @ Qcinv @ Gc @ NC)
     
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
@@ -168,16 +174,19 @@ def f(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
 
     def f_eval(X):
         kalman_error = X.T @ kalman_mat @ X
-        hydrodynamic_error = rho_t*(np.linalg.norm(zttw_n-n_ttw_select @ X) +
-                                   np.linalg.norm(zttw_e-e_ttw_select @ X))
-        adcp_error = rho_a*(np.linalg.norm(zadcp_n-n_adcp_select @ X) +
-                                   np.linalg.norm(zadcp_e-e_adcp_select @ X))
-        gps_error = rho_g*(np.linalg.norm(zgps_n-n_gps_select @ X) +
-                                   np.linalg.norm(zgps_e-e_gps_select @ X))
+        hydrodynamic_error = rho_t*(
+                                np.linalg.norm(zttw_n-n_ttw_select @ X)**2 +
+                                np.linalg.norm(zttw_e-e_ttw_select @ X)**2)
+        adcp_error = rho_a*(
+                        np.linalg.norm(zadcp_n-n_adcp_select @ X)**2 +
+                        np.linalg.norm(zadcp_e-e_adcp_select @ X)**2)
+        gps_error = rho_g*(
+                            np.linalg.norm(zgps_n-n_gps_select @ X)**2 +
+                            np.linalg.norm(zgps_e-e_gps_select @ X)**2)
         if rho_r != 0:
             ranges = np.sqrt((zx- e_range_select @ X) ** 2 + 
                              (zy-n_range_select @ X) ** 2)
-            range_error = rho_r*np.linalg.norm(zr-ranges)
+            range_error = rho_r*np.linalg.norm(zr-ranges)**2
         else: range_error=0
         return (kalman_error + hydrodynamic_error + adcp_error +
                 gps_error + range_error)
@@ -194,8 +203,14 @@ def g(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     """
     Gv = mb.vehicle_G(times)
     Gc = mb.depth_G(depths)
-    Qv = mb.vehicle_Q(times, rho=rho_v)
-    Qc = mb.depth_Q(depths, rho=rho_c)
+    if rho_v != 0:
+        Qvinv = mb.vehicle_Qinv(times, rho=rho_v)
+    else:
+        Qvinv = scipy.sparse.csr_matrix((2*(len(times)-1), 2*(len(times)-1)))
+    if rho_c != 0:
+        Qcinv = mb.depth_Qinv(depths, rho=rho_c)
+    else:
+        Qcinv = scipy.sparse.csr_matrix((len(depths)-1, len(depths)-1))
     zttw_e = mb.get_zttw(ddat, 'east')
     zttw_n = mb.get_zttw(ddat, 'north')
     A_ttw, B_ttw = mb.uv_select(times, depths, ddat)
@@ -220,10 +235,10 @@ def g(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     EC = ec_select(m, n)
     NC = nc_select(m, n)
 
-    kalman_mat = (EV.T @ Gv.T @ Qv @ Gv @ EV +
-                  NV.T @ Gv.T @ Qv @ Gv @ NV +
-                  EC.T @ Gc.T @ Qc @ Gc @ EC +
-                  NC.T @ Gc.T @ Qc @ Gc @ NC)
+    kalman_mat = (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
+                  NV.T @ Gv.T @ Qvinv @ Gv @ NV +
+                  EC.T @ Gc.T @ Qcinv @ Gc @ EC +
+                  NC.T @ Gc.T @ Qcinv @ Gc @ NC)
     
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
@@ -288,8 +303,14 @@ def h(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     """
     Gv = mb.vehicle_G(times)
     Gc = mb.depth_G(depths)
-    Qv = mb.vehicle_Q(times, rho=rho_v)
-    Qc = mb.depth_Q(depths, rho=rho_c)
+    if rho_v != 0:
+        Qvinv = mb.vehicle_Qinv(times, rho=rho_v)
+    else:
+        Qvinv = scipy.sparse.csr_matrix((2*(len(times)-1), 2*(len(times)-1)))
+    if rho_c != 0:
+        Qcinv = mb.depth_Qinv(depths, rho=rho_c)
+    else:
+        Qcinv = scipy.sparse.csr_matrix((len(depths)-1, len(depths)-1))
     A_ttw, B_ttw = mb.uv_select(times, depths, ddat)
     Vs = mb.v_select(len(times))
 
@@ -305,10 +326,10 @@ def h(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     EC = ec_select(m, n)
     NC = nc_select(m, n) 
 
-    kalman_mat = (EV.T @ Gv.T @ Qv @ Gv @ EV +
-                  NV.T @ Gv.T @ Qv @ Gv @ NV +
-                  EC.T @ Gc.T @ Qc @ Gc @ EC +
-                  NC.T @ Gc.T @ Qc @ Gc @ NC)
+    kalman_mat = (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
+                  NV.T @ Gv.T @ Qvinv @ Gv @ NV +
+                  EC.T @ Gc.T @ Qcinv @ Gc @ EC +
+                  NC.T @ Gc.T @ Qcinv @ Gc @ NC)
 
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC

@@ -122,6 +122,16 @@ def range_select(times, ddat):
                                 shape=mat_shape)
     return A
 
+def vehicle_Qinv(times, rho=1):
+    """Creates the precision matrix for smoothing the vehicle with time
+    scale rho.
+    """
+    delta_times = times[1:]-times[:-1]
+    dts = delta_times.astype(float)/1e9
+    Qs = [rho*np.array([[dt, dt**2/2],[dt**2/2, dt**3/3]]) for dt in dts]
+    Qinvs = [np.linalg.inv(Q) for Q in Qs]
+    return scipy.sparse.block_diag(Qinvs)
+
 def vehicle_Q(times, rho=1):
     """Creates the covariance matrix for smoothing the vehicle with time
     scale rho.
@@ -134,12 +144,21 @@ def vehicle_Q(times, rho=1):
 def vehicle_G(times):
     """Creates the update matrix for smoothing the vehicle"""
     delta_times = times[1:]-times[:-1]
-    dts = delta_times.astype(float)/1e9
-    Gs = [np.array([[-1, 0],[-dt, -1]]) for dt in dts]
-    G = scipy.sparse.block_diag(Gs)
     m = len(delta_times)*2
+    dts = delta_times.astype(float)/1e9
+    negGs = [np.array([[-1, 0],[-dt, -1]]) for dt in dts]
+    negG = scipy.sparse.block_diag(negGs)
+    posG = scipy.sparse.eye(m)
     append_me = scipy.sparse.coo_matrix(([],([],[])), (m,2))
-    return scipy.sparse.hstack((G, append_me))
+    return (scipy.sparse.hstack((negG, append_me))
+            + scipy.sparse.hstack((append_me,posG)))
+
+def depth_Qinv(depths, rho=1):
+    """Creates the precision matrix for smoothing the currint with depth
+    scale eta.
+    """
+    delta_depths = depths[1:]-depths[:-1]
+    return rho*scipy.sparse.diags(1/delta_depths, dtype=float)
 
 def depth_Q(depths, rho=1):
     """Creates the covariance matrix for smoothing the currint with depth
