@@ -126,7 +126,8 @@ def depthpoints(adat, ddat):
     descending = (pd.to_datetime(adat['time']) <= turnaround)
     down_depths = adat['Z'][:,descending].flatten()
     up_depths = 2*deepest - adat['Z'][:,~descending].flatten()
-    depth_arrays = (down_depths, up_depths, depth_df.to_numpy().flatten())
+    depth_arrays = (down_depths, up_depths,
+                    depth_df.depth.to_numpy().flatten())
     depths = np.unique(np.concatenate(depth_arrays))
     return depths
 
