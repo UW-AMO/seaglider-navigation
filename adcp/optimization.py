@@ -212,6 +212,7 @@ def solve_mats(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
                   NV.T @ Gv.T @ Qvinv @ Gv @ NV +
                   EC.T @ Gc.T @ Qcinv @ Gc @ EC +
                   NC.T @ Gc.T @ Qcinv @ Gc @ NC)
+    kalman_mat = (kalman_mat+kalman_mat.T)/2
 
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
@@ -317,6 +318,7 @@ def f(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
                   NV.T @ Gv.T @ Qvinv @ Gv @ NV +
                   EC.T @ Gc.T @ Qcinv @ Gc @ EC +
                   NC.T @ Gc.T @ Qcinv @ Gc @ NC)
+    kalman_mat = (kalman_mat+kalman_mat.T)/2
     
     if verbose:
         r100 = np.array(random.sample(range(0, 4*m+2*n), 100))
@@ -404,6 +406,7 @@ def g(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
                   NV.T @ Gv.T @ Qvinv @ Gv @ NV +
                   EC.T @ Gc.T @ Qcinv @ Gc @ EC +
                   NC.T @ Gc.T @ Qcinv @ Gc @ NC)
+    kalman_mat = (kalman_mat+kalman_mat.T)/2
     
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
@@ -495,6 +498,7 @@ def h(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
                   NV.T @ Gv.T @ Qvinv @ Gv @ NV +
                   EC.T @ Gc.T @ Qcinv @ Gc @ EC +
                   NC.T @ Gc.T @ Qcinv @ Gc @ NC)
+    kalman_mat = (kalman_mat+kalman_mat.T)/2
 
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
