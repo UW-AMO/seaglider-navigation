@@ -37,7 +37,7 @@ def uv_select(times, depths, ddat):
     idxuv = [k for k, t in enumerate(times) if t in uv_times]
     mat_shape = (len(idxuv), len(times))
     A = scipy.sparse.coo_matrix((np.ones(len(idxuv)),
-                                 (np.ones(len(idxuv)),idxuv)),
+                                 (range(len(idxuv)),idxuv)),
                                 shape=mat_shape)
     
     uv_depths = dp._depth_interpolator(times, ddat).loc[uv_times, 'depth']
