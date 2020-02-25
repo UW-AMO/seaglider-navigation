@@ -8,11 +8,32 @@ Created on Thu Dec 12 00:45:24 2019
 from pathlib import Path
 import datetime as dt
 #3rd party libraries
+import h5py
+
 from scipy.io import loadmat
 import numpy as np
 import pandas as pd
 
 data_dir = Path(__file__).parent.parent / 'data'
+
+def load_mooring(filename):
+    """Load and return all moored current measurements
+
+    Parameters:
+        filename (str) : filename of mooring data.
+
+    Returns:
+        dict
+    """
+    arrays={}
+    with h5py.File(data_dir / filename, 'r') as f:
+        for k, v in f.items():
+            arrays[k] = np.array(v)
+    m2pd = np.vectorize(_mt2pd)
+    arrays['time'] = m2pd(arrays['datenumber'])
+    arrays['time'] = pd.to_datetime(arrays['time'].squeeze())
+    arrays.pop('datenumber')
+    return arrays
 
 def load_dive(run_num):
     """Load and return all dive data for a run
