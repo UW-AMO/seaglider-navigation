@@ -169,10 +169,10 @@ def solve_mats(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
             differential covariance of driving gaussian process.
         rho_c (float): weight for current kalman filter, equal to
                 differential covariance of driving gaussian process.
-        rho_t (float): weight for hydrodynamic model measurement error
-        rho_a (float): weight for ADCP measurement error
-        rho_g (float): weight for GPS measurement error
-        rho_r (float): weight for range measurement error
+        rho_t (float): hydrodynamic model measurement error covariance
+        rho_a (float): ADCP measurement error variance
+        rho_g (float): GPS measurement error variance
+        rho_r (float): range measurement error variance
 
     Returns:
         tuple of numpy arrays, (A,b)
@@ -207,7 +207,7 @@ def solve_mats(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     NV = nv_select(m, n)
     EC = ec_select(m, n)
     NC = nc_select(m, n)
-    kalman_mat = (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
+    kalman_mat = 1/2* (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
                   NV.T @ Gv.T @ Qvinv @ Gv @ NV +
                   EC.T @ Gc.T @ Qcinv @ Gc @ EC +
                   NC.T @ Gc.T @ Qcinv @ Gc @ NC)
@@ -220,20 +220,35 @@ def solve_mats(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     n_gps_select = A_gps @ Xs @ NV
 
     A = (  kalman_mat
-         + rho_t*n_ttw_select.T @ n_ttw_select
-         + rho_t*e_ttw_select.T @ e_ttw_select
-         + rho_a*n_adcp_select.T @ n_adcp_select
-         + rho_a*e_adcp_select.T @ e_adcp_select
-         + rho_g*n_gps_select.T @ n_gps_select
-         + rho_g*e_gps_select.T @ e_gps_select
+         + 1/(rho_t)*n_ttw_select.T @ n_ttw_select
+         + 1/(rho_t)*e_ttw_select.T @ e_ttw_select
+         + 1/(rho_a)*n_adcp_select.T @ n_adcp_select
+         + 1/(rho_a)*e_adcp_select.T @ e_adcp_select
+         + 1/(rho_g)*n_gps_select.T @ n_gps_select
+         + 1/(rho_g)*e_gps_select.T @ e_gps_select
          )
+    if verbose:
+        r100 = np.array(random.sample(range(0, 4*m+2*n), 100))
+        r1000 = np.array(random.sample(range(0, 4*m+2*n), 1000))
+        c1 = np.linalg.cond(kalman_mat.todense()[r1000[:,None],r1000])
+        c2 = np.linalg.cond(kalman_mat.todense()[r100[:,None],r100])
+        c3 = np.linalg.cond(A.todense()[r1000[:,None],r1000])
+        c4 = np.linalg.cond(A.todense()[r100[:,None],r100])
+        print('Condition number of kalman matrix (1000x1000): ',
+              f'{c1:e}')
+        print('Condition number of kalman matrix (100x100): ',
+              f'{c2:e}')
+        print('Condition number of A (1000x1000): ',
+              f'{c3:e}')
+        print('Condition number of A (100x100): ',
+              f'{c4:e}')
 
-    b = (  rho_a*n_adcp_select.T @ zadcp_n
-         + rho_a*e_adcp_select.T @ zadcp_e
-         + rho_t*n_ttw_select.T @ zttw_n
-         + rho_t*e_ttw_select.T @ zttw_e
-         + rho_g*n_gps_select.T @ zgps_n
-         + rho_g*e_gps_select.T @ zgps_e
+    b = (  1/(rho_t)*n_ttw_select.T @ zttw_n
+         + 1/(rho_t)*e_ttw_select.T @ zttw_e
+         + 1/(rho_a)*n_adcp_select.T @ zadcp_n
+         + 1/(rho_a)*e_adcp_select.T @ zadcp_e
+         + 1/(rho_g)*n_gps_select.T @ zgps_n
+         + 1/(rho_g)*e_gps_select.T @ zgps_e
         )
 
     return A, b
@@ -297,11 +312,21 @@ def f(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     NV = nv_select(m, n)
     EC = ec_select(m, n)
     NC = nc_select(m, n)
-    kalman_mat = (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
+    kalman_mat = 1/2* (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
                   NV.T @ Gv.T @ Qvinv @ Gv @ NV +
                   EC.T @ Gc.T @ Qcinv @ Gc @ EC +
                   NC.T @ Gc.T @ Qcinv @ Gc @ NC)
     
+    if verbose:
+        r100 = np.array(random.sample(range(0, 4*m+2*n), 100))
+        r1000 = np.array(random.sample(range(0, 4*m+2*n), 1000))
+        c1 = np.linalg.cond(kalman_mat.todense()[r1000[:,None],r1000])
+        c2 = np.linalg.cond(kalman_mat.todense()[r100[:,None],r100])
+        print('Condition number of kalman matrix (1000x1000): ',
+              f'{c1:e}')
+        print('Condition number of kalman matrix (100x100): ',
+              f'{c2:e}')
+
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
     e_adcp_select = B_adcp @ EC - A_adcp @ Vs @ EV
@@ -313,19 +338,19 @@ def f(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
 
     def f_eval(X):
         kalman_error = X.T @ kalman_mat @ X
-        hydrodynamic_error = rho_t*(
+        hydrodynamic_error = 1/(2*rho_t)*(
                                 np.linalg.norm(zttw_n-n_ttw_select @ X)**2 +
                                 np.linalg.norm(zttw_e-e_ttw_select @ X)**2)
-        adcp_error = rho_a*(
+        adcp_error = 1/(2*rho_a)*(
                         np.linalg.norm(zadcp_n-n_adcp_select @ X)**2 +
                         np.linalg.norm(zadcp_e-e_adcp_select @ X)**2)
-        gps_error = rho_g*(
+        gps_error = 1/(2*rho_g)*(
                             np.linalg.norm(zgps_n-n_gps_select @ X)**2 +
                             np.linalg.norm(zgps_e-e_gps_select @ X)**2)
         if rho_r != 0:
-            ranges = np.sqrt((zx- e_range_select @ X) ** 2 + 
+            ranges = np.sqrt((zx-e_range_select @ X) ** 2 + 
                              (zy-n_range_select @ X) ** 2)
-            range_error = rho_r*np.linalg.norm(zr-ranges)**2
+            range_error = 1/(2*rho_r)*np.linalg.norm(zr-ranges)**2
         else: range_error=0
         return (kalman_error + hydrodynamic_error + adcp_error +
                 gps_error + range_error)
@@ -374,7 +399,7 @@ def g(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     EC = ec_select(m, n)
     NC = nc_select(m, n)
 
-    kalman_mat = (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
+    kalman_mat = 1/2* (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
                   NV.T @ Gv.T @ Qvinv @ Gv @ NV +
                   EC.T @ Gc.T @ Qcinv @ Gc @ EC +
                   NC.T @ Gc.T @ Qcinv @ Gc @ NC)
@@ -407,18 +432,18 @@ def g(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     def g_eval(X):
         kalman_error = 2* kalman_mat @ X
         
-        zttw_error = rho_t*(e_ttw_mat @ X - e_ttw_constant+
+        zttw_error = 1/(2*rho_t)*(e_ttw_mat @ X - e_ttw_constant+
                             n_ttw_mat @ X - n_ttw_constant)
-        zadcp_error = rho_a*(
+        zadcp_error = 1/(2*rho_a)*(
                         e_adcp_mat @ X - e_adcp_constant +
                         n_adcp_mat @ X - n_adcp_constant)
-        zgps_error = rho_g*(e_gps_mat @ X - e_gps_constant +
+        zgps_error = 1/(2*rho_g)*(e_gps_mat @ X - e_gps_constant +
                             n_gps_mat @ X - n_gps_constant)
         if rho_r != 0:
             denominator = np.sqrt((A1 @ X - zx)**2 +(A2 @ X - zy)**2)
             factor1 = (np.ones(len(zr)) - zr/denominator)
             factor2 = (2*A1.T.multiply(A1 @ X - zx) + 2*A2.T.multiply(A2 @ X - zy))
-            range_error = factor2 * factor1
+            range_error = 1/(2*rho_r)*factor2 * factor1
         else: range_error = 0
         return (kalman_error + 
                 zttw_error + zadcp_error + 
@@ -465,7 +490,7 @@ def h(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     EC = ec_select(m, n)
     NC = nc_select(m, n) 
 
-    kalman_mat = (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
+    kalman_mat = 1/2* (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
                   NV.T @ Gv.T @ Qvinv @ Gv @ NV +
                   EC.T @ Gc.T @ Qcinv @ Gc @ EC +
                   NC.T @ Gc.T @ Qcinv @ Gc @ NC)
@@ -486,9 +511,9 @@ def h(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     n_gps_mat = 2* n_gps_select.T @ n_gps_select
 
     def h_eval(X):        
-        zttw_error = rho_t*(e_ttw_mat + n_ttw_mat)
-        zadcp_error = rho_a*(e_adcp_mat + n_adcp_mat)
-        zgps_error = rho_g*(e_gps_mat + n_gps_mat)
+        zttw_error = 1/(2*rho_t)*(e_ttw_mat + n_ttw_mat)
+        zadcp_error = 1/(2*rho_a)*(e_adcp_mat + n_adcp_mat)
+        zgps_error = 1/(2*rho_g)*(e_gps_mat + n_gps_mat)
         return (kalman_mat + zttw_error + zadcp_error + zgps_error)
     return h_eval
 
