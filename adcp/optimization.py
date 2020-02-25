@@ -14,6 +14,7 @@ kinematic vector of the same format.  The kinematic vector is stacked
 on top of an easterly current vector from 0 to 2*max depth which is 
 in turn stacked on top of a similar northerly current vector.
 """
+import random
 
 import numpy as np
 import scipy.sparse
@@ -528,16 +529,52 @@ def grad_test(x0, eps, f, g):
         g (function): gradient function with single argument
 
     Returns:
-        Tuple of LHS, RHS, and ||x1-x0||.  The first two
+        Tuple of LHS, RHS, ||x1-x0||, and ||LHS-RHS||.  The first two
         should be close to equal.
     """
     x1 = x0+np.random.normal(scale=eps/len(x0), size = len(x0))
     LHS = 2*(f(x1)-f(x0))
     RHS = (x1-x0).dot(g(x1)+g(x0))
-    return LHS, RHS, np.linalg.norm(x1-x0)
+    return LHS, RHS, np.linalg.norm(x1-x0), LHS-RHS
+
+def hess_test(x0, eps, g, h):
+    """Tests the gradient and hessian function calculation.  For small
+    epsilon = ||x1-x0||, 2[f(x1)-f(x0)] should equal <x1-x0, g(x1)-g(x0)>
+
+    Parameters:
+        x0 (numpy array): test point 1
+        eps (float): norm of x1-x0.  x1 randomly generated from this value.
+        g (function): gradient function with single argument
+        h (function): hessian function with single argument
+
+    Returns:
+        Tuple of LHS, RHS, and ||x1-x0||.  The first two
+        should be close to equal.
+    """
+    x1 = x0+np.random.normal(scale=eps/len(x0), size = len(x0))
+    LHS = 2*np.dot(g(x1)-g(x0), x1-x0)
+    RHS = (x1-x0).T @ (h(x1)+h(x0)) @ (x1-x0)
+    return LHS, RHS, np.linalg.norm(x1-x0), np.linalg.norm(LHS-RHS)
+
+def backsolve_test(x0, ddat, adat, rho_v=1, rho_c=1, rho_t=1, rho_a=1,
+                   rho_g=1):
+    """Tests whether the linear least squares solver agrees with the
+    gradient function"""
+    times=dp.timepoints(adat, ddat)
+    depths=dp.depthpoints(adat, ddat)
+    
+    A, b = solve_mats(times, depths, ddat, adat, rho_v=rho_v, rho_c=rho_c,
+                      rho_t=rho_t, rho_a=rho_a, rho_g=rho_g)
+    grad_func = g(times, depths, ddat, adat, 
+                  rho_v=rho_v, rho_c=rho_c, rho_a=rho_a, rho_t=rho_t,
+                  rho_g=rho_g)
+    v1 = A @ x0 + grad_func(np.zeros(len(x0)))
+    v2 = grad_func(x0)
+    return v1, v2, np.linalg.norm(v1), np.linalg.norm(v1-v2)
 
 def solve(ddat, adat, rho_v=1, rho_c=1, rho_t=1, rho_a=1, rho_g=1, rho_r=0,
-          method='BFGS'):
+          method='L-BFGS-B'):
+    """Solve the ADCP navigation problem for given data."""
     times = dp.timepoints(adat, ddat)
     depths = dp.depthpoints(adat, ddat)
     x0 = init_x(times, depths, ddat)
@@ -545,7 +582,10 @@ def solve(ddat, adat, rho_v=1, rho_c=1, rho_t=1, rho_a=1, rho_g=1, rho_r=0,
              rho_a=rho_a, rho_g=rho_g, rho_r=rho_r)
     gfunc = g(times, depths, ddat, adat, rho_v=rho_v, rho_c=rho_c, rho_t=rho_t,
              rho_a=rho_a, rho_g=rho_g, rho_r=rho_r)
-    if method.lower()=='bfgs':
-        sol = minimize(x0, ffunc, method='BFGS', jac=gfunc)
+    sol = minimize(ffunc, x0, method=method, jac=gfunc,
+                   options={'maxiter':50000, 'maxfun':50000, 'disp':True})
+    m = len(times)
+    n = len(depths)
+    sol.x = time_rescale(sol.x, mb.t_scale, m, n)
 
     return sol
