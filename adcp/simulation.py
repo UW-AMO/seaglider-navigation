@@ -14,8 +14,8 @@ from . import optimization as op
 from . import dataprep as dp
 
 def simulate(duration = pd.Timedelta('3 hours'), max_depth = 750, n_dives = 1,
-             n_timepoints=1001, rho_c=.03, rho_t=.1, rho_a=1, rho_g=1, rho_r=1,
-             adcp_bins=4, seed=124):
+             n_timepoints=1001, rho_v=.1, rho_c=.03, rho_t=.1, rho_a=1,
+             rho_g=1, rho_r=1, adcp_bins=4, seed=124, sigma_t=0, sigma_c=.5):
     """Simulates the data recorded during a dive.
     
     Returns:
@@ -28,7 +28,9 @@ def simulate(duration = pd.Timedelta('3 hours'), max_depth = 750, n_dives = 1,
         constructed by a solver
             [Vehicle, Current] -> [East, North] -> [v1 x1, v2, x2, ...]
     """
+    print(f"Simulation seeded with {seed}")
     np.random.seed(seed)
+    random.seed(seed)
     start_time = pd.Timestamp('2020-01-01')
     depths_down = np.arange(0,max_depth, max_depth / (n_timepoints//2))
     depths_up = max_depth + np.arange(.1,max_depth, max_depth / (n_timepoints//2))
@@ -36,8 +38,8 @@ def simulate(duration = pd.Timedelta('3 hours'), max_depth = 750, n_dives = 1,
                            n_timepoints)
     timepoints = pd.to_datetime(timepoints)
     delta_t = timepoints[1:]-timepoints[:-1]
-    v_ttw_n = 1 + .5 * np.random.normal(size = n_timepoints)
-    v_ttw_e = .2 + .5 * np.random.normal(size = n_timepoints)
+    v_ttw_n = 1 + sigma_t * np.random.normal(size=n_timepoints, scale=rho_v)
+    v_ttw_e = .2 + sigma_t * np.random.normal(size=n_timepoints, scale=rho_v)
 
     range_times = pd.to_datetime(sorted(
                     random.sample(set(timepoints[1:-1]), 3)))    
@@ -77,8 +79,8 @@ def simulate(duration = pd.Timedelta('3 hours'), max_depth = 750, n_dives = 1,
     all_depths.sort()
 
     ### Simulate current at all depths
-    first_n = .5 * np.random.normal(size=1)
-    first_e = .5 * np.random.normal(size=1)
+    first_n = sigma_c * np.random.normal(size=1)
+    first_e = sigma_c * np.random.normal(size=1)
 #   Truly principled method:
 #    Qc = mb.depth_Q(all_depths, rho_c)
 #    delta_C_n = np.random.multivariate_normal(
@@ -92,8 +94,8 @@ def simulate(duration = pd.Timedelta('3 hours'), max_depth = 750, n_dives = 1,
 #    current_n = np.concatenate((first_n, first_n+cum_diff_n))
 #    current_e = np.concatenate((first_e, first_n+cum_diff_e))
 #   Shortcut method:
-    last_n = .5 * np.random.normal(size=1)
-    last_e = .5 * np.random.normal(size=1)
+    last_n = sigma_c * np.random.normal(size=1)
+    last_e = sigma_c * np.random.normal(size=1)
     current_n = np.linspace(first_n[0], last_n[0], len(all_depths))
     current_e = np.linspace(first_e[0], last_e[0], len(all_depths))
     current_n = np.random.multivariate_normal(
@@ -211,4 +213,4 @@ def simulate(duration = pd.Timedelta('3 hours'), max_depth = 750, n_dives = 1,
     x += EC.T @ subset_df.curr_e
     x += NC.T @ subset_df.curr_n
 
-    return ddat, adat, x
+    return ddat, adat, x, v_df
