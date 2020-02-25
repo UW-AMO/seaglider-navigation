@@ -12,9 +12,16 @@ import pandas as pd
 
 from . import dataprep as dp
 
+t_scale = 1e3
+"""timescale, 1=seconds, 1e-3=milliseconds, 1e3=kiloseconds.  Used to
+control condition number of problem.
+"""
+conditioner = 'tanh'
+
+# %% Vector item selection
 def uv_select(times, depths, ddat):
     """Creates the matrices that will select the appropriate V_otg
-    and current  values for comparing with hydrodynamic model
+    and current values for comparing with hydrodynamic model
     uv measurements.
     
     Parameters:
@@ -45,7 +52,7 @@ def uv_select(times, depths, ddat):
 
 def adcp_select(times, depths, ddat, adat):
     """Creates the matrices that will select the appropriate V_otg
-    and current  values for comparing with ADCP measurements.
+    and current values for comparing with ADCP measurements.
     
     Parameters:
         times ([numpy.datetime64,]) : all of the sample times to predict
@@ -122,30 +129,47 @@ def range_select(times, ddat):
                                 shape=mat_shape)
     return A
 
+# %% Kalman Process Matrices
+def reduce_condition(deltas, method=None, minmax_ratio=.2):
+    avg = deltas.mean()
+    if method is None or method.lower()=='none':
+        return deltas
+    elif method.lower()=='avg':
+        return avg*np.ones(len(deltas))
+    elif method.lower()=='tanh':
+        factor= (1-minmax_ratio)/(1+minmax_ratio)*avg
+        return factor*np.tanh(deltas) + avg
+    elif method.lower()=='sux':
+        return np.ones(deltas)
+    else:
+        raise Exception('reduce_condition received bad method parameter')
 def vehicle_Qinv(times, rho=1):
-    """Creates the precision matrix for smoothing the vehicle with time
-    scale rho.
+    """Creates the precision matrix for smoothing the vehicle with velocity
+    covariance rho.
     """
     delta_times = times[1:]-times[:-1]
-    dts = delta_times.astype(float)/1e9
-    Qs = [rho*np.array([[dt, dt**2/2],[dt**2/2, dt**3/3]]) for dt in dts]
+    dts = delta_times.astype(float)/1e9/t_scale
+    dts = reduce_condition(dts, method=conditioner)
+    Qs = [t_scale**3*rho*np.array([[dt, dt**2/2],[dt**2/2, dt**3/3]]) for dt in dts]
     Qinvs = [np.linalg.inv(Q) for Q in Qs]
     return scipy.sparse.block_diag(Qinvs)
 
 def vehicle_Q(times, rho=1):
-    """Creates the covariance matrix for smoothing the vehicle with time
-    scale rho.
+    """Creates the covariance matrix for smoothing the vehicle with velocity
+    covariance rho.
     """
     delta_times = times[1:]-times[:-1]
-    dts = delta_times.astype(float)/1e9
-    Qs = [rho*np.array([[dt, dt**2/2],[dt**2/2, dt**3/3]]) for dt in dts]
+    dts = delta_times.astype(float)/1e9/t_scale
+    dts = reduce_condition(dts, method=conditioner)
+    Qs = [t_scale**3*rho*np.array([[dt, dt**2/2],[dt**2/2, dt**3/3]]) for dt in dts]
     return scipy.sparse.block_diag(Qs)
 
 def vehicle_G(times):
     """Creates the update matrix for smoothing the vehicle"""
     delta_times = times[1:]-times[:-1]
     m = len(delta_times)*2
-    dts = delta_times.astype(float)/1e9
+    dts = delta_times.astype(float)/1e9/t_scale
+    dts = reduce_condition(dts, method=conditioner)
     negGs = [np.array([[-1, 0],[-dt, -1]]) for dt in dts]
     negG = scipy.sparse.block_diag(negGs)
     posG = scipy.sparse.eye(m)
@@ -155,31 +179,35 @@ def vehicle_G(times):
 
 def depth_Qinv(depths, rho=1):
     """Creates the precision matrix for smoothing the currint with depth
-    scale eta.
+    covariance eta.
     """
     delta_depths = depths[1:]-depths[:-1]
-    return rho*scipy.sparse.diags(1/delta_depths, dtype=float)
+    dds = reduce_condition(delta_depths, method=conditioner)
+    return t_scale**(-2)/rho*scipy.sparse.diags(1/dds, dtype=float)
 
 def depth_Q(depths, rho=1):
     """Creates the covariance matrix for smoothing the currint with depth
-    scale eta.
+    covariance eta.
     """
     delta_depths = depths[1:]-depths[:-1]
-    return rho*scipy.sparse.diags(delta_depths, dtype=float)
+    dds = reduce_condition(delta_depths, method=conditioner)
+    return t_scale**(2)*rho*scipy.sparse.diags(dds, dtype=float)
 
 def depth_G(depths):
     """Creates the update matrix for smoothing the current"""
     length = len(depths)
     return scipy.sparse.spdiags((-np.ones(length), np.ones(length)),
                                 diags=(0,1), m=length-1, n=length)
+
+# %% Data selection
 def get_zttw(ddat, direction='north'):
     """Select the hydrodynamic measurements vector in the specified 
     direction.
     """
     if direction in ['u','north', 'u_north']:
-        return ddat['uv'].u_north
+        return ddat['uv'].u_north*t_scale
     elif direction in ['v','east', 'v_east']:
-        return ddat['uv'].v_east
+        return ddat['uv'].v_east*t_scale
     else:
         return None
     
@@ -189,9 +217,9 @@ def get_zadcp(adat, direction='north'):
     """
     valid_obs = np.isfinite(adat['UV'])
     if direction in ['u','north', 'u_north']:
-        return adat['UV'][valid_obs].imag
+        return adat['UV'][valid_obs].imag*t_scale
     elif direction in ['v','east', 'v_east']:
-        return adat['UV'][valid_obs].real
+        return adat['UV'][valid_obs].real*t_scale
     else:
         return None
     
