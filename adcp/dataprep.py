@@ -58,16 +58,38 @@ def load_dive(run_num):
             u_north=dive_data['UV'][0][0]['U_north'][0][0],
             v_east=dive_data['UV'][0][0]['V_east'][0][0],
             unixtime=dive_data['UV'][0][0]['unixtime'][0][0])
-    ranges = dict(
-            unixtime=dive_data['RANGE'][0][0]['unixtime'][0][0],
-            src_lat=dive_data['RANGE'][0][0]['src_lat'][0][0],
-            src_lon=dive_data['RANGE'][0][0]['src_lon'][0][0],
-            src_pos_e=dive_data['RANGE'][0][0]['src_pos_enu'][0][0][:,0],
-            src_pos_n=dive_data['RANGE'][0][0]['src_pos_enu'][0][0][:,1],
-            src_pos_u=dive_data['RANGE'][0][0]['src_pos_enu'][0][0][:,2],
-            range=dive_data['RANGE'][0][0]['range'][0][0],
-            )
-    
+    try:
+        ranges = dict(
+                unixtime=dive_data['RANGE'][0][0]['unixtime'][0][0],
+                src_lat=dive_data['RANGE'][0][0]['src_lat'][0][0],
+                src_lon=dive_data['RANGE'][0][0]['src_lon'][0][0],
+                src_pos_e=dive_data['RANGE'][0][0]['src_pos_enu'][0][0][:,0],
+                src_pos_n=dive_data['RANGE'][0][0]['src_pos_enu'][0][0][:,1],
+                src_pos_u=dive_data['RANGE'][0][0]['src_pos_enu'][0][0][:,2],
+                range=dive_data['RANGE'][0][0]['range'][0][0],
+                )
+    except ValueError: #Range is stored in field 'range_km' instead of 'range'
+        try:
+            ranges = dict(
+                    unixtime=dive_data['RANGE'][0][0]['unixtime'][0][0],
+                    src_lat=dive_data['RANGE'][0][0]['src_lat'][0][0],
+                    src_lon=dive_data['RANGE'][0][0]['src_lon'][0][0],
+                    src_pos_e=dive_data['RANGE'][0][0]['src_pos_enu'][0][0][:,0],
+                    src_pos_n=dive_data['RANGE'][0][0]['src_pos_enu'][0][0][:,1],
+                    src_pos_u=dive_data['RANGE'][0][0]['src_pos_enu'][0][0][:,2],
+                    range=1000*dive_data['RANGE'][0][0]['range_km'][0][0],
+                    )
+        except ValueError: #Range is stored in field 'range_sphere_km' instead of 'range_km'
+            ranges = dict(
+                    unixtime=dive_data['RANGE'][0][0]['unixtime'][0][0],
+                    src_lat=dive_data['RANGE'][0][0]['src_lat'][0][0],
+                    src_lon=dive_data['RANGE'][0][0]['src_lon'][0][0],
+                    src_pos_e=dive_data['RANGE'][0][0]['src_pos_enu'][0][0][:,0],
+                    src_pos_n=dive_data['RANGE'][0][0]['src_pos_enu'][0][0][:,1],
+                    src_pos_u=dive_data['RANGE'][0][0]['src_pos_enu'][0][0][:,2],
+                    range=1000*dive_data['RANGE'][0][0]['range_sphere_km'][0][0],
+                    )
+
     gpsdf = _array_dict2df(gps)
     depthdf = _array_dict2df(depth)
     uvdf = _array_dict2df(uv)
