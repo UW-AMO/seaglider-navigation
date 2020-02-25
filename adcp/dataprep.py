@@ -219,3 +219,39 @@ def timepoints(adat, ddat):
     combined = np.concatenate((uv_time, gps_time, range_time, adcp_time))
     return np.unique(combined)
 
+def dead_reckon(ddat):
+    """Dead reckons motion with and without average current.
+
+    Parameters:
+        ddat (dict): the recorded dive data returned by load_dive()
+
+    Returns:
+        Pandas dataframe, an augmented version of ddat['uv'] with
+        dead reckoned position columns
+
+    Note:
+        Requires that ddat's uv DataFrame and gps DataFrame both have
+        indexes that start and end roughly around the same time.
+    """
+    delta_times = ddat['uv'].index[1:]-ddat['uv'].index[:-1]
+    delta_times = delta_times.insert(0,pd.to_timedelta(0))
+    cum_secs = np.cumsum(delta_times.map(lambda t: t.total_seconds()))
+    delta_x = delta_times.total_seconds() * ddat['uv'].loc[:,'v_east']
+    delta_y = delta_times.total_seconds() * ddat['uv'].loc[:,'u_north']
+    x_dead = np.cumsum(delta_x) + ddat['gps'].gps_nx_east.iloc[0]
+    y_dead = np.cumsum(delta_y) + ddat['gps'].gps_ny_north.iloc[0]
+    # Now add constant drift to correct reckoning for final GPS position
+    x_err = ddat['gps'].gps_nx_east.iloc[-1]-x_dead[-1]
+    y_err = ddat['gps'].gps_ny_north.iloc[-1]-y_dead[-1]
+    uv_time_elapsed = ddat['uv'].index[-1]-ddat['uv'].index[0]
+    x_step = x_err/uv_time_elapsed.total_seconds()
+    y_step = y_err/uv_time_elapsed.total_seconds()
+    x_correction = x_step*cum_secs
+    y_correction = y_step*cum_secs
+    x_corrected = x_dead+x_correction
+    y_corrected = y_dead+y_correction
+    new_cols = pd.DataFrame({'x_dead':x_dead,
+                             'y_dead':y_dead,
+                             'x_corr':x_corrected,
+                             'y_corr':y_corrected}, index=ddat['uv'].index)
+    return ddat['uv'].join(new_cols, sort=False)
