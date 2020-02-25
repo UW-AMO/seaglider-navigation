@@ -122,8 +122,38 @@ def backsolve(ddat, adat, rho_v=1, rho_c=1, rho_t=1, rho_a=1, rho_g=1):
     EC = ec_select(m, n)
     NC = nc_select(m, n)
 
+    x = time_rescale(x, mb.t_scale, m, n)
     return x, (NV, EV, NC, EC, Xs, Vs)
 
+def time_rescale(x, t_s, m, n):
+    """Rescales the velocity measurements in a solution vector.
+
+    Parameters:
+        x (numpy array): Previous solution
+        t_s (float): timescale (e.g. 1e3 for kiloseconds, 1e-3 for
+            milliseconds)
+        m (int) : number of timepoints
+        n (int) : number of depthpoints
+    """
+    Vs = mb.v_select(m)
+    Xs = mb.x_select(m)
+    EV = ev_select(m, n)
+    NV = nv_select(m, n)
+    EC = ec_select(m, n)
+    NC = nc_select(m, n)
+    velocity_scaler = scipy.sparse.vstack((1/t_s * Vs @ NV,
+                                           Xs @ NV,
+                                           1/t_s * Vs @ EV,
+                                           Xs @ EV,
+                                           1/t_s * NC,
+                                           1/t_s * EC))
+    vel_reshaper = scipy.sparse.vstack((Vs @ NV,
+                                        Xs @ NV,
+                                        Vs @ EV,
+                                        Xs @ EV,
+                                        NC,
+                                        EC))
+    return vel_reshaper.T @ velocity_scaler @ x
 def solve_mats(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
                                                           rho_a=1, rho_g=1):
     """Create A, b for which Ax=b solves linear least squares problem
