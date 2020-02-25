@@ -62,6 +62,30 @@ def initial_kinematics(times, ddat):
 
     return e0.reshape(-1), n0.reshape(-1)
 
+def e_select(m, n):
+    """Creates a selection matrix for choosing indexes of X
+    related to easterly variables.
+
+    Parameters:
+        m (int) : number of timepoints
+        n (int) : number of depthpoints
+    """
+    EV = ev_select(m,n)
+    EC = ec_select(m,n)
+    return scipy.sparse.vstack((EV, EC))
+
+def n_select(m, n):
+    """Creates a selection matrix for choosing indexes of X
+    related to easterly vehicle kinematics.
+
+    Parameters:
+        m (int) : number of timepoints
+        n (int) : number of depthpoints
+    """
+    NV = nv_select(m,n)
+    NC = nc_select(m,n)
+    return scipy.sparse.vstack((NV, NC))
+
 def ev_select(m, n):
     """Creates a selection matrix for choosing indexes of X
     related to easterly vehicle kinematics.
@@ -156,7 +180,7 @@ def time_rescale(x, t_s, m, n):
                                         EC))
     return vel_reshaper.T @ velocity_scaler @ x
 def solve_mats(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
-                                                          rho_a=1, rho_g=1):
+               rho_a=1, rho_g=1, verbose=False):
     """Create A, b for which Ax=b solves linear least squares problem
 
     Parameters:
@@ -256,7 +280,7 @@ def solve_mats(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     return A, b
 
 def f(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1, 
-                                  rho_a=1, rho_g=1, rho_r=0):
+                                  rho_a=1, rho_g=1, rho_r=0, verbose=False):
     """Creates the sum of squares function for fitting a navigation
     and current profile
     
@@ -566,10 +590,10 @@ def backsolve_test(x0, ddat, adat, rho_v=1, rho_c=1, rho_t=1, rho_a=1,
     gradient function"""
     times=dp.timepoints(adat, ddat)
     depths=dp.depthpoints(adat, ddat)
-    
+
     A, b = solve_mats(times, depths, ddat, adat, rho_v=rho_v, rho_c=rho_c,
                       rho_t=rho_t, rho_a=rho_a, rho_g=rho_g)
-    grad_func = g(times, depths, ddat, adat, 
+    grad_func = g(times, depths, ddat, adat,
                   rho_v=rho_v, rho_c=rho_c, rho_a=rho_a, rho_t=rho_t,
                   rho_g=rho_g)
     v1 = A @ x0 + grad_func(np.zeros(len(x0)))
