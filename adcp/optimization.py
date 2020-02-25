@@ -349,7 +349,7 @@ def f(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
                             np.linalg.norm(zgps_n-n_gps_select @ X)**2 +
                             np.linalg.norm(zgps_e-e_gps_select @ X)**2)
         if rho_r != 0:
-            ranges = np.sqrt((zx-e_range_select @ X) ** 2 + 
+            ranges = np.sqrt((zx-e_range_select @ X) ** 2 +
                              (zy-n_range_select @ X) ** 2)
             range_error = 1/(2*rho_r)*np.linalg.norm(zr-ranges)**2
         else: range_error=0
@@ -426,8 +426,8 @@ def g(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     n_gps_mat = 2* n_gps_select.T @ n_gps_select
     n_gps_constant = 2 * n_gps_select.T @ zgps_n
 
-    A1 = A_range @ Xs @ EV 
-    A2 = A_range @ Xs @ NV
+    A1 = A_range @ Xs @ EV  #e_range_select
+    A2 = A_range @ Xs @ NV  #n_range_select
 
 
     def g_eval(X):

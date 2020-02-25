@@ -245,9 +245,9 @@ def get_zrange(ddat):
         units in meters.
     """
     r = ddat['range'].range.to_numpy()
-    y = ddat['range'].src_pos_n.to_numpy()
     x = ddat['range'].src_pos_e.to_numpy()
-    return r, y, x
+    y = ddat['range'].src_pos_n.to_numpy()
+    return r, x, y
 
 def v_select(timesteps):
     """Creates the matrix that selects the v entries of 
