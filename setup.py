@@ -17,6 +17,7 @@ setup(name='adcp-nav',
       install_requires=['numpy(>=1.16)',
                         'pandas(>=0.23)',
                         'scipy(>=1.2)',
-                        'matplotlib(>=3.0)'],
+                        'matplotlib(>=3.0)',
+                        'h5py(>=2.0)'],
       zip_safe=False,
       python_requires='~=3.6')
