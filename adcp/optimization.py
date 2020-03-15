@@ -62,69 +62,6 @@ def initial_kinematics(times, ddat):
 
     return e0.reshape(-1), n0.reshape(-1)
 
-def e_select(m, n):
-    """Creates a selection matrix for choosing indexes of X
-    related to easterly variables.
-
-    Parameters:
-        m (int) : number of timepoints
-        n (int) : number of depthpoints
-    """
-    EV = ev_select(m,n)
-    EC = ec_select(m,n)
-    return scipy.sparse.vstack((EV, EC))
-
-def n_select(m, n):
-    """Creates a selection matrix for choosing indexes of X
-    related to easterly vehicle kinematics.
-
-    Parameters:
-        m (int) : number of timepoints
-        n (int) : number of depthpoints
-    """
-    NV = nv_select(m,n)
-    NC = nc_select(m,n)
-    return scipy.sparse.vstack((NV, NC))
-
-def ev_select(m, n):
-    """Creates a selection matrix for choosing indexes of X
-    related to easterly vehicle kinematics.
-    
-    Parameters:
-        m (int) : number of timepoints
-        n (int) : number of depthpoints
-    """
-    return scipy.sparse.eye(2*m, 4*m+2*n)
-
-def nv_select(m, n):
-    """Creates a selection matrix for choosing indexes of X
-    related to northerly vehicle kinematics.
-    
-    Parameters:
-        m (int) : number of timepoints
-        n (int) : number of depthpoints
-    """
-    return scipy.sparse.eye(2*m, 4*m+2*n, 2*m)
-
-def ec_select(m, n):
-    """Creates a selection matrix for choosing indexes of X
-    related to easterly current.
-    
-    Parameters:
-        m (int) : number of timepoints
-        n (int) : number of depthpoints
-    """
-    return scipy.sparse.eye(n, 4*m+2*n, 4*m)
-
-def nc_select(m, n):
-    """Creates a selection matrix for choosing indexes of X
-    related to northerly current.
-    
-    Parameters:
-        m (int) : number of timepoints
-        n (int) : number of depthpoints
-    """
-    return scipy.sparse.eye(n, 4*m+2*n, 4*m+n)
 
 def backsolve(ddat, adat, rho_v=1, rho_c=1, rho_t=1, rho_a=1, rho_g=1):
     """Solves the linear least squares problem
@@ -142,10 +79,10 @@ def backsolve(ddat, adat, rho_v=1, rho_c=1, rho_t=1, rho_a=1, rho_g=1):
     Xs = mb.x_select(len(times))
     m = len(times)
     n = len(depths)
-    EV = ev_select(m, n)
-    NV = nv_select(m, n)
-    EC = ec_select(m, n)
-    NC = nc_select(m, n)
+    EV = mb.ev_select(m, n)
+    NV = mb.nv_select(m, n)
+    EC = mb.ec_select(m, n)
+    NC = mb.nc_select(m, n)
 
     x = time_rescale(x, mb.t_scale, m, n)
     return x, (NV, EV, NC, EC, Xs, Vs)
@@ -162,10 +99,10 @@ def time_rescale(x, t_s, m, n):
     """
     Vs = mb.v_select(m)
     Xs = mb.x_select(m)
-    EV = ev_select(m, n)
-    NV = nv_select(m, n)
-    EC = ec_select(m, n)
-    NC = nc_select(m, n)
+    EV = mb.ev_select(m, n)
+    NV = mb.nv_select(m, n)
+    EC = mb.ec_select(m, n)
+    NC = mb.nc_select(m, n)
     velocity_scaler = scipy.sparse.vstack((1/t_s * Vs @ NV,
                                            Xs @ NV,
                                            1/t_s * Vs @ EV,
@@ -179,6 +116,8 @@ def time_rescale(x, t_s, m, n):
                                         NC,
                                         EC))
     return vel_reshaper.T @ velocity_scaler @ x
+
+    
 def solve_mats(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
                rho_a=1, rho_g=1, verbose=False):
     """Create A, b for which Ax=b solves linear least squares problem
@@ -202,16 +141,6 @@ def solve_mats(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     Returns:
         tuple of numpy arrays, (A,b)
     """
-    Gv = mb.vehicle_G(times)
-    Gc = mb.depth_G(depths)
-    if rho_v != 0:
-        Qvinv = mb.vehicle_Qinv(times, rho=rho_v)
-    else:
-        Qvinv = scipy.sparse.csr_matrix((2*(len(times)-1), 2*(len(times)-1)))
-    if rho_c != 0:
-        Qcinv = mb.depth_Qinv(depths, rho=rho_c)
-    else:
-        Qcinv = scipy.sparse.csr_matrix((len(depths)-1, len(depths)-1))
     zttw_e = mb.get_zttw(ddat, 'east')
     zttw_n = mb.get_zttw(ddat, 'north')
     A_ttw, B_ttw = mb.uv_select(times, depths, ddat)
@@ -228,15 +157,12 @@ def solve_mats(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
 
     m = len(times)
     n = len(depths)
-    EV = ev_select(m, n)
-    NV = nv_select(m, n)
-    EC = ec_select(m, n)
-    NC = nc_select(m, n)
-    kalman_mat = 1/2* (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
-                  NV.T @ Gv.T @ Qvinv @ Gv @ NV +
-                  EC.T @ Gc.T @ Qcinv @ Gc @ EC +
-                  NC.T @ Gc.T @ Qcinv @ Gc @ NC)
-    kalman_mat = (kalman_mat+kalman_mat.T)/2
+    EV = mb.ev_select(m, n)
+    NV = mb.nv_select(m, n)
+    EC = mb.ec_select(m, n)
+    NC = mb.nc_select(m, n)
+
+    kalman_mat = mb.kalman_mat(times, depths, rho_v, rho_c)
 
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
@@ -253,6 +179,8 @@ def solve_mats(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
          + 1/(rho_g)*n_gps_select.T @ n_gps_select
          + 1/(rho_g)*e_gps_select.T @ e_gps_select
          )
+    A = (A+A.T)/2
+
     if verbose:
         r100 = np.array(random.sample(range(0, 4*m+2*n), 100))
         r1000 = np.array(random.sample(range(0, 4*m+2*n), 1000))
@@ -305,16 +233,6 @@ def f(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
         ts is the number of timepoints and cs is the number of depth
         points.
     """
-    Gv = mb.vehicle_G(times)
-    Gc = mb.depth_G(depths)
-    if rho_v != 0:
-        Qvinv = mb.vehicle_Qinv(times, rho=rho_v)
-    else:
-        Qvinv = scipy.sparse.csr_matrix((2*(len(times)-1), 2*(len(times)-1)))
-    if rho_c != 0:
-        Qcinv = mb.depth_Qinv(depths, rho=rho_c)
-    else:
-        Qcinv = scipy.sparse.csr_matrix((len(depths)-1, len(depths)-1))
     zttw_e = mb.get_zttw(ddat, 'east')
     zttw_n = mb.get_zttw(ddat, 'north')
     A_ttw, B_ttw = mb.uv_select(times, depths, ddat)
@@ -334,15 +252,12 @@ def f(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     
     m = len(times)
     n = len(depths)
-    EV = ev_select(m, n)
-    NV = nv_select(m, n)
-    EC = ec_select(m, n)
-    NC = nc_select(m, n)
-    kalman_mat = 1/2* (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
-                  NV.T @ Gv.T @ Qvinv @ Gv @ NV +
-                  EC.T @ Gc.T @ Qcinv @ Gc @ EC +
-                  NC.T @ Gc.T @ Qcinv @ Gc @ NC)
-    kalman_mat = (kalman_mat+kalman_mat.T)/2
+    EV = mb.ev_select(m, n)
+    NV = mb.nv_select(m, n)
+    EC = mb.ec_select(m, n)
+    NC = mb.nc_select(m, n)
+
+    kalman_mat = mb.kalman_mat(times, depths, rho_v, rho_c)
     
     if verbose:
         r100 = np.array(random.sample(range(0, 4*m+2*n), 100))
@@ -392,16 +307,6 @@ def g(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
         where ts is the number of timepoints and cs is the number of depth
         points.
     """
-    Gv = mb.vehicle_G(times)
-    Gc = mb.depth_G(depths)
-    if rho_v != 0:
-        Qvinv = mb.vehicle_Qinv(times, rho=rho_v)
-    else:
-        Qvinv = scipy.sparse.csr_matrix((2*(len(times)-1), 2*(len(times)-1)))
-    if rho_c != 0:
-        Qcinv = mb.depth_Qinv(depths, rho=rho_c)
-    else:
-        Qcinv = scipy.sparse.csr_matrix((len(depths)-1, len(depths)-1))
     zttw_e = mb.get_zttw(ddat, 'east')
     zttw_n = mb.get_zttw(ddat, 'north')
     A_ttw, B_ttw = mb.uv_select(times, depths, ddat)
@@ -421,16 +326,12 @@ def g(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     
     m = len(times)
     n = len(depths)
-    EV = ev_select(m, n)
-    NV = nv_select(m, n)
-    EC = ec_select(m, n)
-    NC = nc_select(m, n)
+    EV = mb.ev_select(m, n)
+    NV = mb.nv_select(m, n)
+    EC = mb.ec_select(m, n)
+    NC = mb.nc_select(m, n)
 
-    kalman_mat = 1/2* (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
-                  NV.T @ Gv.T @ Qvinv @ Gv @ NV +
-                  EC.T @ Gc.T @ Qcinv @ Gc @ EC +
-                  NC.T @ Gc.T @ Qcinv @ Gc @ NC)
-    kalman_mat = (kalman_mat+kalman_mat.T)/2
+    kalman_mat = mb.kalman_mat(times, depths, rho_v, rho_c)
     
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
@@ -493,16 +394,6 @@ def h(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
         rho_r is not yet implemented.  Only returns the hessian without
         range measurements.
     """
-    Gv = mb.vehicle_G(times)
-    Gc = mb.depth_G(depths)
-    if rho_v != 0:
-        Qvinv = mb.vehicle_Qinv(times, rho=rho_v)
-    else:
-        Qvinv = scipy.sparse.csr_matrix((2*(len(times)-1), 2*(len(times)-1)))
-    if rho_c != 0:
-        Qcinv = mb.depth_Qinv(depths, rho=rho_c)
-    else:
-        Qcinv = scipy.sparse.csr_matrix((len(depths)-1, len(depths)-1))
     A_ttw, B_ttw = mb.uv_select(times, depths, ddat)
     Vs = mb.v_select(len(times))
 
@@ -513,16 +404,12 @@ def h(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     
     m = len(times)
     n = len(depths)
-    EV = ev_select(m, n)
-    NV = nv_select(m, n)
-    EC = ec_select(m, n)
-    NC = nc_select(m, n) 
+    EV = mb.ev_select(m, n)
+    NV = mb.nv_select(m, n)
+    EC = mb.ec_select(m, n)
+    NC = mb.nc_select(m, n) 
 
-    kalman_mat = 1/2* (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
-                  NV.T @ Gv.T @ Qvinv @ Gv @ NV +
-                  EC.T @ Gc.T @ Qcinv @ Gc @ EC +
-                  NC.T @ Gc.T @ Qcinv @ Gc @ NC)
-    kalman_mat = (kalman_mat+kalman_mat.T)/2
+    kalman_mat = mb.kalman_mat(times, depths, rho_v, rho_c)
 
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
