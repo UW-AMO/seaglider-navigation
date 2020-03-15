@@ -10,6 +10,7 @@ pipeline {
         stage('test') {
             steps {
                 sh 'echo $PWD'
+                sh 'ls'
                 sh 'python3 -m unittest -v test/test.py'
             }
         }
