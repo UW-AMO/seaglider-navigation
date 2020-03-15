@@ -15,7 +15,7 @@ import adcp.matbuilder as mb
 
 class DefaultTest(unittest.TestCase):
     def test_nothing(self):
-        self.assertTrue()
+        self.assertTrue(True)
 
 if __name__ == '__main__':
     unittest.main()
