@@ -9,7 +9,6 @@ import numpy as np
 
 from adcp import dataprep as dp
 from adcp import matbuilder as mb
-from adcp import optimization as op
 
 cmap = plt.get_cmap("tab10")
 
@@ -51,9 +50,9 @@ def current_depth_plot(x, adat, ddat, direction='north', mdat=None):
     m = len(times)
     n = len(depths)
     if direction.lower() in {'north','south'}:
-        currs = op.nc_select(m, n) @ x
+        currs = mb.nc_select(m, n) @ x
     elif direction.lower() in {'east','west'}:
-        currs = op.ec_select(m, n) @ x
+        currs = mb.ec_select(m, n) @ x
 
     depth_df = dp._depth_interpolator(times, ddat)
     turnaround = depth_df.ascending.idxmax()
@@ -83,7 +82,7 @@ def vehicle_speed_plot(solx, ddat, times, depths, direction='north',
     plt.figure()
     m = len(times)
     n = len(depths)
-    dirV = op.nv_select(m,n) if direction.lower()=='north' else op.ev_select(m,n)
+    dirV = mb.nv_select(m,n) if direction.lower()=='north' else mb.ev_select(m,n)
     Vs = mb.v_select(m)
     cmap = plt.get_cmap("tab10")
     plt.title(f'{direction}ward Vehicle Velocity'.title())
@@ -105,24 +104,26 @@ def vehicle_speed_plot(solx, ddat, times, depths, direction='north',
     plt.legend(lns, labs)
 
 def current_plot(solx, x_sol, adat, times, depths, direction='north'):
-    plt.figure()
+    fig = plt.figure()
     m = len(times)
     n = len(depths)
-    dirC = op.nc_select(m,n) if direction.lower()=='north' else op.ec_select(m,n)
-    cmap = plt.get_cmap("tab10")
-    plt.title(f'{direction}ward Current'.title())
-    plt.plot(dirC @ x_sol, color=cmap(0), label='backsolve')
-    plt.plot(dirC @ solx, color=cmap(1), label='LBFGS')
-    plt.legend()
-    plt.twiny()
-    plt.plot(mb.get_zadcp(adat)/1e3, color=cmap(3), label='z_ttw')
-    
+    dirC = mb.nc_select(m,n) if direction.lower()=='north' else mb.ec_select(m,n)
+    ax = fig.gca()
+    cmap = ax.get_cmap("tab10")
+    ax.set_title(f'{direction}ward Current'.title())
+    ax.plot(dirC @ x_sol, color=cmap(0), label='backsolve')
+    ax.plot(dirC @ solx, color=cmap(1), label='LBFGS')
+    ax.legend()
+    ax.twiny()
+    ax.plot(mb.get_zadcp(adat)/1e3, color=cmap(3), label='z_ttw')
+    return ax
+
 def vehicle_posit_plot(x, ddat, times, depths, x0=None, backsolve=None,
                        dead_reckon=True):
     m = len(times)
     n = len(depths)
-    NV = op.nv_select(m,n) 
-    EV = op.ev_select(m,n)
+    NV = mb.nv_select(m,n)
+    EV = mb.ev_select(m,n)
     Xs = mb.x_select(m)    
     plt.figure()
     ax=plt.gca()
@@ -145,3 +146,4 @@ def vehicle_posit_plot(x, ddat, times, depths, x0=None, backsolve=None,
     ax.legend()
     ax.set_xlabel('Easting (km)')
     ax.set_ylabel('Northing (km)')
+    return ax
