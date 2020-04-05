@@ -59,6 +59,5 @@ ax1 = viz.vehicle_speed_plot(sol.x, ddat, times, depths)
 ax2 = viz.current_depth_plot(sol.x, adat, ddat, direction='both')
 ax3 = viz.vehicle_posit_plot(sol['x'], ddat, times, depths, dead_reckon=True)
 
-mdat = dp.load_mooring('CBX16_T3_AUG2017.mat')
 ax4 = viz.current_depth_plot(sol.x, adat, ddat, direction='both', mdat=mdat)
 

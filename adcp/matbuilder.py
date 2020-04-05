@@ -200,33 +200,7 @@ def depth_G(depths):
                                 diags=(0,1), m=length-1, n=length)
 
 
-def kalman_mat(times, depths, rho_v=1, rho_c=1):
-    """Create the combined kalman process covariance matrix for the vehicle
-    and current.    
-    """
-    Gv = vehicle_G(times)
-    Gc = depth_G(depths)
-    if rho_v != 0:
-        Qvinv = vehicle_Qinv(times, rho=rho_v)
-    else:
-        Qvinv = scipy.sparse.csr_matrix((2*(len(times)-1), 2*(len(times)-1)))
-    if rho_c != 0:
-        Qcinv = depth_Qinv(depths, rho=rho_c)
-    else:
-        Qcinv = scipy.sparse.csr_matrix((len(depths)-1, len(depths)-1))
-    m = len(times)
-    n = len(depths)
-    EV = ev_select(m, n)
-    NV = nv_select(m, n)
-    EC = ec_select(m, n)
-    NC = nc_select(m, n)
-    kalman_mat = 1/2* (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
-                  NV.T @ Gv.T @ Qvinv @ Gv @ NV +
-                  EC.T @ Gc.T @ Qcinv @ Gc @ EC +
-                  NC.T @ Gc.T @ Qcinv @ Gc @ NC)
-    kalman_mat = (kalman_mat+kalman_mat.T)/2
 
-    return kalman_mat    
 
 # %% Data selection
 def get_zttw(ddat, direction='north'):

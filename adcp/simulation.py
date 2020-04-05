@@ -5,23 +5,30 @@ Created on Thu Jan  2 13:00:31 2020
 @author: 600301
 """
 import random
-from collections import namedtuple
 
 import numpy as np
 import pandas as pd
 
 import adcp.matbuilder as mb
-import adcp.optimization as op
 import adcp.dataprep as dp
 
-SimParams = namedtuple('SimParams', ['duration','max_depth','n_dives',
-                                    'n_timepoints','rho_v','rho_c','rho_t',
-                                    'rho_a','rho_g','rho_r','adcp_bins','seed',
-                                    'sigma_t','sigma_c','measure_points'],
-                        defaults=(pd.Timedelta('3 hours'),750,1,1001,.1,.1,1,
-                                  1,1,1,4,124,1,1,
-                                  {'gps':'endpoints','ttw':.6,
-                                   'range':.1}))
+class SimParams:
+    defaults = dict(duration=pd.Timedelta('3 hours'), max_depth=750,
+                         n_dives=1, n_timepoints=1001, rho_v=.1, rho_c=.1,
+                         rho_t=1, rho_a=1, rho_g=1, rho_r=1, adcp_bins=4,
+                         seed=124, sigma_t=1, sigma_c=1, measure_points=dict(
+                                 gps='endpoints', ttw=.5, range=.05))
+    def __init__(self, **kwargs):
+        for k, v in self.defaults.items():
+            if k in kwargs:
+                setattr(self, k, kwargs[k])
+            else:
+                setattr(self, k, v)
+        for k in kwargs:
+            if k not in self.__dict__:
+                raise AttributeError(f'{k} not a argument for SimParams'\
+                                     ' constructor')
+# %%
 """A simulation parameter object.  It holds the parameters that get
     passed around by all of the subordinate methods to create a
     simulation.
@@ -31,7 +38,7 @@ def gen_dive(sim_params):
     """Simulate the times and depths of measurement for a simulation
     
     Arguments:
-        sim_params (SimParams): namedtuple of parameters, see definition
+        sim_params (SimParams): Object of parameters, see definition
             in this module
 
     Returns:
@@ -409,7 +416,7 @@ def true_solution(curr_df, v_df, final_depths, sim_params):
     x += NC.T @ subset_df.curr_n
 
 
-    return None
+    return x
 
 # %%
 def simulate(sim_params):
