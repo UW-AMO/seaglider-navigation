@@ -9,10 +9,8 @@ pipeline {
         }
         stage('test') {
             steps {
-                sh 'echo $PWD'
-                sh 'ls'
-                sh 'python3 -c "import os; print(os.getcwd())"'
                 sh 'python3 -m unittest -v test/test.py'
+                sh 'python3 -m unittest -v test/sim_test.py'
             }
         }
     }

@@ -71,7 +71,6 @@ def gen_adcp_depths(depth_df, sim_params):
         adcp_df (pandas Series): depths to be measured by ADCP (meters)
             indexed by time of observation
     """
-    print(f"ADCP depths seeded with {sim_params.seed}")
     np.random.seed(sim_params.seed)
     random.seed(sim_params.seed)
 
@@ -337,7 +336,7 @@ def construct_load_dicts(depth_df, adcp_df, measurements, ttw_times,
     (z_ttw_n, z_ttw_e, z_adcp_n, z_adcp_e,
          z_gps_n, z_gps_e, z_range, range_posits) = measurements
 
-    gps_df = pd.DataFrame([[0,0],[z_gps_e, z_gps_n]],
+    gps_df = pd.DataFrame([z_gps_e, z_gps_n],
                           index=pd.Index(gps_times, name='time'),
                           columns=['gps_nx_east','gps_ny_north'])
     range_data = np.hstack((range_posits, z_range.reshape((-1,1))))
@@ -426,7 +425,6 @@ def simulate(sim_params):
         constructed by a solver
             [Vehicle, Current] -> [East, North] -> [v1 x1, v2, x2, ...]
     """
-    print(f"Simulation seeded with {sim_params.seed}")
     np.random.seed(sim_params.seed)
     random.seed(sim_params.seed)
 
@@ -457,6 +455,6 @@ def simulate(sim_params):
                                       ttw_times, adcp_times, gps_times,
                                       range_times, sim_params)
     final_depths = dp.depthpoints(adat, ddat)
-    x = true_solution(v_df, curr_df, final_depths, sim_params)
+    x = true_solution(curr_df, v_df, final_depths, sim_params)
 
-    return ddat, adat, x, v_df
+    return ddat, adat, x

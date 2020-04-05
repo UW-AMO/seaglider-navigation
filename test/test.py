@@ -15,15 +15,13 @@ import numpy as np
 import adcp.matbuilder as mb
 import adcp.simulation as sim
 
-class DefaultTest(unittest.TestCase):
-    def test_nothing(self):
-        self.assertTrue(True)
-
 class SimTest(unittest.TestCase):
     """Tests the simulation module"""
     def test_defaults(self):
         old_defaults = (pd.Timedelta('3 hours'),750,1,1001,.1,.1,1,
-                                  1,1,1,4,124,1,1)
+                                  1,1,1,4,124,1,1,
+                                  {'gps': 'endpoints', 'ttw': 0.6, 
+                                       'range': 0.1})
         sim_params = sim.SimParams()
         self.assertEqual(sim_params, old_defaults)
     def test_dive_profile(self):
@@ -50,23 +48,23 @@ class SimTest(unittest.TestCase):
                                                adcp_df.values.flatten())))
         all_depths = np.array(sorted(all_depths))
         curr_df = sim.sim_current_profile(all_depths, sim_params, 'cos')
-        inner1 = sum(np.sin(all_depths)*curr_df['e_curr'])/len(all_depths)
-        inner2 = sum(np.sin(all_depths)*curr_df['n_curr'])/len(all_depths)
+        inner1 = sum(np.sin(all_depths)*curr_df['curr_e'])/len(all_depths)
+        inner2 = sum(np.sin(all_depths)*curr_df['curr_n'])/len(all_depths)
         self.assertTrue(inner1 < .1 and inner2 < .1)
-    def test_curr_sim_linear(self):
-        raise NotImplementedError
-    def test_vehicle_sim_sin(self):
-        raise NotImplementedError
-    def test_select_times(self):
-        raise NotImplementedError
-    def test_sim_noise(self):
-        raise NotImplementedError
-    def test_construct_load_dict(self):
-        raise NotImplementedError
-    def test_true_solution(self):
-        raise NotImplementedError
-    def test_simulate(self):
-        raise NotImplementedError
+#    def test_curr_sim_linear(self):
+#        raise NotImplementedError
+#    def test_vehicle_sim_sin(self):
+#        raise NotImplementedError
+#    def test_select_times(self):
+#        raise NotImplementedError
+#    def test_sim_noise(self):
+#        raise NotImplementedError
+#    def test_construct_load_dict(self):
+#        raise NotImplementedError
+#    def test_true_solution(self):
+#        raise NotImplementedError
+#    def test_simulate(self):
+#        raise NotImplementedError
 
 if __name__ == '__main__':
     unittest.main()
