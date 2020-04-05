@@ -6,14 +6,13 @@ Created on Sun Apr  5 11:04:36 2020
 """
 
 from adcp import dataprep as dp
-from adcp.simulation import simulate
+from adcp import simulation as sim
 from adcp import optimization as op
 from adcp import viz
 
 # %% ...or simulate new data
-ddat, adat, x, v_df = simulate(n_timepoints=1000, rho_v=1e-1, rho_c=1e-2,
-                               rho_t=1e-1, rho_a=1e-1, rho_g=1e0,
-                               sigma_t=.3, sigma_c=.3, seed=321)
+sp = sim.SimParams()
+ddat, adat, x = sim.simulate(sp)
 depths = dp.depthpoints(adat, ddat)
 times = dp.timepoints(adat, ddat)
 
