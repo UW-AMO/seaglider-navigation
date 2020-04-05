@@ -18,7 +18,7 @@ SimParams = namedtuple('SimParams', ['duration','max_depth','n_dives',
                                     'n_timepoints','rho_v','rho_c','rho_t',
                                     'rho_a','rho_g','rho_r','adcp_bins','seed',
                                     'sigma_t','sigma_c','measure_points'],
-                        (pd.Timedelta('3 hours'),750,1,1001,.1,.1,1,
+                        defaults=(pd.Timedelta('3 hours'),750,1,1001,.1,.1,1,
                                   1,1,1,4,124,1,1,
                                   {'gps':'endpoints','ttw':.6,
                                    'range':.1}))
