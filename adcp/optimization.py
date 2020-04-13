@@ -263,8 +263,8 @@ def _f_ttw(prob):
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
     def f_eval(X):
         hydrodynamic_error = 1/(2*prob.rho_t)*(
-                                np.linalg.norm(zttw_n-n_ttw_select @ X)**2 +
-                                np.linalg.norm(zttw_e-e_ttw_select @ X)**2)
+                                np.square(zttw_n-n_ttw_select @ X).sum() +
+                                np.square(zttw_e-e_ttw_select @ X).sum())
         return hydrodynamic_error
     return f_eval
 def _f_adcp(prob):
@@ -284,8 +284,8 @@ def _f_adcp(prob):
     n_adcp_select = B_adcp @ NC - A_adcp @ Vs @ NV
     def f_eval(X):
         adcp_error = 1/(2*prob.rho_a)*(
-                                np.linalg.norm(zadcp_n-n_adcp_select @ X)**2 +
-                                np.linalg.norm(zadcp_e-e_adcp_select @ X)**2)
+                                np.square(zadcp_n-n_adcp_select @ X).sum() +
+                                np.square(zadcp_e-e_adcp_select @ X).sum())
         return adcp_error
     return f_eval
 
@@ -307,8 +307,8 @@ def _f_gps(prob):
     n_gps_select = A_gps @ Xs @ NV
     def f_eval(X):
         gps_error = 1/(2*prob.rho_g)*(
-                    np.linalg.norm(zgps_n-n_gps_select @ X)**2 +
-                    np.linalg.norm(zgps_e-e_gps_select @ X)**2)
+                    np.square(zgps_n-n_gps_select @ X).sum() +
+                    np.square(zgps_e-e_gps_select @ X).sum())
         return gps_error
     return f_eval
 
@@ -332,7 +332,7 @@ def _f_range(prob):
         if prob.rho_r != 0:
             ranges = np.sqrt((zx-e_range_select @ X) ** 2 +
                              (zy-n_range_select @ X) ** 2)
-            range_error = 1/(2*prob.rho_r)*np.linalg.norm(zr-ranges)**2
+            range_error = 1/(2*prob.rho_r)*np.square(zr-ranges).sum()
         else: range_error=0
         return range_error
     return f_eval
