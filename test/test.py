@@ -66,5 +66,7 @@ class SimTest(unittest.TestCase):
 #    def test_simulate(self):
 #        raise NotImplementedError
 
+class GradTest(unittest.TestCase):
+    None
 if __name__ == '__main__':
     unittest.main()

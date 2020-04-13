@@ -80,22 +80,22 @@ def initial_kinematics(times, ddat):
     return e0.reshape(-1), n0.reshape(-1)
 
 
-def backsolve(ddat, adat, rho_v=1, rho_c=1, rho_t=1, rho_a=1, rho_g=1):
+def backsolve(prob):
     """Solves the linear least squares problem
 
+    Parameters:
+        prob (GliderProblem)
+    
     Returns:
         tuple of solution vector, NV, EV, NC, EC, Xs, and Vs selector
         matrices.
     """
-    times = dp.timepoints(adat, ddat)
-    depths = dp.depthpoints(adat, ddat)
-    A, b = solve_mats(times, depths, ddat, adat, rho_v=rho_v, rho_c=rho_c,
-                      rho_t=rho_t, rho_a=rho_a, rho_g=rho_g)
+    A, b = solve_mats(prob)
     x = scipy.sparse.linalg.spsolve(A, b)
-    Vs = mb.v_select(len(times))
-    Xs = mb.x_select(len(times))
-    m = len(times)
-    n = len(depths)
+    m = len(prob.times)
+    Vs = mb.v_select(m)
+    Xs = mb.x_select(m)
+    n = len(prob.depths)
     EV = mb.ev_select(m, n)
     NV = mb.nv_select(m, n)
     EC = mb.ec_select(m, n)
@@ -134,51 +134,38 @@ def time_rescale(x, t_s, m, n):
                                         EC))
     return vel_reshaper.T @ velocity_scaler @ x
 
-def solve_mats(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
-               rho_a=1, rho_g=1, verbose=False):
+def solve_mats(prob, verbose=False):
     """Create A, b for which Ax=b solves linear least squares problem
 
     Parameters:
-        times ([numpy.datetime64,]) : all of the sample times to predict
-            V_otg for.  returned by dataprep.timepoints()
-        depths([int]) : all of the sample depths to predict current for.
-            returned by dataprep.depthpoints()
-        ddat (dict): the recorded dive data returned by load_dive()
-        adat (dict): the recorded ADCP data returned by load_adcp()
-        rho_v (float): weight for velocity kalman filter, equal to
-            differential covariance of driving gaussian process.
-        rho_c (float): weight for current kalman filter, equal to
-                differential covariance of driving gaussian process.
-        rho_t (float): hydrodynamic model measurement error covariance
-        rho_a (float): ADCP measurement error variance
-        rho_g (float): GPS measurement error variance
-        rho_r (float): range measurement error variance
+        prob (GliderProblem) : the glider problem to consider
 
     Returns:
         tuple of numpy arrays, (A,b)
     """
-    zttw_e = mb.get_zttw(ddat, 'east')
-    zttw_n = mb.get_zttw(ddat, 'north')
-    A_ttw, B_ttw = mb.uv_select(times, depths, ddat)
-    Vs = mb.v_select(len(times))
+    zttw_e = mb.get_zttw(prob.ddat, 'east')
+    zttw_n = mb.get_zttw(prob.ddat, 'north')
+    A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat)
+    Vs = mb.v_select(len(prob.times))
 
-    zadcp_e = mb.get_zadcp(adat, 'east')
-    zadcp_n = mb.get_zadcp(adat, 'north')
-    A_adcp, B_adcp = mb.adcp_select(times, depths, ddat, adat)
+    zadcp_e = mb.get_zadcp(prob.adat, 'east')
+    zadcp_n = mb.get_zadcp(prob.adat, 'north')
+    A_adcp, B_adcp = mb.adcp_select(prob.times, prob.depths, prob.ddat,
+                                    prob.adat)
 
-    zgps_e = mb.get_zgps(ddat, 'east')
-    zgps_n = mb.get_zgps(ddat, 'north')
-    A_gps = mb.gps_select(times, ddat)
-    Xs = mb.x_select(len(times))
+    zgps_e = mb.get_zgps(prob.ddat, 'east')
+    zgps_n = mb.get_zgps(prob.ddat, 'north')
+    A_gps = mb.gps_select(prob.times, prob.ddat)
+    Xs = mb.x_select(len(prob.times))
 
-    m = len(times)
-    n = len(depths)
+    m = len(prob.times)
+    n = len(prob.depths)
     EV = mb.ev_select(m, n)
     NV = mb.nv_select(m, n)
     EC = mb.ec_select(m, n)
     NC = mb.nc_select(m, n)
 
-    kalman_mat = gen_kalman_mat(times, depths, rho_v, rho_c)
+    kalman_mat = gen_kalman_mat(prob)
 
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
@@ -188,12 +175,12 @@ def solve_mats(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     n_gps_select = A_gps @ Xs @ NV
 
     A = (  kalman_mat
-         + 1/(rho_t)*n_ttw_select.T @ n_ttw_select
-         + 1/(rho_t)*e_ttw_select.T @ e_ttw_select
-         + 1/(rho_a)*n_adcp_select.T @ n_adcp_select
-         + 1/(rho_a)*e_adcp_select.T @ e_adcp_select
-         + 1/(rho_g)*n_gps_select.T @ n_gps_select
-         + 1/(rho_g)*e_gps_select.T @ e_gps_select
+         + 1/(prob.rho_t)*n_ttw_select.T @ n_ttw_select
+         + 1/(prob.rho_t)*e_ttw_select.T @ e_ttw_select
+         + 1/(prob.rho_a)*n_adcp_select.T @ n_adcp_select
+         + 1/(prob.rho_a)*e_adcp_select.T @ e_adcp_select
+         + 1/(prob.rho_g)*n_gps_select.T @ n_gps_select
+         + 1/(prob.rho_g)*e_gps_select.T @ e_gps_select
          )
     A = (A+A.T)/2
 
@@ -213,19 +200,20 @@ def solve_mats(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
         print('Condition number of A (100x100): ',
               f'{c4:e}')
 
-    b = (  1/(rho_t)*n_ttw_select.T @ zttw_n
-         + 1/(rho_t)*e_ttw_select.T @ zttw_e
-         + 1/(rho_a)*n_adcp_select.T @ zadcp_n
-         + 1/(rho_a)*e_adcp_select.T @ zadcp_e
-         + 1/(rho_g)*n_gps_select.T @ zgps_n
-         + 1/(rho_g)*e_gps_select.T @ zgps_e
+    b = (  1/(prob.rho_t)*n_ttw_select.T @ zttw_n
+         + 1/(prob.rho_t)*e_ttw_select.T @ zttw_e
+         + 1/(prob.rho_a)*n_adcp_select.T @ zadcp_n
+         + 1/(prob.rho_a)*e_adcp_select.T @ zadcp_e
+         + 1/(prob.rho_g)*n_gps_select.T @ zgps_n
+         + 1/(prob.rho_g)*e_gps_select.T @ zgps_e
         )
 
     return A, b
 
-def gen_kalman_mat1(prob):
+def gen_kalman_mat(prob):
     """Create the combined kalman process covariance matrix for the vehicle
-    and current.
+    and current.  Specifically, it is 1/2 the symmetrized inverse covariance
+    matrix for the problem.
 
     Parameters:
         prob (GliderProblem) : the glider problem to consider
@@ -253,37 +241,111 @@ def gen_kalman_mat1(prob):
     kalman_mat = (kalman_mat+kalman_mat.T)/2
 
     return kalman_mat
-
-
-def gen_kalman_mat(times, depths, rho_v=1, rho_c=1):
-    """Create the combined kalman process covariance matrix for the vehicle
-    and current.
-    """
-    Gv = mb.vehicle_G(times)
-    Gc = mb.depth_G(depths)
-    if rho_v != 0:
-        Qvinv = mb.vehicle_Qinv(times, rho=rho_v)
-    else:
-        Qvinv = scipy.sparse.csr_matrix((2*(len(times)-1), 2*(len(times)-1)))
-    if rho_c != 0:
-        Qcinv = mb.depth_Qinv(depths, rho=rho_c)
-    else:
-        Qcinv = scipy.sparse.csr_matrix((len(depths)-1, len(depths)-1))
-    m = len(times)
-    n = len(depths)
+# %%
+def _f_kalman(prob):
+    kalman_mat = gen_kalman_mat(prob)
+    def f_eval(X):
+        kalman_error = X.T @ kalman_mat @ X
+        return kalman_error
+    return f_eval
+def _f_ttw(prob):
+    zttw_e = mb.get_zttw(prob.ddat, 'east')
+    zttw_n = mb.get_zttw(prob.ddat, 'north')
+    A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat)
+    m = len(prob.times)
+    n = len(prob.depths)
+    Vs = mb.v_select(m)
     EV = mb.ev_select(m, n)
     NV = mb.nv_select(m, n)
     EC = mb.ec_select(m, n)
     NC = mb.nc_select(m, n)
-    kalman_mat = 1/2* (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
-                  NV.T @ Gv.T @ Qvinv @ Gv @ NV +
-                  EC.T @ Gc.T @ Qcinv @ Gc @ EC +
-                  NC.T @ Gc.T @ Qcinv @ Gc @ NC)
-    kalman_mat = (kalman_mat+kalman_mat.T)/2
+    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
+    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
+    def f_eval(X):
+        hydrodynamic_error = 1/(2*prob.rho_t)*(
+                                np.linalg.norm(zttw_n-n_ttw_select @ X)**2 +
+                                np.linalg.norm(zttw_e-e_ttw_select @ X)**2)
+        return hydrodynamic_error
+    return f_eval
+def _f_adcp(prob):
+    zadcp_e = mb.get_zadcp(prob.adat, 'east')
+    zadcp_n = mb.get_zadcp(prob.adat, 'north')
+    A_adcp, B_adcp = mb.adcp_select(prob.times, prob.depths, prob.ddat,
+                                    prob.adat)
+    m = len(prob.times)
+    n = len(prob.depths)
+    EV = mb.ev_select(m, n)
+    NV = mb.nv_select(m, n)
+    EC = mb.ec_select(m, n)
+    NC = mb.nc_select(m, n)
+    Vs = mb.v_select(m)
+    Xs = mb.x_select(m)
+    e_adcp_select = B_adcp @ EC - A_adcp @ Vs @ EV
+    n_adcp_select = B_adcp @ NC - A_adcp @ Vs @ NV
+    def f_eval(X):
+        adcp_error = 1/(2*prob.rho_a)*(
+                                np.linalg.norm(zadcp_n-n_adcp_select @ X)**2 +
+                                np.linalg.norm(zadcp_e-e_adcp_select @ X)**2)
+        return adcp_error
+    return f_eval
 
-    return kalman_mat
+def _f_gps(prob):
+    zgps_e = mb.get_zgps(prob.ddat, 'east')
+    zgps_n = mb.get_zgps(prob.ddat, 'north')
+    A_gps = mb.gps_select(prob.times, prob.ddat)
+
+    m = len(prob.times)
+    n = len(prob.depths)
+    EV = mb.ev_select(m, n)
+    NV = mb.nv_select(m, n)
+    EC = mb.ec_select(m, n)
+    NC = mb.nc_select(m, n)
+    Vs = mb.v_select(m)
+    Xs = mb.x_select(m)
+
+    e_gps_select = A_gps @ Xs @ EV
+    n_gps_select = A_gps @ Xs @ NV
+    def f_eval(X):
+        gps_error = 1/(2*prob.rho_g)*(
+                    np.linalg.norm(zgps_n-n_gps_select @ X)**2 +
+                    np.linalg.norm(zgps_e-e_gps_select @ X)**2)
+        return gps_error
+    return f_eval
+
+def _f_range(prob):
+    zr, zx, zy = mb.get_zrange(prob.ddat)
+    A_range = mb.range_select(prob.times, prob.ddat)
+
+    m = len(prob.times)
+    n = len(prob.depths)
+    EV = mb.ev_select(m, n)
+    NV = mb.nv_select(m, n)
+    EC = mb.ec_select(m, n)
+    NC = mb.nc_select(m, n)
+    Vs = mb.v_select(m)
+    Xs = mb.x_select(m)
+
+    e_range_select = A_range @ Xs @ EV 
+    n_range_select = A_range @ Xs @ NV
+
+    def f_eval(X):
+        if prob.rho_r != 0:
+            ranges = np.sqrt((zx-e_range_select @ X) ** 2 +
+                             (zy-n_range_select @ X) ** 2)
+            range_error = 1/(2*prob.rho_r)*np.linalg.norm(zr-ranges)**2
+        else: range_error=0
+        return range_error
+    return f_eval
 
 def f(prob, verbose=False):
+    """Creates the sum of squares evaluation function for fitting a 
+    navigation and current profile
+    
+    Returns:
+        scalar-valued function for input of length m = 4*ts + 2*cs, where ts is
+        the number of timepoints and cs is the number of depth points.
+    """
+
     zttw_e = mb.get_zttw(prob.ddat, 'east')
     zttw_n = mb.get_zttw(prob.ddat, 'north')
     A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat)
@@ -309,7 +371,7 @@ def f(prob, verbose=False):
     EC = mb.ec_select(m, n)
     NC = mb.nc_select(m, n)
 
-    kalman_mat = gen_kalman_mat1(prob)
+    kalman_mat = gen_kalman_mat(prob)
     
     if verbose:
         r100 = np.array(random.sample(range(0, 4*m+2*n), 100))
@@ -349,42 +411,154 @@ def f(prob, verbose=False):
         return (kalman_error + hydrodynamic_error + adcp_error +
                 gps_error + range_error)
     return f_eval
+# %%
+def _g_kalman(prob):
+    kalman_mat = gen_kalman_mat(prob)
+    def g_eval(X):
+        kalman_error = 2* kalman_mat @ X
+        return kalman_error
+    return g_eval
 
-def g(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1, 
-                                  rho_a=1, rho_g=1, rho_r=0):
-    """Creates the sum of squares gradient function for fitting a 
-    navigation and current profile
-    
-    Returns:
-        vector-valued function for input & output of length m = 4*ts + cs,
-        where ts is the number of timepoints and cs is the number of depth
-        points.
-    """
-    zttw_e = mb.get_zttw(ddat, 'east')
-    zttw_n = mb.get_zttw(ddat, 'north')
-    A_ttw, B_ttw = mb.uv_select(times, depths, ddat)
-    Vs = mb.v_select(len(times))
-
-    zadcp_e = mb.get_zadcp(adat, 'east')
-    zadcp_n = mb.get_zadcp(adat, 'north')
-    A_adcp, B_adcp = mb.adcp_select(times, depths, ddat, adat)
-
-    zgps_e = mb.get_zgps(ddat, 'east')
-    zgps_n = mb.get_zgps(ddat, 'north')
-    A_gps = mb.gps_select(times, ddat)
-    Xs = mb.x_select(len(times))
-    
-    zr, zx, zy = mb.get_zrange(ddat)
-    A_range = mb.range_select(times, ddat)
-    
-    m = len(times)
-    n = len(depths)
+def _g_ttw(prob):
+    zttw_e = mb.get_zttw(prob.ddat, 'east')
+    zttw_n = mb.get_zttw(prob.ddat, 'north')
+    A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat)
+    m = len(prob.times)
+    n = len(prob.depths)
+    Vs = mb.v_select(m)
     EV = mb.ev_select(m, n)
     NV = mb.nv_select(m, n)
     EC = mb.ec_select(m, n)
     NC = mb.nc_select(m, n)
 
-    kalman_mat = gen_kalman_mat(times, depths, rho_v, rho_c)
+    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
+    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
+    e_ttw_mat = 2 * e_ttw_select.T @ e_ttw_select 
+    e_ttw_constant = 2*e_ttw_select.T @ zttw_e
+    n_ttw_mat = 2 * n_ttw_select.T @ n_ttw_select 
+    n_ttw_constant = 2*n_ttw_select.T @ zttw_n
+    def g_eval(X):
+        zttw_error = 1/(2*prob.rho_t)*(e_ttw_mat @ X - e_ttw_constant+
+                            n_ttw_mat @ X - n_ttw_constant)
+        return zttw_error
+    return g_eval
+
+def _g_adcp(prob):
+    zadcp_e = mb.get_zadcp(prob.adat, 'east')
+    zadcp_n = mb.get_zadcp(prob.adat, 'north')
+    A_adcp, B_adcp = mb.adcp_select(prob.times, prob.depths, prob.ddat,
+                                    prob.adat)
+
+    m = len(prob.times)
+    n = len(prob.depths)
+    Xs = mb.x_select(m)
+    Vs = mb.v_select(m)
+    EV = mb.ev_select(m, n)
+    NV = mb.nv_select(m, n)
+    EC = mb.ec_select(m, n)
+    NC = mb.nc_select(m, n)
+    
+    e_adcp_select = B_adcp @ EC - A_adcp @ Vs @ EV
+    n_adcp_select = B_adcp @ NC - A_adcp @ Vs @ NV
+    e_adcp_mat = 2* e_adcp_select.T @ e_adcp_select
+    e_adcp_constant = 2 * e_adcp_select.T @ zadcp_e
+    n_adcp_mat = 2* n_adcp_select.T @ n_adcp_select
+    n_adcp_constant = 2 * n_adcp_select.T @ zadcp_n
+
+    def g_eval(X):
+        zadcp_error = 1/(2*prob.rho_a)*(
+                e_adcp_mat @ X - e_adcp_constant +
+                n_adcp_mat @ X - n_adcp_constant)
+        return zadcp_error
+    return g_eval
+
+def _g_gps(prob):
+    zgps_e = mb.get_zgps(prob.ddat, 'east')
+    zgps_n = mb.get_zgps(prob.ddat, 'north')
+    A_gps = mb.gps_select(prob.times, prob.ddat)
+
+    m = len(prob.times)
+    n = len(prob.depths)
+    Xs = mb.x_select(m)
+    Vs = mb.v_select(m)
+    EV = mb.ev_select(m, n)
+    NV = mb.nv_select(m, n)
+    EC = mb.ec_select(m, n)
+    NC = mb.nc_select(m, n)
+    
+    e_gps_select = A_gps @ Xs @ EV
+    n_gps_select = A_gps @ Xs @ NV
+    e_gps_mat = 2* e_gps_select.T @ e_gps_select
+    e_gps_constant = 2 * e_gps_select.T @ zgps_e
+    n_gps_mat = 2* n_gps_select.T @ n_gps_select
+    n_gps_constant = 2 * n_gps_select.T @ zgps_n
+
+    def g_eval(X):
+        zgps_error = 1/(2*prob.rho_g)*(e_gps_mat @ X - e_gps_constant +
+                            n_gps_mat @ X - n_gps_constant)
+        return zgps_error
+    return g_eval
+def _g_range(prob):
+    zr, zx, zy = mb.get_zrange(prob.ddat)
+    A_range = mb.range_select(prob.times, prob.ddat)
+
+    m = len(prob.times)
+    n = len(prob.depths)
+    Xs = mb.x_select(m)
+    Vs = mb.v_select(m)
+    EV = mb.ev_select(m, n)
+    NV = mb.nv_select(m, n)
+    EC = mb.ec_select(m, n)
+    NC = mb.nc_select(m, n)
+    
+    A1 = A_range @ Xs @ EV  #e_range_select
+    A2 = A_range @ Xs @ NV  #n_range_select
+
+    def g_eval(X):
+        if prob.rho_r != 0:
+            denominator = np.sqrt((A1 @ X - zx)**2 +(A2 @ X - zy)**2)
+            factor1 = (np.ones(len(zr)) - zr/denominator)
+            factor2 = (2*A1.T.multiply(A1 @ X - zx) + 2*A2.T.multiply(A2 @ X - zy))
+            range_error = 1/(2*prob.rho_r)*factor2 * factor1
+        else: range_error = 0
+        return range_error
+    return g_eval
+
+def g(prob, verbose=False):
+    """Creates the sum of squares gradient function for fitting a 
+    navigation and current profile
+    
+    Returns:
+        vector-valued function for input & output of length m = 4*ts + 2*cs,
+        where ts is the number of timepoints and cs is the number of depth
+        points.
+    """
+    zttw_e = mb.get_zttw(prob.ddat, 'east')
+    zttw_n = mb.get_zttw(prob.ddat, 'north')
+    A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat)
+
+    zadcp_e = mb.get_zadcp(prob.adat, 'east')
+    zadcp_n = mb.get_zadcp(prob.adat, 'north')
+    A_adcp, B_adcp = mb.adcp_select(prob.times, prob.depths, prob.ddat,
+                                    prob.adat)
+
+    zgps_e = mb.get_zgps(prob.ddat, 'east')
+    zgps_n = mb.get_zgps(prob.ddat, 'north')
+    A_gps = mb.gps_select(prob.times, prob.ddat)
+    
+    zr, zx, zy = mb.get_zrange(prob.ddat)
+    A_range = mb.range_select(prob.times, prob.ddat)
+    
+    m = len(prob.times)
+    n = len(prob.depths)
+    EV = mb.ev_select(m, n)
+    NV = mb.nv_select(m, n)
+    EC = mb.ec_select(m, n)
+    NC = mb.nc_select(m, n)
+    Xs = mb.x_select(m)
+    Vs = mb.v_select(m)
+
+    kalman_mat = gen_kalman_mat(prob)
     
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
@@ -414,27 +588,91 @@ def g(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     def g_eval(X):
         kalman_error = 2* kalman_mat @ X
         
-        zttw_error = 1/(2*rho_t)*(e_ttw_mat @ X - e_ttw_constant+
+        zttw_error = 1/(2*prob.rho_t)*(e_ttw_mat @ X - e_ttw_constant+
                             n_ttw_mat @ X - n_ttw_constant)
-        zadcp_error = 1/(2*rho_a)*(
+        zadcp_error = 1/(2*prob.rho_a)*(
                         e_adcp_mat @ X - e_adcp_constant +
                         n_adcp_mat @ X - n_adcp_constant)
-        zgps_error = 1/(2*rho_g)*(e_gps_mat @ X - e_gps_constant +
+        zgps_error = 1/(2*prob.rho_g)*(e_gps_mat @ X - e_gps_constant +
                             n_gps_mat @ X - n_gps_constant)
-        if rho_r != 0:
+        if prob.rho_r != 0:
             denominator = np.sqrt((A1 @ X - zx)**2 +(A2 @ X - zy)**2)
             factor1 = (np.ones(len(zr)) - zr/denominator)
             factor2 = (2*A1.T.multiply(A1 @ X - zx) + 2*A2.T.multiply(A2 @ X - zy))
-            range_error = 1/(2*rho_r)*factor2 * factor1
+            range_error = 1/(2*prob.rho_r)*factor2 * factor1
         else: range_error = 0
         return (kalman_error + 
                 zttw_error + zadcp_error + 
                 zgps_error + range_error)
 
     return g_eval
+
+# %%
+def _h_kalman(prob):
+    kalman_mat = gen_kalman_mat(prob)
+    def h_eval(X):
+        return 2* kalman_mat
+    return h_eval
+def _h_ttw(prob):
+    A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat)
+    m = len(prob.times)
+    n = len(prob.depths)
+    EV = mb.ev_select(m, n)
+    NV = mb.nv_select(m, n)
+    EC = mb.ec_select(m, n)
+    NC = mb.nc_select(m, n)
+    Vs = mb.v_select(m)
+    Xs = mb.x_select(m)
     
-def h(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1, 
-                                  rho_a=1, rho_g=1, rho_r=0):
+    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
+    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
+    e_ttw_mat = 2 * e_ttw_select.T @ e_ttw_select 
+    n_ttw_mat = 2 * n_ttw_select.T @ n_ttw_select 
+    def h_eval(X):
+        zttw_error = 1/(2*prob.rho_t)*(e_ttw_mat + n_ttw_mat)
+        return zttw_error
+    return h_eval
+
+def _h_adcp(prob):
+    A_adcp, B_adcp = mb.adcp_select(prob.times, prob.depths, prob.ddat, prob.adat)
+    m = len(prob.times)
+    n = len(prob.depths)
+    EV = mb.ev_select(m, n)
+    NV = mb.nv_select(m, n)
+    EC = mb.ec_select(m, n)
+    NC = mb.nc_select(m, n)
+    Vs = mb.v_select(m)
+    Xs = mb.x_select(m)
+    e_adcp_select = B_adcp @ EC - A_adcp @ Vs @ EV
+    n_adcp_select = B_adcp @ NC - A_adcp @ Vs @ NV
+    e_adcp_mat = 2* e_adcp_select.T @ e_adcp_select
+    n_adcp_mat = 2* n_adcp_select.T @ n_adcp_select
+    def h_eval(X):
+        zadcp_error = 1/(2*prob.rho_a)*(e_adcp_mat + n_adcp_mat)
+        return zadcp_error
+    return h_eval
+
+def _h_gps(prob):
+    A_gps = mb.gps_select(prob.times, prob.ddat)
+    m = len(prob.times)
+    n = len(prob.depths)
+    EV = mb.ev_select(m, n)
+    NV = mb.nv_select(m, n)
+    EC = mb.ec_select(m, n)
+    NC = mb.nc_select(m, n)
+    Vs = mb.v_select(m)
+    Xs = mb.x_select(m)
+
+    e_gps_select = A_gps @ Xs @ EV
+    n_gps_select = A_gps @ Xs @ NV
+    e_gps_mat = 2* e_gps_select.T @ e_gps_select
+    n_gps_mat = 2* n_gps_select.T @ n_gps_select
+
+    def h_eval(X):
+        zgps_error = 1/(2*prob.rho_g)*(e_gps_mat + n_gps_mat)
+        return zgps_error
+    return h_eval
+def h(prob):
     """Creates the sum of squares hessian function for fitting a 
     navigation and current profile
     
@@ -447,22 +685,23 @@ def h(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
         rho_r is not yet implemented.  Only returns the hessian without
         range measurements.
     """
-    A_ttw, B_ttw = mb.uv_select(times, depths, ddat)
-    Vs = mb.v_select(len(times))
+    A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat)
+    Vs = mb.v_select(len(prob.times))
 
-    A_adcp, B_adcp = mb.adcp_select(times, depths, ddat, adat)
+    A_adcp, B_adcp = mb.adcp_select(prob.times, prob.depths, prob.ddat,
+                                    prob.adat)
 
-    A_gps = mb.gps_select(times, ddat)
-    Xs = mb.x_select(len(times))
+    A_gps = mb.gps_select(prob.times, prob.ddat)
+    Xs = mb.x_select(len(prob.times))
     
-    m = len(times)
-    n = len(depths)
+    m = len(prob.times)
+    n = len(prob.depths)
     EV = mb.ev_select(m, n)
     NV = mb.nv_select(m, n)
     EC = mb.ec_select(m, n)
     NC = mb.nc_select(m, n) 
 
-    kalman_mat = gen_kalman_mat(times, depths, rho_v, rho_c)
+    kalman_mat = gen_kalman_mat(prob)
 
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
@@ -480,11 +719,24 @@ def h(times, depths, ddat, adat, rho_v=1, rho_c=1, rho_t=1,
     n_gps_mat = 2* n_gps_select.T @ n_gps_select
 
     def h_eval(X):        
-        zttw_error = 1/(2*rho_t)*(e_ttw_mat + n_ttw_mat)
-        zadcp_error = 1/(2*rho_a)*(e_adcp_mat + n_adcp_mat)
-        zgps_error = 1/(2*rho_g)*(e_gps_mat + n_gps_mat)
-        return (kalman_mat + zttw_error + zadcp_error + zgps_error)
+        zttw_error = 1/(2*prob.rho_t)*(e_ttw_mat + n_ttw_mat)
+        zadcp_error = 1/(2*prob.rho_a)*(e_adcp_mat + n_adcp_mat)
+        zgps_error = 1/(2*prob.rho_g)*(e_gps_mat + n_gps_mat)
+        return (2* kalman_mat + zttw_error + zadcp_error + zgps_error)
     return h_eval
+
+# %% Tests
+def complex_step_test(x0, eps, f, g):
+    x0 = np.array(x0)
+    g1 = g(x0)
+    step = eps * 1j * np.ones(len(x0))
+    repeatx0 = (np.repeat(x0.reshape(-1,1), len(x0), axis=1))
+    add_mat = scipy.sparse.spdiags([step], (0), len(step), len(step))
+    eval_mat = repeatx0 + add_mat
+    fs = [np.imag(f(np.ravel(eval_mat[:,col]))) for col in range(len(step))]
+    g2 = np.array(fs)/eps
+    return g1, g2, np.linalg.norm(g1), np.linalg.norm(g2-g1)
+    
 
 def grad_test(x0, eps, f, g):
     """Tests the gradient and objective function calculation.  For small
@@ -524,18 +776,11 @@ def hess_test(x0, eps, g, h):
     RHS = (x1-x0).T @ (h(x1)+h(x0)) @ (x1-x0)
     return LHS, RHS, np.linalg.norm(x1-x0), np.linalg.norm(LHS-RHS)
 
-def backsolve_test(x0, ddat, adat, rho_v=1, rho_c=1, rho_t=1, rho_a=1,
-                   rho_g=1):
+def backsolve_test(x0, prob):
     """Tests whether the linear least squares solver agrees with the
     gradient function"""
-    times=dp.timepoints(adat, ddat)
-    depths=dp.depthpoints(adat, ddat)
-
-    A, b = solve_mats(times, depths, ddat, adat, rho_v=rho_v, rho_c=rho_c,
-                      rho_t=rho_t, rho_a=rho_a, rho_g=rho_g)
-    grad_func = g(times, depths, ddat, adat,
-                  rho_v=rho_v, rho_c=rho_c, rho_a=rho_a, rho_t=rho_t,
-                  rho_g=rho_g)
+    A, b = solve_mats(prob)
+    grad_func = g(prob)
     v1 = A @ x0 + grad_func(np.zeros(len(x0)))
     v2 = grad_func(x0)
     return v1, v2, np.linalg.norm(v1), np.linalg.norm(v1-v2)
@@ -545,10 +790,8 @@ def solve(prob, method='L-BFGS-B'):
     times = dp.timepoints(prob.adat, prob.ddat)
     depths = dp.depthpoints(prob.adat, prob.ddat)
     x0 = init_x(prob)
-    ffunc = f1(prob)
-    gfunc = g(prob.times, prob.depths, prob.ddat, prob.adat, rho_v=prob.rho_v,
-              rho_c=prob.rho_c, rho_t=prob.rho_t, rho_a=prob.rho_a,
-              rho_g=prob.rho_g, rho_r=prob.rho_r)
+    ffunc = f(prob)
+    gfunc = g(prob)
     sol = minimize(ffunc, x0, method=method, jac=gfunc,
                    options={'maxiter':50000, 'maxfun':50000, 'disp':True})
     m = len(times)
