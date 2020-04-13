@@ -12,6 +12,7 @@ import pandas as pd
 import adcp.matbuilder as mb
 import adcp.dataprep as dp
 
+# %%
 class SimParams:
     defaults = dict(duration=pd.Timedelta('3 hours'), max_depth=750,
                          n_dives=1, n_timepoints=1001, rho_v=.1, rho_c=.1,
@@ -303,13 +304,14 @@ def sim_measurement_noise(depth_df, adcp_df, curr_df, v_df, ttw_times,
     z_adcp_n = np.random.normal(loc=n_adcp_mean, scale=sim_params.rho_a)
     z_adcp_e = np.random.normal(loc=e_adcp_mean, scale=sim_params.rho_a)
 
-    z_gps_n = np.random.normal(loc=v_df.loc[gps_times, 'x'],
+    z_gps_n = np.random.normal(loc=v_df.loc[gps_times, 'y'],
                                scale=sim_params.rho_g)
-    z_gps_e = np.random.normal(loc=v_df.loc[gps_times, 'y'],
+    z_gps_e = np.random.normal(loc=v_df.loc[gps_times, 'x'],
                                scale=sim_params.rho_g)
 
     ## Simulate range
-    range_scale = np.abs((v_df.y.min(), v_df.x.min())).max()
+    #Choose a covariance based upon maximum position deviation from origin
+    range_scale = np.abs((v_df.y.min(), v_df.x.min())).max()/10
     range_posit_randomness = (np.random.random_sample((len(range_times),2))-.5)
     range_posits = range_posit_randomness * range_scale
     ranges = np.sqrt((range_posits[:,0]-v_df.loc[range_times, 'x'])**2
@@ -343,9 +345,8 @@ def construct_load_dicts(depth_df, adcp_df, measurements, ttw_times,
     (z_ttw_n, z_ttw_e, z_adcp_n, z_adcp_e,
          z_gps_n, z_gps_e, z_range, range_posits) = measurements
 
-    gps_df = pd.DataFrame([z_gps_e, z_gps_n],
-                          index=pd.Index(gps_times, name='time'),
-                          columns=['gps_nx_east','gps_ny_north'])
+    gps_df = pd.DataFrame({'gps_nx_east':z_gps_e, 'gps_ny_north':z_gps_n},
+                          index=pd.Index(gps_times, name='time'))
     range_data = np.hstack((range_posits, z_range.reshape((-1,1))))
     range_df = pd.DataFrame(range_data,
                           index=pd.Index(range_times, name='time'),
