@@ -14,12 +14,42 @@ import adcp.dataprep as dp
 
 # %%
 class SimParams:
+    """Statically holds glider dive simulation parameters."""
     defaults = dict(duration=pd.Timedelta('3 hours'), max_depth=750,
                          n_dives=1, n_timepoints=1001, rho_v=.1, rho_c=.1,
                          rho_t=1, rho_a=1, rho_g=1, rho_r=1, adcp_bins=4,
-                         seed=124, sigma_t=1, sigma_c=1, measure_points=dict(
-                                 gps='endpoints', ttw=.5, range=.05))
+                         seed=124, sigma_t=1, sigma_c=1, curr_method='constant',
+                         vehicle_method='constant',
+                         measure_points=dict(gps='endpoints',
+                                             ttw=.5, range=.05,))
     def __init__(self, **kwargs):
+        """Creates a SimParams object
+        
+        Parameters:
+            duration (pandas Tiemdelta): duration of the dive profile
+            max_depth (int, float): depth at apogee.
+            n_dives (int): number of total dives.  Only tested with n=1.
+            n_timepoints (int): number of timepoints to sample
+            rho_v (float): process variance of vehicle velocity.  Exact use
+                depends upon vehicle_method
+            rho_c (float): process variance of current profile.  Exact use
+                depends upon curr_method
+            rho_t (float): variance of error in TTW hydrodynamic model measurement
+            rho_a (float): variance of error in ADCP measurement
+            rho_g (float): variance of error in gps measurement
+            rho_r (float): variance of error in range measurement
+            adcp_bins (int): number of ADCP bins measured.
+            seed (int): random seed
+            sigma_t (float): variance of max vehicle velocity generator.  Exact
+                use depends on vehicle_method
+            sigma_c (float): variance of max current generator.  Exact
+                use depends on curr_method
+            curr_method (str): method to simulate current profile
+            vehicle_method (str): method to simulate vehicle TTW trajectory
+            measure_points (dict): dictionary with keys 'gps', 'ttw' and 'range'
+                to describe how measurement points in time are assigned to 
+                different measurement devices.
+        """
         for k, v in self.defaults.items():
             if k in kwargs:
                 setattr(self, k, kwargs[k])
@@ -142,10 +172,17 @@ def sim_current_profile(depths, sim_params, method='cos'):
         last_e = sim_params.sigma_c * np.random.normal(size=1)
         n_curr = np.linspace(first_n[0], last_n[0], len(depths))
         e_curr = np.linspace(first_e[0], last_e[0], len(depths))
-        n_curr = np.random.multivariate_normal(
-                mean = n_curr, cov=sim_params.rho_c*np.eye(len(n_curr)))
-        e_curr = np.random.multivariate_normal(
-                mean = e_curr, cov=sim_params.rho_c*np.eye(len(e_curr)))
+        n_curr = n_curr+ np.random.normal(scale=sim_params.rho_c, size=len(n_curr))
+        e_curr = e_curr+ np.random.normal(scale=sim_params.rho_c, size=len(e_curr))
+    elif method.lower() =='constant':
+        first_n = sim_params.sigma_c * np.random.normal(size=1)
+        first_e = sim_params.sigma_c * np.random.normal(size=1)
+        last_n = first_n
+        last_e = first_e
+        n_curr = np.linspace(first_n[0], last_n[0], len(depths))
+        e_curr = np.linspace(first_e[0], last_e[0], len(depths))
+        n_curr = n_curr+ np.random.normal(scale=sim_params.rho_c, size=len(n_curr))
+        e_curr = e_curr+ np.random.normal(scale=sim_params.rho_c, size=len(e_curr))
     else:
         raise ValueError(f'current simulation method {method} not defined')
     #   Truly principled method:
@@ -190,6 +227,11 @@ def sim_vehicle_path(depth_df, curr_df, sim_params, method='sin'):
         n_scale = sim_params.sigma_t * np.random.normal()
         ttw_e = e_scale*np.sin(delta_t*t_scale)
         ttw_n = n_scale*np.sin(delta_t*t_scale)
+    if method.lower() == 'constant':
+        e_scale = sim_params.sigma_t * np.random.normal()
+        n_scale = sim_params.sigma_t * np.random.normal()
+        ttw_e = np.repeat(e_scale, len(delta_t))
+        ttw_n = np.repeat(n_scale, len(delta_t))
     else:
         raise ValueError(f'vehicle simulation method {method} not defined')
     v_df = curr_df.loc[pd.Index(depth_df.depth)]
@@ -420,7 +462,7 @@ def true_solution(curr_df, v_df, final_depths, sim_params):
     return x
 
 # %%
-def simulate(sim_params):
+def simulate(sim_params, verbose=False):
     """Simulates the data recorded during a dive.
 
     Returns:
@@ -433,6 +475,19 @@ def simulate(sim_params):
         constructed by a solver
             [Vehicle, Current] -> [East, North] -> [v1 x1, v2, x2, ...]
     """
+    if verbose:
+        print(f"""Simulation parameters:
+              Random seed: {sim_params.seed}
+              Current maximum variance {sim_params.sigma_c}
+              Current profile method {sim_params.curr_method}
+              Current profile variance {sim_params.rho_c}
+              TTW maximum variance {sim_params.sigma_t}
+              TTW path method {sim_params.vehicle_method}
+              TTW profile variance {sim_params.rho_t}
+              ADCP measurement variance {sim_params.rho_a}
+              TTW profile variance {sim_params.rho_t}
+              """)
+    
     np.random.seed(sim_params.seed)
     random.seed(sim_params.seed)
 
@@ -444,8 +499,8 @@ def simulate(sim_params):
     all_depths = sorted(all_depths)
 
     #Simulate the vehicle and environment
-    curr_df = sim_current_profile(all_depths, sim_params, 'cos')
-    v_df = sim_vehicle_path(depth_df, curr_df, sim_params, 'sin')
+    curr_df = sim_current_profile(all_depths, sim_params, sim_params.curr_method)
+    v_df = sim_vehicle_path(depth_df, curr_df, sim_params, sim_params.vehicle_method)
 
     #Choose which timepoints are measured by which instrument
     measure_times = select_times(depth_df, sim_params)
@@ -465,4 +520,4 @@ def simulate(sim_params):
     final_depths = dp.depthpoints(adat, ddat)
     x = true_solution(curr_df, v_df, final_depths, sim_params)
 
-    return ddat, adat, x
+    return ddat, adat, x, curr_df, v_df

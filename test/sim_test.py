@@ -7,28 +7,34 @@ Created on Sun Apr  5 11:04:36 2020
 
 from adcp import dataprep as dp
 from adcp import simulation as sim
+from adcp import matbuilder as mb
 from adcp import optimization as op
 from adcp import viz
 
 # %% ...or simulate new data
-sp = sim.SimParams()
-ddat, adat, x = sim.simulate(sp)
+sp = sim.SimParams(rho_t=0, rho_a=0, rho_v=0, rho_c=0, sigma_t=.4, sigma_c=.3)
+ddat, adat, x, curr_df, v_df = sim.simulate(sp, verbose=True)
 depths = dp.depthpoints(adat, ddat)
 times = dp.timepoints(adat, ddat)
 
 # %% No Range
-rho_v=1e-7
-rho_c=1e-8
+rho_v=1e-2
+rho_c=1e-5
 rho_g=1e-3
-rho_t=1e-1
-rho_a=1e-1
+rho_t=1e-5
+rho_a=1e-5
 rho_r=0
+print(f"""Solution method covariances:
+    vehicle process: {rho_v}
+    current process:{rho_c}
+    GPS measurement: {rho_g}
+    TTW measurement: {rho_t}
+    ADCP meawsurement: {rho_a}""")
 
 prob=op.GliderProblem(ddat, adat, rho_v=rho_v, rho_c=rho_c, rho_g=rho_g,
                       rho_t=rho_t, rho_a=rho_a, rho_r=rho_r)
 # %%  Solve problem
 seed = 3453
-
 
 A, b = op.solve_mats(prob, verbose=True)
 x0 = op.init_x(prob)
@@ -51,7 +57,7 @@ print(f"Backsolve test for gradient of norm {eps:e} yeilds an error of {err:e}")
 
 #viz.current_plot(sol.x, x_sol, adat, times, depths)
 ax1 = viz.vehicle_speed_plot(sol.x, ddat, times, depths, x_true=x)
-ax2 = viz.current_depth_plot(sol.x, adat, ddat, direction='both', x_true=x)
+ax2 = viz.current_depth_plot(sol.x, adat, ddat, direction='both', x_true=x, adcp=True)
 ax3 = viz.vehicle_posit_plot(sol['x'], ddat, times, depths, x_true=x, dead_reckon=True)
 
 #ax4 = viz.current_depth_plot(sol.x, adat, ddat, direction='both', mdat=mdat)

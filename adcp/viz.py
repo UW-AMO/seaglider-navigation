@@ -12,20 +12,21 @@ from adcp import matbuilder as mb
 
 cmap = plt.get_cmap("tab10")
 
-
-def current_depth_plot(x, adat, ddat, direction='north', x_true=None, mdat=None):
+# %%
+def current_depth_plot(x, adat, ddat, direction='north', x_true=None,
+                       mdat=None, adcp=False):
     """Produce a current by depth plot, showing the current during 
     descending and ascending measurements.  Optionally truncate to just the
     region when mooring ground truth data is available.
     """
     
     if direction.lower()=='both':
-        plt.figure(figsize=[4,6])
+        plt.figure(figsize=[8,6])
         plt.subplot(1,2,1)
-        current_depth_plot(x, adat, ddat, direction='north', x_true=x_true, mdat=mdat)
+        ax1 = current_depth_plot(x, adat, ddat, direction='north', x_true=x_true, mdat=mdat)
         plt.subplot(1,2,2)
-        current_depth_plot(x, adat, ddat, direction='east', x_true=x_true, mdat=mdat)
-        return
+        ax2 = current_depth_plot(x, adat, ddat, direction='east', x_true=x_true, mdat=mdat)
+        return ax1, ax2
 #    plt.figure()
     ax=plt.gca()
     ax.set_title('')
@@ -44,9 +45,31 @@ def current_depth_plot(x, adat, ddat, direction='north', x_true=None, mdat=None)
     sinking_depths = depths[(depths < deepest) & (depths >0)] 
     rising = currs[(depths > deepest) & (depths < deepest*2)] 
     rising_depths = depths[(depths > deepest) & (depths < deepest*2)] 
-    ax.plot(sinking, sinking_depths, 'b-', label='Descending-Inferred')
-    ax.plot(rising, 2*deepest - rising_depths, 'r-', label='Ascending-Inferred')
-
+    ln0 = ax.plot(sinking, sinking_depths, 'b--', 
+                  label='Descending-Inferred')
+    ln1 = ax.plot(rising, 2*deepest - rising_depths, 'r--',
+                  label='Ascending-Inferred')
+    lines = [ln0, ln1]
+    
+    #ADCP traces
+    if adcp:
+        print('ADCP is true!')
+        if direction.lower() in {'north','south'}:
+            zadcp = mb.get_zadcp(adat, 'north')
+        elif direction.lower() in {'east','west'}:
+            zadcp = mb.get_zadcp(adat, 'east')
+        _, B_adcp = mb.adcp_select(times, depths, ddat, adat)
+        sinking_a = zadcp[(B_adcp @ depths < deepest) & (B_adcp @ depths >0)]
+        sinking_depths_a = depths[np.array(B_adcp.sum(axis=0)).squeeze().astype(bool)
+                                & (depths < deepest)
+                                & (depths >0)]
+        rising_a = zadcp[(B_adcp @ depths > deepest) & (B_adcp @ depths < deepest*2)] 
+        rising_depths_a = depths[np.array(B_adcp.sum(axis=0)).squeeze().astype(bool)
+                                & (depths > deepest)
+                                & (depths < deepest*2)] 
+        lna0 = ax.plot(sinking_a, sinking_depths_a, 'g--', label='ADCP')
+        lna1 = ax.plot(rising_a, 2*deepest - rising_depths_a, 'g--', label='ADCP')
+        lines = [*lines, lna0, lna1]
     # Add in true simulated profiles, if available
     if x_true is not None:
         if direction.lower() in {'north','south'}:
@@ -55,10 +78,11 @@ def current_depth_plot(x, adat, ddat, direction='north', x_true=None, mdat=None)
             true_currs = mb.ec_select(m, n) @ x_true
         sinking_true = true_currs[(depths < deepest) & (depths >0)] 
         rising_true = true_currs[(depths > deepest) & (depths < deepest*2)]
-        ax.plot(sinking_true, sinking_depths, 'b-',
+        ln2 = ax.plot(sinking_true, sinking_depths, 'b-',
                 label='Descending-True')
-        ax.plot(rising_true, 2*deepest - rising_depths, 'r-',
+        ln3 = ax.plot(rising_true, 2*deepest - rising_depths, 'r-',
                 label='Ascending-True')
+        lines = [*lines, ln2, ln3]
         
     # Preprocess to get mooring data, if necessary:
     if mdat is not None:
@@ -66,16 +90,15 @@ def current_depth_plot(x, adat, ddat, direction='north', x_true=None, mdat=None)
         last_time = ddat['depth'].index.max()
         first_truth_idx = np.argmin(np.abs(first_time-mdat['time']))
         last_truth_idx = np.argmin(np.abs(last_time-mdat['time']))
-        first_truth_time = mdat['time'][first_truth_idx]
-        last_truth_time = mdat['time'][last_truth_idx]
         true_currs = mdat['u'] if direction.lower()=='north' else mdat['v']
-        ax.plot(true_currs[first_truth_idx,:], mdat['depth'][first_truth_idx,:],
+        ln4 = ax.plot(true_currs[first_truth_idx,:], mdat['depth'][first_truth_idx,:],
                 'bo', label='Descending-Mooring')
-        ax.plot(true_currs[last_truth_idx,:], mdat['depth'][last_truth_idx,:],
+        ln5 = ax.plot(true_currs[last_truth_idx,:], mdat['depth'][last_truth_idx,:],
                 'ro', label='Ascending-Mooring')
 #        ax.legend(loc='lower left')
-        
-#    ax.legend()
+        lines = [*lines, ln4, ln5]
+
+    ax.legend()
     ax.invert_yaxis()
     ax.set_title(direction.title()+'erly Current')
     ax.set_xlabel(f'Current (meters/sec)'.title())
@@ -87,8 +110,10 @@ def current_depth_plot(x, adat, ddat, direction='north', x_true=None, mdat=None)
         max_depth = max(*mdat['depth'][first_truth_idx,:],
                         *mdat['depth'][last_truth_idx,:])
         ax.set_ylim(max_depth, 0)
-    return ax
+    
+    return lines
 
+# %%
 def vehicle_speed_plot(solx, ddat, times, depths, direction='north', 
                        x_sol=None, x_true=None, x0=None):
     plt.figure()

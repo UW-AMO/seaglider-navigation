@@ -41,7 +41,7 @@ class SimTest(unittest.TestCase):
         asc = (depth_df[ascending].values > adcp_df[ascending].values).all()
         self.assertTrue(desc and asc)
     def test_curr_sim_cos(self):
-        sim_params = sim.SimParams()
+        sim_params = sim.SimParams(curr_method='cos')
         depth_df = sim.gen_dive(sim_params)
         adcp_df = sim.gen_adcp_depths(depth_df, sim_params)
         all_depths = np.unique(np.concatenate((depth_df.values.flatten(),
@@ -55,6 +55,18 @@ class SimTest(unittest.TestCase):
 #        raise NotImplementedError
 #    def test_vehicle_sim_sin(self):
 #        raise NotImplementedError
+#    def test_vehicle_sim_linear(self):
+#        raise NotImplementedError
+    def test_vehicle_sim_constant(self):
+        sim_params = sim.SimParams(vehicle_method='constant', rho_v=0)
+        depth_df = sim.gen_dive(sim_params)
+        adcp_df = sim.gen_adcp_depths(depth_df, sim_params)
+        all_depths = np.unique(np.concatenate((depth_df.values.flatten(),
+                                               adcp_df.values.flatten())))
+        curr_df = sim.sim_current_profile(all_depths, sim_params, 'constant')
+        v_df = sim.sim_vehicle_path(depth_df, curr_df, sim_params, 'constant')
+
+        raise NotImplementedError
 #    def test_select_times(self):
 #        raise NotImplementedError
 #    def test_sim_noise(self):
