@@ -223,10 +223,24 @@ def sim_vehicle_path(depth_df, curr_df, sim_params, method='sin'):
     delta_t = np.array([float(dt) for dt in delta_t])
     if method.lower() == 'sin':
         t_scale = 2*np.pi/total_time
-        e_scale = sim_params.sigma_t * np.random.normal()
-        n_scale = sim_params.sigma_t * np.random.normal()
-        ttw_e = e_scale*np.sin(delta_t*t_scale)
-        ttw_n = n_scale*np.sin(delta_t*t_scale)
+        e_scale_down = sim_params.sigma_t * np.random.normal()
+        e_scale_up = sim_params.sigma_t * np.random.normal()
+        n_scale_down = sim_params.sigma_t * np.random.normal()
+        n_scale_up = sim_params.sigma_t * np.random.normal()
+        midpoint_idx = len(delta_t)//2
+        ttw_e_down = e_scale_down * np.sin(delta_t[:midpoint_idx]*t_scale)
+        ttw_e_up = e_scale_up * np.sin(delta_t[midpoint_idx:]*t_scale)
+        ttw_n_down = n_scale_down * np.sin(delta_t[:midpoint_idx]*t_scale)
+        ttw_n_up = n_scale_up * np.sin(delta_t[midpoint_idx:]*t_scale)
+        ttw_e = np.hstack((ttw_e_down, ttw_e_up))
+        ttw_n = np.hstack((ttw_n_down, ttw_n_up))
+    elif method.lower() =='linear':
+        first_n = sim_params.sigma_t * np.random.normal(size=1)
+        first_e = sim_params.sigma_t * np.random.normal(size=1)
+        last_n = sim_params.sigma_t * np.random.normal(size=1)
+        last_e = sim_params.sigma_t * np.random.normal(size=1)
+        ttw_n = np.linspace(first_n[0], last_n[0], len(delta_t))
+        ttw_e = np.linspace(first_e[0], last_e[0], len(delta_t))
     if method.lower() == 'constant':
         e_scale = sim_params.sigma_t * np.random.normal()
         n_scale = sim_params.sigma_t * np.random.normal()
@@ -234,6 +248,9 @@ def sim_vehicle_path(depth_df, curr_df, sim_params, method='sin'):
         ttw_n = np.repeat(n_scale, len(delta_t))
     else:
         raise ValueError(f'vehicle simulation method {method} not defined')
+    ttw_n = ttw_n + np.random.normal(scale=sim_params.rho_v, size=len(ttw_n))
+    ttw_e = ttw_e + np.random.normal(scale=sim_params.rho_v, size=len(ttw_e))
+
     v_df = curr_df.loc[pd.Index(depth_df.depth)]
     v_df.index = depth_df.index
     v_df['ttw_e'] = ttw_e
@@ -244,8 +261,8 @@ def sim_vehicle_path(depth_df, curr_df, sim_params, method='sin'):
 
     delta_x_otg_n = v_df.v_otg_n.iloc[1:] * delta_t
     delta_x_otg_e = v_df.v_otg_e.iloc[1:] * delta_t
-    v_df['x'] = np.hstack(([0],delta_x_otg_n.cumsum()))
-    v_df['y'] = np.hstack(([0],delta_x_otg_e.cumsum()))
+    v_df['x'] = np.hstack(([0],delta_x_otg_e.cumsum()))
+    v_df['y'] = np.hstack(([0],delta_x_otg_n.cumsum()))
 
     return v_df
 
@@ -483,9 +500,10 @@ def simulate(sim_params, verbose=False):
               Current profile variance {sim_params.rho_c}
               TTW maximum variance {sim_params.sigma_t}
               TTW path method {sim_params.vehicle_method}
-              TTW profile variance {sim_params.rho_t}
+              TTW profile variance {sim_params.rho_v}
               ADCP measurement variance {sim_params.rho_a}
-              TTW profile variance {sim_params.rho_t}
+              TTW hydrodynamic measurement variance {sim_params.rho_t}
+              GPS measurement variance {sim_params.rho_g}
               """)
     
     np.random.seed(sim_params.seed)

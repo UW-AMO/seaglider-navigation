@@ -23,9 +23,11 @@ def current_depth_plot(x, adat, ddat, direction='north', x_true=None,
     if direction.lower()=='both':
         plt.figure(figsize=[8,6])
         plt.subplot(1,2,1)
-        ax1 = current_depth_plot(x, adat, ddat, direction='north', x_true=x_true, mdat=mdat)
+        ax1 = current_depth_plot(x, adat, ddat, direction='north',
+                                 x_true=x_true, mdat=mdat, adcp=adcp)
         plt.subplot(1,2,2)
-        ax2 = current_depth_plot(x, adat, ddat, direction='east', x_true=x_true, mdat=mdat)
+        ax2 = current_depth_plot(x, adat, ddat, direction='east',
+                                 x_true=x_true, mdat=mdat, adcp=adcp)
         return ax1, ax2
 #    plt.figure()
     ax=plt.gca()
@@ -53,11 +55,10 @@ def current_depth_plot(x, adat, ddat, direction='north', x_true=None,
     
     #ADCP traces
     if adcp:
-        print('ADCP is true!')
         if direction.lower() in {'north','south'}:
-            zadcp = mb.get_zadcp(adat, 'north')
+            zadcp = mb.get_zadcp(adat, 'north')/mb.t_scale
         elif direction.lower() in {'east','west'}:
-            zadcp = mb.get_zadcp(adat, 'east')
+            zadcp = mb.get_zadcp(adat, 'east')/mb.t_scale
         _, B_adcp = mb.adcp_select(times, depths, ddat, adat)
         sinking_a = zadcp[(B_adcp @ depths < deepest) & (B_adcp @ depths >0)]
         sinking_depths_a = depths[np.array(B_adcp.sum(axis=0)).squeeze().astype(bool)
@@ -67,8 +68,8 @@ def current_depth_plot(x, adat, ddat, direction='north', x_true=None,
         rising_depths_a = depths[np.array(B_adcp.sum(axis=0)).squeeze().astype(bool)
                                 & (depths > deepest)
                                 & (depths < deepest*2)] 
-        lna0 = ax.plot(sinking_a, sinking_depths_a, 'g--', label='ADCP')
-        lna1 = ax.plot(rising_a, 2*deepest - rising_depths_a, 'g--', label='ADCP')
+        lna0 = ax.plot(sinking_a, sinking_depths_a, 'k:', label='Descending-ADCP')
+        lna1 = ax.plot(rising_a, 2*deepest - rising_depths_a, 'g:', label='Ascending-ADCP')
         lines = [*lines, lna0, lna1]
     # Add in true simulated profiles, if available
     if x_true is not None:
