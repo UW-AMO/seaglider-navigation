@@ -639,8 +639,9 @@ def solve(prob, method='L-BFGS-B'):
     x0 = init_x(prob)
     ffunc = f(prob)
     gfunc = g(prob)
+    print("Starting objective: ", ffunc(x0))
     sol = minimize(ffunc, x0, method=method, jac=gfunc,
-                   options={'maxiter':50000, 'maxfun':50000, 'disp':True})
+                   options={'maxiter':1000, 'maxfun':50, 'disp':True})
     m = len(times)
     n = len(depths)
     sol.x = time_rescale(sol.x, mb.t_scale, m, n)
