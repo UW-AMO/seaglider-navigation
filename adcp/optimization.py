@@ -174,7 +174,7 @@ def solve_mats(prob, verbose=False):
     e_gps_select = A_gps @ Xs @ EV
     n_gps_select = A_gps @ Xs @ NV
 
-    A = (  kalman_mat
+    A = (  2* kalman_mat
          + 1/(prob.rho_t)*n_ttw_select.T @ n_ttw_select
          + 1/(prob.rho_t)*e_ttw_select.T @ e_ttw_select
          + 1/(prob.rho_a)*n_adcp_select.T @ n_adcp_select
