@@ -632,7 +632,7 @@ def backsolve_test(x0, prob):
     v2 = grad_func(x0)
     return v1, v2, np.linalg.norm(v1), np.linalg.norm(v1-v2)
 
-def solve(prob, method='L-BFGS-B'):
+def solve(prob, method='L-BFGS-B', maxiter=50000, maxfun=50000):
     """Solve the ADCP navigation problem for given data."""
     times = dp.timepoints(prob.adat, prob.ddat)
     depths = dp.depthpoints(prob.adat, prob.ddat)
@@ -641,7 +641,7 @@ def solve(prob, method='L-BFGS-B'):
     gfunc = g(prob)
     print("Starting objective: ", ffunc(x0))
     sol = minimize(ffunc, x0, method=method, jac=gfunc,
-                   options={'maxiter':1000, 'maxfun':50, 'disp':True})
+                   options={'maxiter':maxiter, 'maxfun':maxfun, 'disp':True})
     m = len(times)
     n = len(depths)
     sol.x = time_rescale(sol.x, mb.t_scale, m, n)

@@ -168,7 +168,7 @@ def vehicle_G(times):
     """Creates the update matrix for smoothing the vehicle"""
     delta_times = times[1:]-times[:-1]
     m = len(delta_times)*2
-    dts = delta_times.astype(float)/1e9/t_scale
+    dts = delta_times.astype(float)/1e9/t_scale # raw dts in nanoseconds
     dts = reduce_condition(dts, method=conditioner)
     negGs = [np.array([[-1, 0],[-dt, -1]]) for dt in dts]
     negG = scipy.sparse.block_diag(negGs)
