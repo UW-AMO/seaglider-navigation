@@ -241,7 +241,7 @@ def sim_vehicle_path(depth_df, curr_df, sim_params, method='sin'):
         last_e = sim_params.sigma_t * np.random.normal(size=1)
         ttw_n = np.linspace(first_n[0], last_n[0], len(delta_t))
         ttw_e = np.linspace(first_e[0], last_e[0], len(delta_t))
-    if method.lower() == 'constant':
+    elif method.lower() == 'constant':
         e_scale = sim_params.sigma_t * np.random.normal()
         n_scale = sim_params.sigma_t * np.random.normal()
         ttw_e = np.repeat(e_scale, len(delta_t))
@@ -285,9 +285,9 @@ def select_times(depth_df, sim_params):
     if n_timepoints < 3:
         raise ValueError('need at least 3 timepoints to assign')
     if sim_params.measure_points['gps'] == 'first':
-        gps_times = [timepoints[0]]
+        gps_times = timepoints[0:1]
     elif sim_params.measure_points['gps'] == 'last':
-        gps_times = [timepoints[-1]]
+        gps_times = timepoints[-2:-1]
     elif sim_params.measure_points['gps'] == 'endpoints':
         gps_times = timepoints[[0,-1]]
     elif (sim_params.measure_points['range']

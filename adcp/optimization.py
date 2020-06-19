@@ -69,7 +69,10 @@ def initial_kinematics(times, ddat):
     last_point = ddat['gps'].iloc[-1].to_numpy()
     first_time = ddat['gps'].index[0]
     last_time = ddat['gps'].index[-1]
-    speed = (last_point-first_point)/(last_time-first_time).seconds
+    if len(ddat['gps']) == 1:
+        speed = [0,0]
+    else:
+        speed = (last_point-first_point)/(last_time-first_time).seconds
     e0[:,0] = speed[0]
     n0[:,0] = speed[1]
 
