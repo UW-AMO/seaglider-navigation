@@ -377,8 +377,9 @@ def sim_measurement_noise(depth_df, adcp_df, curr_df, v_df, ttw_times,
                      +(range_posits[:,1]-v_df.loc[range_times, 'y'])**2)
     z_range = np.random.normal(loc=ranges, scale=sim_params.rho_r)
 
-    return (z_ttw_n, z_ttw_e, z_adcp_n, z_adcp_e, z_gps_n, z_gps_e,
-            z_range, range_posits)
+    return dict(z_ttw_n=z_ttw_n, z_ttw_e=z_ttw_e, z_adcp_n=z_adcp_n,
+                z_adcp_e=z_adcp_e, z_gps_n=z_gps_n, z_gps_e=z_gps_e,
+                z_range=z_range, range_posits=range_posits)
 
 # %%
 def construct_load_dicts(depth_df, adcp_df, measurements, ttw_times,
@@ -388,7 +389,7 @@ def construct_load_dicts(depth_df, adcp_df, measurements, ttw_times,
 
     Arguments:
         depth_df (pandas DataFrame): depth indexed by time
-        measurements (Tuple of numpy arrays): simulated measurements, a
+        measurements (dict of numpy arrays): simulated measurements, a
             result from sim_measurement_noise
         ttw_times (iterable of np.datetime64): times the hydrodynamic
             model measures
@@ -401,8 +402,14 @@ def construct_load_dicts(depth_df, adcp_df, measurements, ttw_times,
     Returns:
         Tuple of (dive data, adcp data)
     """
-    (z_ttw_n, z_ttw_e, z_adcp_n, z_adcp_e,
-         z_gps_n, z_gps_e, z_range, range_posits) = measurements
+    z_ttw_n = measurements['z_ttw_n']
+    z_ttw_e = measurements['z_ttw_e']
+    z_adcp_n = measurements['z_adcp_n']
+    z_adcp_e = measurements['z_adcp_e']
+    z_gps_n = measurements['z_gps_n']
+    z_gps_e = measurements['z_gps_e']
+    z_range = measurements['z_range']
+    range_posits = measurements['range_posits']
 
     gps_df = pd.DataFrame({'gps_nx_east':z_gps_e, 'gps_ny_north':z_gps_n},
                           index=pd.Index(gps_times, name='time'))
