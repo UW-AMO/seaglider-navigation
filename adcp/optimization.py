@@ -637,13 +637,14 @@ def solve(prob, method='L-BFGS-B', maxiter=50000, maxfun=50000):
     times = dp.timepoints(prob.adat, prob.ddat)
     depths = dp.depthpoints(prob.adat, prob.ddat)
     x0 = init_x(prob)
+    m = len(times)
+    n = len(depths)
+    x0 = time_rescale(x0, 1/mb.t_scale, m, n)
     ffunc = f(prob)
     gfunc = g(prob)
     print("Starting objective: ", ffunc(x0))
     sol = minimize(ffunc, x0, method=method, jac=gfunc,
                    options={'maxiter':maxiter, 'maxfun':maxfun, 'disp':True})
-    m = len(times)
-    n = len(depths)
     sol.x = time_rescale(sol.x, mb.t_scale, m, n)
 
     return sol

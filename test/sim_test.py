@@ -18,11 +18,11 @@ depths = dp.depthpoints(adat, ddat)
 times = dp.timepoints(adat, ddat)
 
 # %% No Range
-rho_v=1e-2
+rho_v=1e-5
 rho_c=1e-5
 rho_g=1e-3
-rho_t=1e-5
-rho_a=1e-5
+rho_t=1e-3
+rho_a=1e-3
 rho_r=0
 print(f"""Solution method covariances:
     vehicle process: {rho_v}
@@ -44,14 +44,14 @@ x_sol, (NV, EV, NC, EC, Xs, Vs) = op.backsolve(prob)
 f = op.f(prob, verbose=True)
 g = op.g(prob)
 h = op.h(prob)
-sol = op.solve(prob, method='L-BFGS-B')
+sol = op.solve(prob, method='L-BFGS-B', maxiter=50000, maxfun=50000)
 print(f'LBFGS took {sol.nit} iterations and converged: {sol.success}')
-_, _, eps, err = op.grad_test(x0, 1e-2, f, g)
-print(f"Gradient test for vectors {eps:e} apart yeilds an error of {err:e}")
-_, _, eps, err = op.hess_test(x0, 1e-2, g, h)
-print(f"Hessian test for vectors {eps:e} apart yeilds an error of {err:e}")
-_, _, eps, err = op.backsolve_test(x0, prob)
-print(f"Backsolve test for gradient of norm {eps:e} yeilds an error of {err:e}")
+#_, _, eps, err = op.grad_test(x0, 1e-2, f, g)
+#print(f"Gradient test for vectors {eps:e} apart yeilds an error of {err:e}")
+#_, _, eps, err = op.hess_test(x0, 1e-2, g, h)
+#print(f"Hessian test for vectors {eps:e} apart yeilds an error of {err:e}")
+#_, _, eps, err = op.backsolve_test(x0, prob)
+#print(f"Backsolve test for gradient of norm {eps:e} yeilds an error of {err:e}")
 
 # %% Plotting
 
