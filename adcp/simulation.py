@@ -148,7 +148,7 @@ def sim_current_profile(depths, sim_params, method='cos'):
         pandas DataFrame of current (meters/sec) indexed by depth (meters)
     """
     all_depths= np.array(depths)
-    if method.lower() =='cos':
+    if method.lower() in ['cos', 'curved']:
         x_scale = np.pi/(sim_params.max_depth)
         e_scale_down = sim_params.sigma_c * np.random.normal()
         e_scale_up = sim_params.sigma_c * np.random.normal()
@@ -221,7 +221,7 @@ def sim_vehicle_path(depth_df, curr_df, sim_params, method='sin'):
     total_time = float((depth_df.index[-1]-depth_df.index[0]).value)
     delta_t = (depth_df.index-depth_df.index[0]).values
     delta_t = np.array([float(dt) for dt in delta_t])
-    if method.lower() == 'sin':
+    if method.lower() in ['sin', 'curved']:
         t_scale = 2*np.pi/total_time
         e_scale_down = sim_params.sigma_t * np.random.normal()
         e_scale_up = sim_params.sigma_t * np.random.normal()
