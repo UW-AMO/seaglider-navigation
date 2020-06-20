@@ -82,7 +82,7 @@ def adcp_select(times, depths, ddat, adat):
     adcp_depths = adat['Z'].copy()
     adcp_depths[:,rising_times] = 2*deepest - adat['Z'][:,rising_times]
     d_list = list(depths)
-    idxdepth = [d_list.index(d) for d in adcp_depths[valid_obs]]
+    idxdepth = [d_list.index(d) for d in adcp_depths.T[valid_obs.T]]
     mat_shape = (len(idxdepth), len(depths))
     B = scipy.sparse.coo_matrix((np.ones(len(idxdepth)),
                                  (range(len(idxdepth)), idxdepth)),
@@ -220,9 +220,9 @@ def get_zadcp(adat, direction='north'):
     """
     valid_obs = np.isfinite(adat['UV'])
     if direction in ['u','north', 'u_north']:
-        return adat['UV'][valid_obs].imag*t_scale
+        return adat['UV'].T[valid_obs.T].imag*t_scale
     elif direction in ['v','east', 'v_east']:
-        return adat['UV'][valid_obs].real*t_scale
+        return adat['UV'].T[valid_obs.T].real*t_scale
     else:
         return None
     
