@@ -340,7 +340,7 @@ def sim_measurement_noise(depth_df, adcp_df, curr_df, v_df, ttw_times,
             in this module
 
     Returns:
-        Tuple of dataframes of northward TTW velocity, eastward TTW
+        Dict of dataframes of northward TTW velocity, eastward TTW
             velocity, n/e adcp, n/e gps, and range, followed by range
             posits, the positions of the range measurement beacons
     """
