@@ -157,32 +157,43 @@ def vehicle_speed_plot(solx, ddat, times, depths, direction='north',
         x_true (numpy.array): true state vector
         x0 (numpy.array): starting state vector for LBFGS
     """
-    plt.figure()
+    if direction.lower()=='both':
+        plt.figure(figsize=[12,6])
+        plt.subplot(1,2,1)
+        ax1 = vehicle_speed_plot(solx, ddat, times, depths, direction='north',
+                                 x_true=x_true, x_sol=x_sol, x0=x0)
+        plt.subplot(1,2,2)
+        ax2 = vehicle_speed_plot(solx, ddat, times, depths, direction='east',
+                                 x_true=x_true, x_sol=x_sol, x0=x0)
+        return ax1, ax2
+
+    ax = plt.gca()
     m = len(times)
     n = len(depths)
     dirV = mb.nv_select(m,n) if direction.lower()=='north' else mb.ev_select(m,n)
     Vs = mb.v_select(m)
     cmap = plt.get_cmap("tab10")
-    plt.title(f'{direction}ward Vehicle Velocity'.title())
-    ln1 = plt.plot(times, Vs @ dirV @ solx, color=cmap(1), label='LBFGS Votg')
+    ax.set_title(f'{direction}ward Vehicle Velocity'.title())
+    ln1 = ax.plot(times, Vs @ dirV @ solx, color=cmap(1), label='LBFGS Votg')
     lns = [ln1[0]]
     if x_sol is not None:
-        ln2 = plt.plot(times, Vs @ dirV @ x_sol, color=cmap(0), label='backsolve Votg')
+        ln2 = ax.plot(times, Vs @ dirV @ x_sol, color=cmap(0), label='backsolve Votg')
         lns.append(ln2[0])
     if x0 is not None:
-        ln3 = plt.plot(times, Vs @ dirV @ x0, color=cmap(3), label='x0 Votg')
+        ln3 = ax.plot(times, Vs @ dirV @ x0, color=cmap(3), label='x0 Votg')
         lns.append(ln3[0])
     if x_true is not None:
-        ln4 = plt.plot(times, Vs @ dirV @ x_true, color=cmap(3), label='Votg_true')
+        ln4 = ax.plot(times, Vs @ dirV @ x_true, color=cmap(3), label='Votg_true')
         lns.append(ln4[0])
-    ln5 = plt.plot(mb.get_zttw(ddat).index,
+    ln5 = ax.plot(mb.get_zttw(ddat).index,
                    mb.get_zttw(ddat).values/1e3,
                    color=cmap(2), label='TTW measured')
     lns.append(ln5[0])
-    plt.ylabel('meters/second')
-    plt.xlabel('time')
+    ax.set_ylabel('meters/second')
+    ax.set_xlabel('time')
     labs = [l.get_label() for l in lns]
-    plt.legend(lns, labs)
+    ax.legend(lns, labs)
+    return ax
 
 def current_plot(solx, x_sol, adat, times, depths, direction='north'):
     """ Deprecated """
