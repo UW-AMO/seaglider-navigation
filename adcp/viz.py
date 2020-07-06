@@ -13,11 +13,96 @@ from adcp import matbuilder as mb
 cmap = plt.get_cmap("tab10")
 
 # %%
+def inferred_adcp_error_plot(solx, adat, ddat, direction='north', x_true=None,
+                             x_sol=None):
+    if direction.lower()=='both':
+        plt.figure(figsize=[12,6])
+        plt.subplot(1,2,1)
+        ax1 = inferred_adcp_error_plot(solx, adat, ddat, direction='north',
+                                 x_true=x_true, x_sol=x_sol)
+        plt.subplot(1,2,2)
+        ax2 = inferred_adcp_error_plot(solx, adat, ddat, direction='east',
+                                 x_true=x_true, x_sol=x_sol)
+        return ax1, ax2
+
+    ax = plt.gca()
+    times = dp.timepoints(adat, ddat)
+    depths = dp.depthpoints(adat, ddat)
+    m = len(times)
+    n = len(depths)
+    Vs= mb.v_select(m)
+    if direction.lower() in {'north','south'}:
+        zadcp = mb.get_zadcp(adat, 'north')/mb.t_scale
+        XV = mb.nv_select(m, n)
+        XC = mb.nc_select(m, n)
+    elif direction.lower() in {'east','west'}:
+        zadcp = mb.get_zadcp(adat, 'east')/mb.t_scale
+        XV = mb.ev_select(m, n)
+        XC = mb.ec_select(m, n)
+    else:
+        raise ValueError
+    
+
+    depth_df = dp._depth_interpolator(times, ddat)
+    turnaround = depth_df.ascending.idxmax()
+    deepest = depth_df.loc[turnaround, 'depth']
+
+    A, B = mb.adcp_select(times, depths, ddat, adat)
+    sinking_meas = zadcp[(B @ depths < deepest) & (B @ depths >0)]
+    sinking_depths = depths[np.array(B.sum(axis=0)).squeeze().astype(bool)
+                            & (depths < deepest)
+                            & (depths >0)]
+    rising_meas = zadcp[(B @ depths > deepest) & (B @ depths < deepest*2)]
+    rising_depths = depths[np.array(B.sum(axis=0)).squeeze().astype(bool)
+                            & (depths > deepest)
+                            & (depths < deepest*2)] 
+    ln0 = ax.plot(sinking_meas, sinking_depths, 'k-', label='Descending-measured')
+    ln1 = ax.plot(rising_meas, 2*deepest - rising_depths, 'g-', label='Ascending-measured')
+    lines = [ln0, ln1]
+
+    adcp_lbfgs = A @ Vs @ XV @ solx - B @ XC @ solx
+    sinking_lbfgs = adcp_lbfgs[(B @ depths < deepest) & (B @ depths >0)]
+    rising_lbfgs = adcp_lbfgs[(B @ depths > deepest) & (B @ depths < deepest*2)]
+    ln2 = ax.plot(sinking_lbfgs, sinking_depths, 'b--', label='Descending-LBFGS')
+    ln3 = ax.plot(rising_lbfgs, 2*deepest - rising_depths, 'r--', label='Ascending-LBFGS')    
+
+    lines = [*lines, ln2, ln3]
+
+    if x_true is not None:
+        adcp_true = A @ Vs @ XV @ x_true - B @ XC @ x_true
+        sinking_true = adcp_true[(B @ depths < deepest) & (B @ depths >0)]
+        rising_true = adcp_true[(B @ depths > deepest) & (B @ depths < deepest*2)]
+        ln4 = ax.plot(sinking_true, sinking_depths, 'b--', label='Descending-true')
+        ln5 = ax.plot(rising_true, 2*deepest - rising_depths, 'r--', label='Ascending-true')
+        lines = [*lines, ln4, ln5]
+
+    if x_sol is not None:
+        adcp_back = A @ Vs @ XV @ x_sol - B @ XC @ x_sol
+        sinking_back = adcp_back[(B @ depths < deepest) & (B @ depths >0)]
+        rising_back = adcp_back[(B @ depths > deepest) & (B @ depths < deepest*2)]
+        ln6 = ax.plot(sinking_back, sinking_depths, 'b--', label='Descending-baksolve')
+        ln7 = ax.plot(rising_back, 2*deepest - rising_depths, 'r--', label='Ascending-backsolve')
+        lines = [*lines, ln6, ln7]
+
+
+def inferred_ttw_error_plot(solx, adat, ddat, direction='north', x_true=None,
+                             x_sol=None):
+    if direction.lower()=='both':
+        plt.figure(figsize=[8,6])
+        plt.subplot(1,2,1)
+        ax1 = inferred_ttw_error_plot(solx, adat, ddat, direction='north',
+                                 x_true=x_true, x_sol=x_sol)
+        plt.subplot(1,2,2)
+        ax2 = inferred_ttw_error_plot(solx, adat, ddat, direction='east',
+                                 x_true=x_true, x_sol=x_sol)
+        return ax1, ax2
+
+# %%
 def current_depth_plot(solx, adat, ddat, direction='north', x_true=None,
                        x_sol=None, mdat=None, adcp=False):
     """Produce a current by depth plot, showing the current during 
     descending and ascending measurements.  Various other options.
-    
+
     Parameters:
         solx (numpy.array): LBFGS solution for state vector
         adat (dict): ADCP data. See dataprep.load_adcp() or
@@ -33,7 +118,7 @@ def current_depth_plot(solx, adat, ddat, direction='north', x_true=None,
     """
     
     if direction.lower()=='both':
-        plt.figure(figsize=[8,6])
+        plt.figure(figsize=[12,6])
         plt.subplot(1,2,1)
         ax1 = current_depth_plot(solx, adat, ddat, direction='north',
                                  x_true=x_true, x_sol=x_sol, mdat=mdat,
