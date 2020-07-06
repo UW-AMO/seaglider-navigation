@@ -26,6 +26,9 @@ def inferred_adcp_error_plot(solx, adat, ddat, direction='north', x_true=None,
         return ax1, ax2
 
     ax = plt.gca()
+    ax.set_title(direction.title()+' Shear velocities')
+    ax.set_xlabel('meters/second')
+    ax.set_ylabel('depth')
     times = dp.timepoints(adat, ddat)
     depths = dp.depthpoints(adat, ddat)
     m = len(times)
@@ -41,7 +44,6 @@ def inferred_adcp_error_plot(solx, adat, ddat, direction='north', x_true=None,
         XC = mb.ec_select(m, n)
     else:
         raise ValueError
-    
 
     depth_df = dp._depth_interpolator(times, ddat)
     turnaround = depth_df.ascending.idxmax()
@@ -60,7 +62,7 @@ def inferred_adcp_error_plot(solx, adat, ddat, direction='north', x_true=None,
     ln1 = ax.plot(rising_meas, 2*deepest - rising_depths, 'g-', label='Ascending-measured')
     lines = [ln0, ln1]
 
-    adcp_lbfgs = A @ Vs @ XV @ solx - B @ XC @ solx
+    adcp_lbfgs = (B @ XC - A @ Vs @ XV) @ solx
     sinking_lbfgs = adcp_lbfgs[(B @ depths < deepest) & (B @ depths >0)]
     rising_lbfgs = adcp_lbfgs[(B @ depths > deepest) & (B @ depths < deepest*2)]
     ln2 = ax.plot(sinking_lbfgs, sinking_depths, 'b--', label='Descending-LBFGS')
@@ -69,7 +71,7 @@ def inferred_adcp_error_plot(solx, adat, ddat, direction='north', x_true=None,
     lines = [*lines, ln2, ln3]
 
     if x_true is not None:
-        adcp_true = A @ Vs @ XV @ x_true - B @ XC @ x_true
+        adcp_true = (B @ XC - A @ Vs @ XV) @ x_true
         sinking_true = adcp_true[(B @ depths < deepest) & (B @ depths >0)]
         rising_true = adcp_true[(B @ depths > deepest) & (B @ depths < deepest*2)]
         ln4 = ax.plot(sinking_true, sinking_depths, 'b--', label='Descending-true')
@@ -77,18 +79,21 @@ def inferred_adcp_error_plot(solx, adat, ddat, direction='north', x_true=None,
         lines = [*lines, ln4, ln5]
 
     if x_sol is not None:
-        adcp_back = A @ Vs @ XV @ x_sol - B @ XC @ x_sol
+        adcp_back = (B @ XC - A @ Vs @ XV) @ x_sol
         sinking_back = adcp_back[(B @ depths < deepest) & (B @ depths >0)]
         rising_back = adcp_back[(B @ depths > deepest) & (B @ depths < deepest*2)]
         ln6 = ax.plot(sinking_back, sinking_depths, 'b--', label='Descending-baksolve')
         ln7 = ax.plot(rising_back, 2*deepest - rising_depths, 'r--', label='Ascending-backsolve')
         lines = [*lines, ln6, ln7]
 
+    ax.legend()
+    return ax
 
 def inferred_ttw_error_plot(solx, adat, ddat, direction='north', x_true=None,
                              x_sol=None):
+
     if direction.lower()=='both':
-        plt.figure(figsize=[8,6])
+        plt.figure(figsize=[12,6])
         plt.subplot(1,2,1)
         ax1 = inferred_ttw_error_plot(solx, adat, ddat, direction='north',
                                  x_true=x_true, x_sol=x_sol)
@@ -96,6 +101,49 @@ def inferred_ttw_error_plot(solx, adat, ddat, direction='north', x_true=None,
         ax2 = inferred_ttw_error_plot(solx, adat, ddat, direction='east',
                                  x_true=x_true, x_sol=x_sol)
         return ax1, ax2
+
+    ax = plt.gca()
+    ax.set_title(direction.title()+' TTW velocities')
+    ax.set_xlabel('Time')
+    ax.set_ylabel('meters/second')
+    times = dp.timepoints(adat, ddat)
+    depths = dp.depthpoints(adat, ddat)
+    m = len(times)
+    n = len(depths)
+    Vs= mb.v_select(m)
+    if direction.lower() in {'north','south'}:
+        zttw = mb.get_zttw(ddat, 'north')
+        XV = mb.nv_select(m, n)
+        XC = mb.nc_select(m, n)
+    elif direction.lower() in {'east','west'}:
+        zttw = mb.get_zttw(ddat, 'east')
+        XV = mb.ev_select(m, n)
+        XC = mb.ec_select(m, n)
+    else:
+        raise ValueError
+
+    A, B = mb.uv_select(times, depths, ddat)
+
+    ln0 = ax.plot(zttw.index, zttw.values/1e3, 'b-',
+                  label='TTW measured')
+
+    ttw_lbfgs = (A @ Vs @ XV - B @ XC) @ solx
+    ln1 = ax.plot(zttw.index, ttw_lbfgs, 'r--', label='LBFGS')
+
+    lines = [ln0, ln1]
+
+    if x_true is not None:
+        ttw_true = (A @ Vs @ XV - B @ XC) @ x_true
+        ln2 = ax.plot(zttw.index, ttw_true, 'g--', label='True')
+        lines = [*lines, ln2]
+
+    if x_sol is not None:
+        ttw_back = (A @ Vs @ XV - B @ XC) @ x_sol
+        ln3 = ax.plot(zttw.index, ttw_back, 'k:', label='Backsolve')
+        lines = [*lines, ln3]
+
+    ax.legend()
+    return ax
 
 # %%
 def current_depth_plot(solx, adat, ddat, direction='north', x_true=None,
