@@ -13,23 +13,36 @@ from adcp import matbuilder as mb
 cmap = plt.get_cmap("tab10")
 
 # %%
-def current_depth_plot(x, adat, ddat, direction='north', x_true=None,
-                       mdat=None, adcp=False):
+def current_depth_plot(solx, adat, ddat, direction='north', x_true=None,
+                       x_sol=None, mdat=None, adcp=False):
     """Produce a current by depth plot, showing the current during 
-    descending and ascending measurements.  Optionally truncate to just the
-    region when mooring ground truth data is available.
+    descending and ascending measurements.  Various other options.
+    
+    Parameters:
+        solx (numpy.array): LBFGS solution for state vector
+        adat (dict): ADCP data. See dataprep.load_adcp() or
+            simulation.construct_load_dicts()
+        ddat (dict): dive data. See dataprep.load_dive() or
+            simulation.construct_load_dicts()
+        direction (str): either 'north' or 'south'
+        x_true (numpy.array): true state vector
+        x_sol (numpy.array): backsolve solution for state vector
+        mdat (dict): Moored ADCP measurements.  See
+            dataprep.load_mooring()
+        adat (bool): Whether to include ADCP measurement data or not
     """
     
     if direction.lower()=='both':
         plt.figure(figsize=[8,6])
         plt.subplot(1,2,1)
-        ax1 = current_depth_plot(x, adat, ddat, direction='north',
-                                 x_true=x_true, mdat=mdat, adcp=adcp)
+        ax1 = current_depth_plot(solx, adat, ddat, direction='north',
+                                 x_true=x_true, x_sol=x_sol, mdat=mdat,
+                                 adcp=adcp)
         plt.subplot(1,2,2)
-        ax2 = current_depth_plot(x, adat, ddat, direction='east',
-                                 x_true=x_true, mdat=mdat, adcp=adcp)
+        ax2 = current_depth_plot(solx, adat, ddat, direction='east',
+                                 x_true=x_true, x_sol=x_sol, mdat=mdat,
+                                 adcp=adcp)
         return ax1, ax2
-#    plt.figure()
     ax=plt.gca()
     ax.set_title('')
     times = dp.timepoints(adat, ddat)
@@ -37,9 +50,9 @@ def current_depth_plot(x, adat, ddat, direction='north', x_true=None,
     m = len(times)
     n = len(depths)
     if direction.lower() in {'north','south'}:
-        currs = mb.nc_select(m, n) @ x
+        currs = mb.nc_select(m, n) @ solx
     elif direction.lower() in {'east','west'}:
-        currs = mb.ec_select(m, n) @ x
+        currs = mb.ec_select(m, n) @ solx
     depth_df = dp._depth_interpolator(times, ddat)
     turnaround = depth_df.ascending.idxmax()
     deepest = depth_df.loc[turnaround, 'depth']
@@ -52,7 +65,7 @@ def current_depth_plot(x, adat, ddat, direction='north', x_true=None,
     ln1 = ax.plot(rising, 2*deepest - rising_depths, 'r--',
                   label='Ascending-Inferred')
     lines = [ln0, ln1]
-    
+
     #ADCP traces
     if adcp:
         if direction.lower() in {'north','south'}:
@@ -84,6 +97,19 @@ def current_depth_plot(x, adat, ddat, direction='north', x_true=None,
         ln3 = ax.plot(rising_true, 2*deepest - rising_depths, 'r-',
                 label='Ascending-True')
         lines = [*lines, ln2, ln3]
+    #Add in backsolve solution, if available
+    if x_sol is not None:
+        if direction.lower() in {'north','south'}:
+            true_currs = mb.nc_select(m, n) @ x_true
+        elif direction.lower() in {'east','west'}:
+            true_currs = mb.ec_select(m, n) @ x_true
+        sinking_true = true_currs[(depths < deepest) & (depths >0)]
+        rising_true = true_currs[(depths > deepest) & (depths < deepest*2)]
+        ln4 = ax.plot(sinking_true, sinking_depths, 'c--',
+                label='Descending-Backsolve')
+        ln5 = ax.plot(rising_true, 2*deepest - rising_depths, 'y--',
+                label='Ascending-Backsolve')
+        lines = [*lines, ln4, ln5]
         
     # Preprocess to get mooring data, if necessary:
     if mdat is not None:
@@ -92,17 +118,17 @@ def current_depth_plot(x, adat, ddat, direction='north', x_true=None,
         first_truth_idx = np.argmin(np.abs(first_time-mdat['time']))
         last_truth_idx = np.argmin(np.abs(last_time-mdat['time']))
         true_currs = mdat['u'] if direction.lower()=='north' else mdat['v']
-        ln4 = ax.plot(true_currs[first_truth_idx,:], mdat['depth'][first_truth_idx,:],
+        ln6 = ax.plot(true_currs[first_truth_idx,:], mdat['depth'][first_truth_idx,:],
                 'bo', label='Descending-Mooring')
-        ln5 = ax.plot(true_currs[last_truth_idx,:], mdat['depth'][last_truth_idx,:],
+        ln7 = ax.plot(true_currs[last_truth_idx,:], mdat['depth'][last_truth_idx,:],
                 'ro', label='Ascending-Mooring')
 #        ax.legend(loc='lower left')
-        lines = [*lines, ln4, ln5]
+        lines = [*lines, ln6, ln7]
 
     ax.legend()
     ax.invert_yaxis()
     ax.set_title(direction.title()+'erly Current')
-    ax.set_xlabel(f'Current (meters/sec)'.title())
+    ax.set_xlabel('Current (meters/sec)'.title())
     ax.set_ylabel('Depth (Meters)')
     plt.tight_layout()
     
@@ -117,6 +143,20 @@ def current_depth_plot(x, adat, ddat, direction='north', x_true=None,
 # %%
 def vehicle_speed_plot(solx, ddat, times, depths, direction='north', 
                        x_sol=None, x_true=None, x0=None):
+    """Plots the vehicle's solved speed, optionally with different
+    comparison solutions.
+
+    Parameters:
+        solx (numpy.array): LBFGS solution for state vector
+        ddat (dict): dive data. See dataprep.load_dive() or
+            simulation.construct_load_dicts()
+        times (numpy.array): times at which a measurement occured
+        depths (numpy.array): depths at which a measurement occured
+        direction (str): either 'north' or 'south'
+        x_sol (numpy.array): backsolve solution for state vector
+        x_true (numpy.array): true state vector
+        x0 (numpy.array): starting state vector for LBFGS
+    """
     plt.figure()
     m = len(times)
     n = len(depths)
@@ -135,12 +175,12 @@ def vehicle_speed_plot(solx, ddat, times, depths, direction='north',
     if x_true is not None:
         ln4 = plt.plot(times, Vs @ dirV @ x_true, color=cmap(3), label='Votg_true')
         lns.append(ln4[0])
-#    ticks, labels = plt.xticks()
-#    inds = np.linspace(0,len(ticks),6, dtype=int, endpoint=False)
-#    plt.xticks(ticks[inds], np.array(labels)[inds])
-    plt.twiny()
-    ln5 = plt.plot(mb.get_zttw(ddat).values/1e3, color=cmap(2), label='TTW measured')
+    ln5 = plt.plot(mb.get_zttw(ddat).index,
+                   mb.get_zttw(ddat).values/1e3,
+                   color=cmap(2), label='TTW measured')
     lns.append(ln5[0])
+    plt.ylabel('meters/second')
+    plt.xlabel('time')
     labs = [l.get_label() for l in lns]
     plt.legend(lns, labs)
 
@@ -162,6 +202,21 @@ def current_plot(solx, x_sol, adat, times, depths, direction='north'):
 
 def vehicle_posit_plot(x, ddat, times, depths, x0=None, backsolve=None,
                        x_true=None, dead_reckon=True):
+    """Plots the vehicle's position in x-y coordinates, optionally
+    with different comparison solutions.
+
+         Parameters:
+         x (numpy.array): LBFGS solution for state vector
+         ddat (dict): dive data. See dataprep.load_dive() or
+             simulation.construct_load_dicts()
+         times (numpy.array): times at which a measurement occured
+         depths (numpy.array): depths at which a measurement occured
+         x0 (numpy.array): starting state vector for LBFGS
+         backsolve (numpy.array): backsolve solution for state vector
+         x_true (numpy.array): true state vector
+         dead_reckon (bool): Whether to include dead reckoning solution,
+             treating TTW measurements as over-the-ground truth.
+    """
     m = len(times)
     n = len(depths)
     NV = mb.nv_select(m,n)

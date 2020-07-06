@@ -19,8 +19,8 @@ import numpy as np
 import scipy.sparse
 from scipy.optimize import minimize
 
-from . import matbuilder as mb
-from . import dataprep as dp
+from adcp import matbuilder as mb
+from adcp import dataprep as dp
 
 class GliderProblem:
     defaults = dict(rho_v=1, rho_c=1, rho_t=1, rho_a=1, rho_g=1, rho_r=0)
@@ -238,9 +238,9 @@ def gen_kalman_mat(prob):
     EC = mb.ec_select(m, n)
     NC = mb.nc_select(m, n)
     kalman_mat = 1/2* (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
-                  NV.T @ Gv.T @ Qvinv @ Gv @ NV +
-                  EC.T @ Gc.T @ Qcinv @ Gc @ EC +
-                  NC.T @ Gc.T @ Qcinv @ Gc @ NC)
+                       NV.T @ Gv.T @ Qvinv @ Gv @ NV +
+                       EC.T @ Gc.T @ Qcinv @ Gc @ EC +
+                       NC.T @ Gc.T @ Qcinv @ Gc @ NC)
     kalman_mat = (kalman_mat+kalman_mat.T)/2
 
     return kalman_mat
