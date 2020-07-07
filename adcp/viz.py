@@ -58,15 +58,19 @@ def inferred_adcp_error_plot(solx, adat, ddat, direction='north', x_true=None,
     rising_depths = depths[np.array(B.sum(axis=0)).squeeze().astype(bool)
                             & (depths > deepest)
                             & (depths < deepest*2)] 
-    ln0 = ax.plot(sinking_meas, sinking_depths, 'k-', label='Descending-measured')
-    ln1 = ax.plot(rising_meas, 2*deepest - rising_depths, 'g-', label='Ascending-measured')
+    ln0 = ax.plot(sinking_meas, sinking_depths, ':', color='gold',
+                  label='Descending-measured')
+    ln1 = ax.plot(rising_meas, 2*deepest - rising_depths, ':', color='purple',
+                  label='Ascending-measured')
     lines = [ln0, ln1]
 
     adcp_lbfgs = (B @ XC - A @ Vs @ XV) @ solx
     sinking_lbfgs = adcp_lbfgs[(B @ depths < deepest) & (B @ depths >0)]
     rising_lbfgs = adcp_lbfgs[(B @ depths > deepest) & (B @ depths < deepest*2)]
-    ln2 = ax.plot(sinking_lbfgs, sinking_depths, 'b--', label='Descending-LBFGS')
-    ln3 = ax.plot(rising_lbfgs, 2*deepest - rising_depths, 'r--', label='Ascending-LBFGS')    
+    ln2 = ax.plot(sinking_lbfgs, sinking_depths, '--', color='deeppink',
+                  label='Descending-LBFGS')
+    ln3 = ax.plot(rising_lbfgs, 2*deepest - rising_depths, '--',
+                  color='chartreuse', label='Ascending-LBFGS')
 
     lines = [*lines, ln2, ln3]
 
@@ -74,16 +78,20 @@ def inferred_adcp_error_plot(solx, adat, ddat, direction='north', x_true=None,
         adcp_true = (B @ XC - A @ Vs @ XV) @ x_true
         sinking_true = adcp_true[(B @ depths < deepest) & (B @ depths >0)]
         rising_true = adcp_true[(B @ depths > deepest) & (B @ depths < deepest*2)]
-        ln4 = ax.plot(sinking_true, sinking_depths, 'b--', label='Descending-true')
-        ln5 = ax.plot(rising_true, 2*deepest - rising_depths, 'r--', label='Ascending-true')
+        ln4 = ax.plot(sinking_true, sinking_depths, '-', color='maroon',
+                      label='Descending-true')
+        ln5 = ax.plot(rising_true, 2*deepest - rising_depths, '-',
+                      color='teal', label='Ascending-true')
         lines = [*lines, ln4, ln5]
 
     if x_sol is not None:
         adcp_back = (B @ XC - A @ Vs @ XV) @ x_sol
         sinking_back = adcp_back[(B @ depths < deepest) & (B @ depths >0)]
         rising_back = adcp_back[(B @ depths > deepest) & (B @ depths < deepest*2)]
-        ln6 = ax.plot(sinking_back, sinking_depths, 'b--', label='Descending-baksolve')
-        ln7 = ax.plot(rising_back, 2*deepest - rising_depths, 'r--', label='Ascending-backsolve')
+        ln6 = ax.plot(sinking_back, sinking_depths, '--', color='xkcd:pumpkin',
+                      label='Descending-baksolve')
+        ln7 = ax.plot(rising_back, 2*deepest - rising_depths, '--',
+                      color='blue', label='Ascending-backsolve')
         lines = [*lines, ln6, ln7]
 
     ax.legend()
@@ -124,22 +132,22 @@ def inferred_ttw_error_plot(solx, adat, ddat, direction='north', x_true=None,
 
     A, B = mb.uv_select(times, depths, ddat)
 
-    ln0 = ax.plot(zttw.index, zttw.values/1e3, 'b-',
+    ln0 = ax.plot(zttw.index, zttw.values/1e3, ':', color=cmap(3),
                   label='TTW measured')
 
     ttw_lbfgs = (A @ Vs @ XV - B @ XC) @ solx
-    ln1 = ax.plot(zttw.index, ttw_lbfgs, 'r--', label='LBFGS')
+    ln1 = ax.plot(zttw.index, ttw_lbfgs, '--', color=cmap(0), label='LBFGS')
 
     lines = [ln0, ln1]
 
     if x_true is not None:
         ttw_true = (A @ Vs @ XV - B @ XC) @ x_true
-        ln2 = ax.plot(zttw.index, ttw_true, 'g--', label='True')
+        ln2 = ax.plot(zttw.index, ttw_true, '-', color=cmap(1), label='True')
         lines = [*lines, ln2]
 
     if x_sol is not None:
         ttw_back = (A @ Vs @ XV - B @ XC) @ x_sol
-        ln3 = ax.plot(zttw.index, ttw_back, 'k:', label='Backsolve')
+        ln3 = ax.plot(zttw.index, ttw_back, '--', color=cmap(2), label='Backsolve')
         lines = [*lines, ln3]
 
     ax.legend()
@@ -177,7 +185,6 @@ def current_depth_plot(solx, adat, ddat, direction='north', x_true=None,
                                  adcp=adcp)
         return ax1, ax2
     ax=plt.gca()
-    ax.set_title('')
     times = dp.timepoints(adat, ddat)
     depths = dp.depthpoints(adat, ddat)    
     m = len(times)
@@ -193,10 +200,10 @@ def current_depth_plot(solx, adat, ddat, direction='north', x_true=None,
     sinking_depths = depths[(depths < deepest) & (depths >0)] 
     rising = currs[(depths > deepest) & (depths < deepest*2)] 
     rising_depths = depths[(depths > deepest) & (depths < deepest*2)] 
-    ln0 = ax.plot(sinking, sinking_depths, 'b--', 
-                  label='Descending-Inferred')
-    ln1 = ax.plot(rising, 2*deepest - rising_depths, 'r--',
-                  label='Ascending-Inferred')
+    ln0 = ax.plot(sinking, sinking_depths, '--', color='deeppink',
+                  label='Descending-LBFGS')
+    ln1 = ax.plot(rising, 2*deepest - rising_depths, '--', color='chartreuse',
+                  label='Ascending-LBFGS')
     lines = [ln0, ln1]
 
     #ADCP traces
@@ -214,8 +221,10 @@ def current_depth_plot(solx, adat, ddat, direction='north', x_true=None,
         rising_depths_a = depths[np.array(B_adcp.sum(axis=0)).squeeze().astype(bool)
                                 & (depths > deepest)
                                 & (depths < deepest*2)] 
-        lna0 = ax.plot(sinking_a, sinking_depths_a, 'k:', label='Descending-ADCP')
-        lna1 = ax.plot(rising_a, 2*deepest - rising_depths_a, 'g:', label='Ascending-ADCP')
+        lna0 = ax.plot(sinking_a, sinking_depths_a, ':', color='gold',
+                       label='Descending-ADCP')
+        lna1 = ax.plot(rising_a, 2*deepest - rising_depths_a, ':',
+                       color='purple', label='Ascending-ADCP')
         lines = [*lines, lna0, lna1]
     # Add in true simulated profiles, if available
     if x_true is not None:
@@ -225,9 +234,9 @@ def current_depth_plot(solx, adat, ddat, direction='north', x_true=None,
             true_currs = mb.ec_select(m, n) @ x_true
         sinking_true = true_currs[(depths < deepest) & (depths >0)] 
         rising_true = true_currs[(depths > deepest) & (depths < deepest*2)]
-        ln2 = ax.plot(sinking_true, sinking_depths, 'b-',
+        ln2 = ax.plot(sinking_true, sinking_depths, '-', color='maroon',
                 label='Descending-True')
-        ln3 = ax.plot(rising_true, 2*deepest - rising_depths, 'r-',
+        ln3 = ax.plot(rising_true, 2*deepest - rising_depths, '-', color='teal',
                 label='Ascending-True')
         lines = [*lines, ln2, ln3]
     #Add in backsolve solution, if available
@@ -238,10 +247,10 @@ def current_depth_plot(solx, adat, ddat, direction='north', x_true=None,
             true_currs = mb.ec_select(m, n) @ x_true
         sinking_true = true_currs[(depths < deepest) & (depths >0)]
         rising_true = true_currs[(depths > deepest) & (depths < deepest*2)]
-        ln4 = ax.plot(sinking_true, sinking_depths, 'c--',
+        ln4 = ax.plot(sinking_true, sinking_depths, '--', color='xkcd:pumpkin',
                 label='Descending-Backsolve')
-        ln5 = ax.plot(rising_true, 2*deepest - rising_depths, 'y--',
-                label='Ascending-Backsolve')
+        ln5 = ax.plot(rising_true, 2*deepest - rising_depths, '--',
+                      color='blue', label='Ascending-Backsolve')
         lines = [*lines, ln4, ln5]
         
     # Preprocess to get mooring data, if necessary:
@@ -252,9 +261,9 @@ def current_depth_plot(solx, adat, ddat, direction='north', x_true=None,
         last_truth_idx = np.argmin(np.abs(last_time-mdat['time']))
         true_currs = mdat['u'] if direction.lower()=='north' else mdat['v']
         ln6 = ax.plot(true_currs[first_truth_idx,:], mdat['depth'][first_truth_idx,:],
-                'bo', label='Descending-Mooring')
+                '-', color='coral', label='Descending-Mooring')
         ln7 = ax.plot(true_currs[last_truth_idx,:], mdat['depth'][last_truth_idx,:],
-                'ro', label='Ascending-Mooring')
+                '-', color='cyan', label='Ascending-Mooring')
 #        ax.legend(loc='lower left')
         lines = [*lines, ln6, ln7]
 
@@ -262,7 +271,7 @@ def current_depth_plot(solx, adat, ddat, direction='north', x_true=None,
     ax.invert_yaxis()
     ax.set_title(direction.title()+'erly Current')
     ax.set_xlabel('Current (meters/sec)'.title())
-    ax.set_ylabel('Depth (Meters)')
+    ax.set_ylabel('Depth (m); Descending=warm, Ascending=cool')
     plt.tight_layout()
     
     #Adjust ylim if just plotting surface
@@ -275,7 +284,7 @@ def current_depth_plot(solx, adat, ddat, direction='north', x_true=None,
 
 # %%
 def vehicle_speed_plot(solx, ddat, times, depths, direction='north', 
-                       x_sol=None, x_true=None, x0=None):
+                       x_sol=None, x_true=None, x0=None, ttw=False):
     """Plots the vehicle's solved speed, optionally with different
     comparison solutions.
 
@@ -289,6 +298,7 @@ def vehicle_speed_plot(solx, ddat, times, depths, direction='north',
         x_sol (numpy.array): backsolve solution for state vector
         x_true (numpy.array): true state vector
         x0 (numpy.array): starting state vector for LBFGS
+        ttw (bool): Whether to include measured TTW values
     """
     if direction.lower()=='both':
         plt.figure(figsize=[12,6])
@@ -307,21 +317,26 @@ def vehicle_speed_plot(solx, ddat, times, depths, direction='north',
     Vs = mb.v_select(m)
     cmap = plt.get_cmap("tab10")
     ax.set_title(f'{direction}ward Vehicle Velocity'.title())
-    ln1 = ax.plot(times, Vs @ dirV @ solx, color=cmap(1), label='LBFGS Votg')
+    ln1 = ax.plot(times, Vs @ dirV @ solx, '--', color=cmap(0),
+                  label='LBFGS Votg')
     lns = [ln1[0]]
     if x_sol is not None:
-        ln2 = ax.plot(times, Vs @ dirV @ x_sol, color=cmap(0), label='backsolve Votg')
+        ln2 = ax.plot(times, Vs @ dirV @ x_sol, '--', color=cmap(2),
+                      label='backsolve Votg')
         lns.append(ln2[0])
     if x0 is not None:
-        ln3 = ax.plot(times, Vs @ dirV @ x0, color=cmap(3), label='x0 Votg')
+        ln3 = ax.plot(times, Vs @ dirV @ x0, ':', color=cmap(4),
+                      label='x0 Votg')
         lns.append(ln3[0])
     if x_true is not None:
-        ln4 = ax.plot(times, Vs @ dirV @ x_true, color=cmap(3), label='Votg_true')
+        ln4 = ax.plot(times, Vs @ dirV @ x_true, '-', color=cmap(1),
+                      label='Votg_true')
         lns.append(ln4[0])
-    ln5 = ax.plot(mb.get_zttw(ddat).index,
-                   mb.get_zttw(ddat).values/1e3,
-                   color=cmap(2), label='TTW measured')
-    lns.append(ln5[0])
+    if ttw:
+        ln5 = ax.plot(mb.get_zttw(ddat).index,
+                      mb.get_zttw(ddat).values/1e3, ':',
+                      color=cmap(3), label='TTW measured')
+        lns.append(ln5[0])
     ax.set_ylabel('meters/second')
     ax.set_xlabel('time')
     labs = [l.get_label() for l in lns]
@@ -369,22 +384,27 @@ def vehicle_posit_plot(x, ddat, times, depths, x0=None, backsolve=None,
     plt.figure()
     ax=plt.gca()
     ax.set_title('Vehicle Position')
-    ln1 = ax.plot(Xs @ EV @ x/1000, Xs @ NV @ x/1000, label='Optimization Solution')
+    ln1 = ax.plot(Xs @ EV @ x/1000, Xs @ NV @ x/1000, '--',
+                  color=cmap(0), label='Optimization Solution')
     lns = [ln1[0]]
     if backsolve is not None:
-        ln2 = ax.plot(Xs @ EV @ backsolve/1000, Xs @ NV @ backsolve/1000, 
-                      label='backsolve')
+        ln2 = ax.plot(Xs @ EV @ backsolve/1000, Xs @ NV @ backsolve/1000, '--',
+                      color=cmap(2), label='backsolve')
         lns.append(ln2[0])
     if x0 is not None:
-        ln3 = ax.plot(Xs @ EV @ x0/1000, Xs @ NV @ x0/1000, label='x0')
+        ln3 = ax.plot(Xs @ EV @ x0/1000, Xs @ NV @ x0/1000, ':',
+                      color=cmap(3), label='x0')
         lns.append(ln3[0])
     if x_true is not None:
-        ln4 = ax.plot(Xs @ EV @ x_true/1000, Xs @ NV @ x_true/1000, label='X_true')
+        ln4 = ax.plot(Xs @ EV @ x_true/1000, Xs @ NV @ x_true/1000, '-',
+                      color=cmap(1), label='X_true')
         lns.append(ln4[0])
     if dead_reckon:
         df = dp.dead_reckon(ddat)
-        ln5 = ax.plot(df.x_dead/1000, df.y_dead/1000, label='Dead Reckoning')
-        ln6 = ax.plot(df.x_corr/1000, df.y_corr/1000, label='Reckoning, Corrected')
+        ln5 = ax.plot(df.x_dead/1000, df.y_dead/1000, ':',
+                      color=cmap(4), label='Dead Reckoning')
+        ln6 = ax.plot(df.x_corr/1000, df.y_corr/1000, '--',
+                      color=cmap(5), label='Reckoning, Corrected')
         lns.append(ln5[0])
         lns.append(ln6[0])
     ax.legend()
