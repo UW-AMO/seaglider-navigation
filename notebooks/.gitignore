@@ -1,0 +1,8 @@
+# We want to exclude all notebooks.  They may be cool for prototyping, but they are
+# a pain in the ass to review changes in a `git diff`.  If we want to specifically
+# include a notebook, or any exception to the other gitignore rules, we precede it
+# with a `!`.
+.ipynb_checkpoints
+.ipynb 
+!example.ipynb
+!.gitignore
