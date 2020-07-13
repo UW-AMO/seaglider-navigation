@@ -150,6 +150,11 @@ def vehicle_Qinv(times, rho=1):
     delta_times = times[1:]-times[:-1]
     dts = delta_times.astype(float)/1e9/t_scale
     dts = reduce_condition(dts, method=conditioner)
+    cond = q_cond(dts, dim=2)
+    if cond > 1e3:
+        raise ConditionWarning(cond)
+    elif cond <1:
+        raise RuntimeError('Calculated invalid condition number for Q')
     Qs = [t_scale**3*rho*np.array([[dt, dt**2/2],[dt**2/2, dt**3/3]]) for dt in dts]
     Qinvs = [np.linalg.inv(Q) for Q in Qs]
     return scipy.sparse.block_diag(Qinvs)
@@ -161,6 +166,11 @@ def vehicle_Q(times, rho=1):
     delta_times = times[1:]-times[:-1]
     dts = delta_times.astype(float)/1e9/t_scale
     dts = reduce_condition(dts, method=conditioner)
+    cond = q_cond(dts, dim=2)
+    if cond > 1e3:
+        raise ConditionWarning(cond)
+    elif cond <1:
+        raise RuntimeError('Calculated invalid condition number for Q')
     Qs = [t_scale**3*rho*np.array([[dt, dt**2/2],[dt**2/2, dt**3/3]]) for dt in dts]
     return scipy.sparse.block_diag(Qs)
 
@@ -183,6 +193,11 @@ def depth_Qinv(depths, rho=1):
     """
     delta_depths = depths[1:]-depths[:-1]
     dds = reduce_condition(delta_depths, method=conditioner)
+    cond = q_cond(dts, dim=1)
+    if cond > 1e3:
+        raise ConditionWarning(cond)
+    elif cond <1:
+        raise RuntimeError('Calculated invalid condition number for Q')
     return t_scale**(-2)/rho*scipy.sparse.diags(1/dds, dtype=float)
 
 def depth_Q(depths, rho=1):
@@ -191,6 +206,11 @@ def depth_Q(depths, rho=1):
     """
     delta_depths = depths[1:]-depths[:-1]
     dds = reduce_condition(delta_depths, method=conditioner)
+    cond = q_cond(dts, dim=1)
+    if cond > 1e3:
+        raise ConditionWarning(cond)
+    elif cond <1:
+        raise RuntimeError('Calculated invalid condition number for Q')
     return t_scale**(2)*rho*scipy.sparse.diags(dds, dtype=float)
 
 def depth_G(depths):
@@ -199,8 +219,30 @@ def depth_G(depths):
     return scipy.sparse.spdiags((-np.ones(length), np.ones(length)),
                                 diags=(0,1), m=length-1, n=length)
 
+class ConditionWarning(Warning):
+    def __init__(self, cond):
+        self.msg = f'The condition number of covariance matrix is high: {cond}'
 
+def q_cond(dts, dim=2):
+    """Calculates the condition number of a block diagonal covariance matrix
+    with intervals dts
 
+    Returns:
+        float: Condition number of Q
+    """
+    min_dt = min(dts)
+    max_dt = max(dts)
+    if dim == 2:
+        max_disc = 1+max_dt**2/3+max_dt**4/9
+        max_eig = 1/2 * (max_dt+max_dt **3/3 + max_dt * np.sqrt(max_disc))
+        min_disc = 1+min_dt**2/3+min_dt**4/9
+        min_eig = 1/2 * (min_dt+min_dt **3/3 - min_dt * np.sqrt(min_disc))
+        return max_eig / min_eig
+    elif dim == 1:
+        return max_dt/min_dt
+    else:
+        raise ValueError('Can only calculate condition number of 1 or 2'
+                         'dimensional kalman smoothing covariance.')
 
 # %% Data selection
 def get_zttw(ddat, direction='north'):
