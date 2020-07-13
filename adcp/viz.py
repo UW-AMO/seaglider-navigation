@@ -242,9 +242,9 @@ def current_depth_plot(solx, adat, ddat, direction='north', x_true=None,
     #Add in backsolve solution, if available
     if x_sol is not None:
         if direction.lower() in {'north','south'}:
-            true_currs = mb.nc_select(m, n) @ x_true
+            true_currs = mb.nc_select(m, n) @ x_sol
         elif direction.lower() in {'east','west'}:
-            true_currs = mb.ec_select(m, n) @ x_true
+            true_currs = mb.ec_select(m, n) @ x_sol
         sinking_true = true_currs[(depths < deepest) & (depths >0)]
         rising_true = true_currs[(depths > deepest) & (depths < deepest*2)]
         ln4 = ax.plot(sinking_true, sinking_depths, '--', color='xkcd:pumpkin',

@@ -3,6 +3,6 @@
 # include a notebook, or any exception to the other gitignore rules, we precede it
 # with a `!`.
 .ipynb_checkpoints
-.ipynb 
+*.ipynb 
 !example.ipynb
 !.gitignore
