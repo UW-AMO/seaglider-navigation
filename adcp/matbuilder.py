@@ -4,6 +4,7 @@ Created on Sun Dec 22 21:25:07 2019
 
 @author: 600301
 """
+import warnings
 
 import scipy.sparse
 import scipy.interpolate
@@ -130,95 +131,6 @@ def range_select(times, ddat):
     return A
 
 # %% Kalman Process Matrices
-def reduce_condition(deltas, method=None, minmax_ratio=.2):
-    avg = deltas.mean()
-    if method is None or method.lower()=='none':
-        return deltas
-    elif method.lower()=='avg':
-        return avg*np.ones(len(deltas))
-    elif method.lower()=='tanh':
-        factor= (1-minmax_ratio)/(1+minmax_ratio)*avg
-        return factor*np.tanh(deltas) + avg
-    elif method.lower()=='sux':
-        return np.ones(deltas)
-    else:
-        raise Exception('reduce_condition received bad method parameter')
-def vehicle_Qinv(times, rho=1):
-    """Creates the precision matrix for smoothing the vehicle with velocity
-    covariance rho.
-    """
-    delta_times = times[1:]-times[:-1]
-    dts = delta_times.astype(float)/1e9/t_scale
-    dts = reduce_condition(dts, method=conditioner)
-    cond = q_cond(dts, dim=2)
-    if cond > 1e3:
-        raise ConditionWarning(cond)
-    elif cond <1:
-        raise RuntimeError('Calculated invalid condition number for Q')
-    Qs = [t_scale**3*rho*np.array([[dt, dt**2/2],[dt**2/2, dt**3/3]]) for dt in dts]
-    Qinvs = [np.linalg.inv(Q) for Q in Qs]
-    return scipy.sparse.block_diag(Qinvs)
-
-def vehicle_Q(times, rho=1):
-    """Creates the covariance matrix for smoothing the vehicle with velocity
-    covariance rho.
-    """
-    delta_times = times[1:]-times[:-1]
-    dts = delta_times.astype(float)/1e9/t_scale
-    dts = reduce_condition(dts, method=conditioner)
-    cond = q_cond(dts, dim=2)
-    if cond > 1e3:
-        raise ConditionWarning(cond)
-    elif cond <1:
-        raise RuntimeError('Calculated invalid condition number for Q')
-    Qs = [t_scale**3*rho*np.array([[dt, dt**2/2],[dt**2/2, dt**3/3]]) for dt in dts]
-    return scipy.sparse.block_diag(Qs)
-
-def vehicle_G(times):
-    """Creates the update matrix for smoothing the vehicle"""
-    delta_times = times[1:]-times[:-1]
-    m = len(delta_times)*2
-    dts = delta_times.astype(float)/1e9/t_scale # raw dts in nanoseconds
-    dts = reduce_condition(dts, method=conditioner)
-    negGs = [np.array([[-1, 0],[-dt, -1]]) for dt in dts]
-    negG = scipy.sparse.block_diag(negGs)
-    posG = scipy.sparse.eye(m)
-    append_me = scipy.sparse.coo_matrix(([],([],[])), (m,2))
-    return (scipy.sparse.hstack((negG, append_me))
-            + scipy.sparse.hstack((append_me,posG)))
-
-def depth_Qinv(depths, rho=1):
-    """Creates the precision matrix for smoothing the currint with depth
-    covariance eta.
-    """
-    delta_depths = depths[1:]-depths[:-1]
-    dds = reduce_condition(delta_depths, method=conditioner)
-    cond = q_cond(dts, dim=1)
-    if cond > 1e3:
-        raise ConditionWarning(cond)
-    elif cond <1:
-        raise RuntimeError('Calculated invalid condition number for Q')
-    return t_scale**(-2)/rho*scipy.sparse.diags(1/dds, dtype=float)
-
-def depth_Q(depths, rho=1):
-    """Creates the covariance matrix for smoothing the currint with depth
-    covariance eta.
-    """
-    delta_depths = depths[1:]-depths[:-1]
-    dds = reduce_condition(delta_depths, method=conditioner)
-    cond = q_cond(dts, dim=1)
-    if cond > 1e3:
-        raise ConditionWarning(cond)
-    elif cond <1:
-        raise RuntimeError('Calculated invalid condition number for Q')
-    return t_scale**(2)*rho*scipy.sparse.diags(dds, dtype=float)
-
-def depth_G(depths):
-    """Creates the update matrix for smoothing the current"""
-    length = len(depths)
-    return scipy.sparse.spdiags((-np.ones(length), np.ones(length)),
-                                diags=(0,1), m=length-1, n=length)
-
 class ConditionWarning(Warning):
     def __init__(self, cond):
         self.msg = f'The condition number of covariance matrix is high: {cond}'
@@ -243,6 +155,97 @@ def q_cond(dts, dim=2):
     else:
         raise ValueError('Can only calculate condition number of 1 or 2'
                          'dimensional kalman smoothing covariance.')
+
+def reduce_condition(deltas, method=None, minmax_ratio=.2):
+    avg = deltas.mean()
+    if method is None or method.lower()=='none':
+        return deltas
+    elif method.lower()=='avg':
+        return avg*np.ones(len(deltas))
+    elif method.lower()=='tanh':
+        factor= minmax_ratio*avg
+        max_deviation = max(*abs(deltas-avg),1e-3)
+        #tanh most active in [-3,3]
+        return factor*np.tanh(3*(deltas-avg)/max_deviation) + avg
+    elif method.lower()=='sux':
+        return np.ones(deltas)
+    else:
+        raise Exception('reduce_condition received bad method parameter')
+def vehicle_Qinv(times, rho=1):
+    """Creates the precision matrix for smoothing the vehicle with velocity
+    covariance rho.
+    """
+    delta_times = times[1:]-times[:-1]
+    dts = delta_times.astype(float)/1e9/t_scale
+    dts = reduce_condition(dts, method=conditioner)
+    cond = q_cond(dts, dim=2)
+    if cond > 1e3:
+        warnings.warn(ConditionWarning(cond))
+    elif cond <1:
+        raise RuntimeError('Calculated invalid condition number for Q')
+    Qs = [t_scale**3*rho*np.array([[dt, dt**2/2],[dt**2/2, dt**3/3]]) for dt in dts]
+    Qinvs = [np.linalg.inv(Q) for Q in Qs]
+    return scipy.sparse.block_diag(Qinvs)
+
+def vehicle_Q(times, rho=1):
+    """Creates the covariance matrix for smoothing the vehicle with velocity
+    covariance rho.
+    """
+    delta_times = times[1:]-times[:-1]
+    dts = delta_times.astype(float)/1e9/t_scale
+    dts = reduce_condition(dts, method=conditioner)
+    cond = q_cond(dts, dim=2)
+    if cond > 1e3:
+        warnings.warn(ConditionWarning(cond))
+    elif cond <1:
+        raise RuntimeError('Calculated invalid condition number for Q')
+    Qs = [t_scale**3*rho*np.array([[dt, dt**2/2],[dt**2/2, dt**3/3]]) for dt in dts]
+    return scipy.sparse.block_diag(Qs)
+
+def vehicle_G(times):
+    """Creates the update matrix for smoothing the vehicle"""
+    delta_times = times[1:]-times[:-1]
+    m = len(delta_times)*2
+    dts = delta_times.astype(float)/1e9/t_scale # raw dts in nanoseconds
+    dts = reduce_condition(dts, method=conditioner)
+    negGs = [np.array([[-1, 0],[-dt, -1]]) for dt in dts]
+    negG = scipy.sparse.block_diag(negGs)
+    posG = scipy.sparse.eye(m)
+    append_me = scipy.sparse.coo_matrix(([],([],[])), (m,2))
+    return (scipy.sparse.hstack((negG, append_me))
+            + scipy.sparse.hstack((append_me,posG)))
+
+def depth_Qinv(depths, rho=1):
+    """Creates the precision matrix for smoothing the currint with depth
+    covariance eta.
+    """
+    delta_depths = depths[1:]-depths[:-1]
+    dds = reduce_condition(delta_depths, method=conditioner)
+    cond = q_cond(dds, dim=1)
+    if cond > 1e3:
+        warnings.warn(ConditionWarning(cond))
+    elif cond <1:
+        raise RuntimeError('Calculated invalid condition number for Q')
+    return t_scale**(-2)/rho*scipy.sparse.diags(1/dds, dtype=float)
+
+def depth_Q(depths, rho=1):
+    """Creates the covariance matrix for smoothing the currint with depth
+    covariance eta.
+    """
+    delta_depths = depths[1:]-depths[:-1]
+    dds = reduce_condition(delta_depths, method=conditioner)
+    cond = q_cond(dds, dim=1)
+    if cond > 1e3:
+        warnings.warn(ConditionWarning(cond))
+    elif cond <1:
+        raise RuntimeError('Calculated invalid condition number for Q')
+    return t_scale**(2)*rho*scipy.sparse.diags(dds, dtype=float)
+
+def depth_G(depths):
+    """Creates the update matrix for smoothing the current"""
+    length = len(depths)
+    return scipy.sparse.spdiags((-np.ones(length), np.ones(length)),
+                                diags=(0,1), m=length-1, n=length)
 
 # %% Data selection
 def get_zttw(ddat, direction='north'):
