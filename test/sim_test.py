@@ -59,7 +59,7 @@ print(f'LBFGS took {sol.nit} iterations and converged: {sol.success}')
 
 #viz.current_plot(sol.x, x_sol, adat, times, depths)
 ax1 = viz.vehicle_speed_plot(sol.x, ddat, times, depths, direction='both',
-                             x_sol=x_sol, x_true=x)
+                             x_sol=x_sol, x_true=x, ttw=False)
 ax2 = viz.inferred_ttw_error_plot(sol.x, adat, ddat, direction='both',
                                   x_true=x, x_sol=x_sol)
 ax3 = viz.current_depth_plot(sol.x, adat, ddat, direction='both', x_true=x,

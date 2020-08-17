@@ -189,17 +189,17 @@ def solve_mats(prob, verbose=False):
 
     if verbose:
         r100 = np.array(random.sample(range(0, 4*m+2*n), 100))
-        r1000 = np.array(random.sample(range(0, 4*m+2*n), 1000))
-        c1 = np.linalg.cond(kalman_mat.todense()[r1000[:,None],r1000])
+        # r1000 = np.array(random.sample(range(0, 4*m+2*n), 1000))
+        # c1 = np.linalg.cond(kalman_mat.todense()[r1000[:,None],r1000])
         c2 = np.linalg.cond(kalman_mat.todense()[r100[:,None],r100])
-        c3 = np.linalg.cond(A.todense()[r1000[:,None],r1000])
+        # c3 = np.linalg.cond(A.todense()[r1000[:,None],r1000])
         c4 = np.linalg.cond(A.todense()[r100[:,None],r100])
-        print('Condition number of kalman matrix (1000x1000): ',
-              f'{c1:e}')
+        # print('Condition number of kalman matrix (1000x1000): ',
+        #       f'{c1:e}')
         print('Condition number of kalman matrix (100x100): ',
               f'{c2:e}')
-        print('Condition number of A (1000x1000): ',
-              f'{c3:e}')
+        # print('Condition number of A (1000x1000): ',
+        #       f'{c3:e}')
         print('Condition number of A (100x100): ',
               f'{c4:e}')
 
