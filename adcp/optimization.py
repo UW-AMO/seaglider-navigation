@@ -639,7 +639,8 @@ def solve(prob, method='L-BFGS-B'):
     x0 = init_x(prob)
     ffunc = f(prob)
     gfunc = g(prob)
-    sol = minimize(ffunc, x0, method=method, jac=gfunc,
+    hfunc = h(prob)
+    sol = minimize(ffunc, x0, method=method, jac=gfunc, hess=hfunc,
                    options={'maxiter':50000, 'maxfun':50000, 'disp':True})
     m = len(times)
     n = len(depths)
