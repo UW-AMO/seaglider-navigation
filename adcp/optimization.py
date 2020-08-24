@@ -279,7 +279,6 @@ def _f_adcp(prob):
     EC = mb.ec_select(m, n)
     NC = mb.nc_select(m, n)
     Vs = mb.v_select(m)
-    Xs = mb.x_select(m)
     e_adcp_select = B_adcp @ EC - A_adcp @ Vs @ EV
     n_adcp_select = B_adcp @ NC - A_adcp @ Vs @ NV
     def f_eval(X):
@@ -298,9 +297,6 @@ def _f_gps(prob):
     n = len(prob.depths)
     EV = mb.ev_select(m, n)
     NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
-    Vs = mb.v_select(m)
     Xs = mb.x_select(m)
 
     e_gps_select = A_gps @ Xs @ EV
@@ -320,9 +316,6 @@ def _f_range(prob):
     n = len(prob.depths)
     EV = mb.ev_select(m, n)
     NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
-    Vs = mb.v_select(m)
     Xs = mb.x_select(m)
 
     e_range_select = A_range @ Xs @ EV 
@@ -394,7 +387,6 @@ def _g_adcp(prob):
 
     m = len(prob.times)
     n = len(prob.depths)
-    Xs = mb.x_select(m)
     Vs = mb.v_select(m)
     EV = mb.ev_select(m, n)
     NV = mb.nv_select(m, n)
@@ -423,7 +415,6 @@ def _g_gps(prob):
     m = len(prob.times)
     n = len(prob.depths)
     Xs = mb.x_select(m)
-    Vs = mb.v_select(m)
     EV = mb.ev_select(m, n)
     NV = mb.nv_select(m, n)
     EC = mb.ec_select(m, n)
