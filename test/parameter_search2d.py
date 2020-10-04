@@ -6,6 +6,8 @@ Created on Sun Apr  5 11:04:36 2020
 """
 import math
 from itertools import product, repeat
+from typing import Tuple
+import random
 
 import numpy as np
 from matplotlib import colors
@@ -18,14 +20,12 @@ from adcp import optimization as op
 from adcp import viz
 
 # %% ...or simulate new data
-rho_t = 1e-1
-rho_a = 1e-1
-rho_g = 1e+1
+rho_t = 1e-2
+rho_a = 1e-2
+rho_g = 1e-0
 
-rho_c = 1e-1
-rho_v = 1e-1
-sim_rho_v = 1e-5
-sim_rho_c = 1e-5
+sim_rho_v = 0
+sim_rho_c = 0
 sp = sim.SimParams(rho_t=rho_t, rho_a=rho_a, rho_g=rho_g, rho_v=sim_rho_v,
                     rho_c=sim_rho_c,
                     sigma_t=.4, sigma_c=.3, n_timepoints=2000,
@@ -36,8 +36,11 @@ depths = dp.depthpoints(adat, ddat)
 times = dp.timepoints(adat, ddat)
 
 # %% No Range
-rho_vs=rho_v * np.logspace(-8,0,17)
-rho_cs=rho_c * np.logspace(-2,0,3)
+rho_g = rho_g
+rho_c = 1e2
+rho_v = 1e2
+rho_vs=rho_v * np.logspace(-5,0,1)
+rho_cs=rho_c * np.logspace(-5,0,1)
 rho_g=rho_g
 rho_t=rho_t
 rho_a=rho_a
@@ -56,6 +59,8 @@ plt.figure()
 for ((i, rv),(j, rc)) in product(enumerate(rho_vs), enumerate(rho_cs)):
     prob=op.GliderProblem(ddat, adat, rho_v=rv, rho_c=rc, rho_g=rho_g,
                         rho_t=rho_t, rho_a=rho_a, rho_r=rho_r)
+
+    print(i, ' ', j)
     # %%  Solve problem
     seed = 3453
     x_sol, (NV, EV, NC, EC, Xs, Vs) = op.backsolve(prob)
@@ -115,6 +120,21 @@ def plot_bundle(sol_x):
     ax5 = viz.vehicle_posit_plot(sol_x, ddat, times, depths,
                                 x_true=x, dead_reckon=True)
 
+def check_condition(prob: op.GliderProblem) -> Tuple:
+    """Checks condition on matrices for glider problem"""
+    m = len(prob.times)
+    n = len(prob.depths)
+    kalman_mat = op.gen_kalman_mat(prob)
+    A, _ = op.solve_mats(prob)
+
+    r100 = np.array(random.sample(range(0, 4*m+2*n), 100))
+    r1000 = np.array(random.sample(range(0, 4*m+2*n), 1000))
+    c1 = np.linalg.cond(kalman_mat.todense()[r100[:,None],r100])
+    c2 = np.linalg.cond(A.todense()[r100[:,None],r100])
+    c3 = np.linalg.cond(kalman_mat.todense()[r1000[:,None],r1000])
+    c4 = np.linalg.cond(A.todense()[r1000[:,None],r1000])
+
+    return c1, c2, c3, c4
 
 print(f'Best Navigational Solution: rho_v={rho_vs[i1]}, rho_c={rho_cs[j1]}')
 print(f"""For measurement errors:
@@ -125,11 +145,27 @@ print(f"""For measurement errors:
     ADCP meawsurement: {rho_a}
 Creates path error: {errmap[0, i1, j1]}
 and current error: {errmap[1, i1, j1]}""")
-    
+prob=op.GliderProblem(ddat, adat, rho_v=rho_vs[i2], rho_c=rho_cs[j2],
+                rho_g=rho_g, rho_t=rho_t, rho_a=rho_a, rho_r=rho_r)
+c1, c2, c3, c4 = check_condition(prob)
+print('100x100 sample of kalman matrix has condition number ', c1)
+print('100x100 sample of backsolve matrix has condition number ', c2)
+print('1000x1000 sample of kalman matrix has condition number ', c3)
+print('1000x1000 sample of backsolve matrix has condition number ', c4)
+
+
 plot_bundle(nav_x)
 if (i1 != i2) or (j1 != j2):
     print(f'Best Current Solution: rho_v={rho_vs[i2]}, rho_c={rho_cs[j2]}')
     plot_bundle(curr_x)
+    prob=op.GliderProblem(ddat, adat, rho_v=rho_vs[i2], rho_c=rho_cs[j2],
+                    rho_g=rho_g, rho_t=rho_t, rho_a=rho_a, rho_r=rho_r)
+    c1, c2, c3, c4 = check_condition(prob)
+    print('100x100 sample of kalman matrix has condition number ', c1)
+    print('100x100 sample of backsolve matrix has condition number ', c2)
+    print('1000x1000 sample of kalman matrix has condition number ', c3)
+    print('1000x1000 sample of backsolve matrix has condition number ', c4)
+
 else:
     print('... and it\'s also the best current solution')
 # %%
