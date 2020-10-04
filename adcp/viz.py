@@ -50,14 +50,21 @@ def inferred_adcp_error_plot(solx, adat, ddat, direction='north', x_true=None,
     deepest = depth_df.loc[turnaround, 'depth']
 
     A, B = mb.adcp_select(times, depths, ddat, adat)
-    sinking_meas = zadcp[(B @ depths < deepest) & (B @ depths >0)]
-    sinking_depths = depths[np.array(B.sum(axis=0)).squeeze().astype(bool)
-                            & (depths < deepest)
-                            & (depths >0)]
-    rising_meas = zadcp[(B @ depths > deepest) & (B @ depths < deepest*2)]
-    rising_depths = depths[np.array(B.sum(axis=0)).squeeze().astype(bool)
-                            & (depths > deepest)
-                            & (depths < deepest*2)] 
+    adcp_order = (B @ range(B.shape[1])).astype(int)
+    adcp_depths = depths[adcp_order]
+    sinking_inds = [
+        (adcp_depths < deepest)
+        & (adcp_depths >0)
+    ]
+    rising_inds = [
+        (adcp_depths < deepest*2)
+        & (adcp_depths > deepest)
+    ]
+    sinking_meas = zadcp[sinking_inds]
+    sinking_depths = adcp_depths[sinking_inds]
+
+    rising_meas = zadcp[rising_inds]
+    rising_depths = adcp_depths[rising_inds]
     ln0 = ax.plot(sinking_meas, sinking_depths, ':', color='gold',
                   label='Descending-measured')
     ln1 = ax.plot(rising_meas, 2*deepest - rising_depths, ':', color='purple',
@@ -65,19 +72,20 @@ def inferred_adcp_error_plot(solx, adat, ddat, direction='north', x_true=None,
     lines = [ln0, ln1]
 
     adcp_lbfgs = (B @ XC - A @ Vs @ XV) @ solx
-    sinking_lbfgs = adcp_lbfgs[(B @ depths < deepest) & (B @ depths >0)]
-    rising_lbfgs = adcp_lbfgs[(B @ depths > deepest) & (B @ depths < deepest*2)]
+    sinking_lbfgs = adcp_lbfgs[sinking_inds]
+    rising_lbfgs = adcp_lbfgs[rising_inds]
     ln2 = ax.plot(sinking_lbfgs, sinking_depths, '--', color='deeppink',
                   label='Descending-LBFGS')
     ln3 = ax.plot(rising_lbfgs, 2*deepest - rising_depths, '--',
                   color='chartreuse', label='Ascending-LBFGS')
 
+
     lines = [*lines, ln2, ln3]
 
     if x_true is not None:
         adcp_true = (B @ XC - A @ Vs @ XV) @ x_true
-        sinking_true = adcp_true[(B @ depths < deepest) & (B @ depths >0)]
-        rising_true = adcp_true[(B @ depths > deepest) & (B @ depths < deepest*2)]
+        sinking_true = adcp_true[sinking_inds]
+        rising_true = adcp_true[rising_inds]
         ln4 = ax.plot(sinking_true, sinking_depths, '-', color='maroon',
                       label='Descending-true')
         ln5 = ax.plot(rising_true, 2*deepest - rising_depths, '-',
@@ -86,8 +94,8 @@ def inferred_adcp_error_plot(solx, adat, ddat, direction='north', x_true=None,
 
     if x_sol is not None:
         adcp_back = (B @ XC - A @ Vs @ XV) @ x_sol
-        sinking_back = adcp_back[(B @ depths < deepest) & (B @ depths >0)]
-        rising_back = adcp_back[(B @ depths > deepest) & (B @ depths < deepest*2)]
+        sinking_back = adcp_back[sinking_inds]
+        rising_back = adcp_back[rising_inds]
         ln6 = ax.plot(sinking_back, sinking_depths, '--', color='xkcd:pumpkin',
                       label='Descending-baksolve')
         ln7 = ax.plot(rising_back, 2*deepest - rising_depths, '--',
