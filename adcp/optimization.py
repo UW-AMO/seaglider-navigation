@@ -108,12 +108,13 @@ def backsolve(prob):
     return x, (NV, EV, NC, EC, Xs, Vs)
 
 def time_rescale(x, t_s, m, n):
-    """Rescales the velocity measurements in a solution vector.
+    """Rescales the velocity measurements in a solution vector to undo
+    scaling factor t_s
 
     Parameters:
         x (numpy array): Previous solution
-        t_s (float): timescale (e.g. 1e3 for kiloseconds, 1e-3 for
-            milliseconds)
+        t_s (float): timescale to remove(e.g. 1e3 for kiloseconds, 1e-3
+            for milliseconds)
         m (int) : number of timepoints
         n (int) : number of depthpoints
     """

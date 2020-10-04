@@ -222,16 +222,16 @@ def sim_vehicle_path(depth_df, curr_df, sim_params, method='sin'):
     delta_t = (depth_df.index-depth_df.index[0]).values
     delta_t = np.array([float(dt) for dt in delta_t])
     if method.lower() in ['sin', 'curved']:
-        t_scale = 2*np.pi/total_time
+        t_to_x = 2*np.pi/total_time
         e_scale_down = sim_params.sigma_t * np.random.normal()
         e_scale_up = sim_params.sigma_t * np.random.normal()
         n_scale_down = sim_params.sigma_t * np.random.normal()
         n_scale_up = sim_params.sigma_t * np.random.normal()
         midpoint_idx = len(delta_t)//2
-        ttw_e_down = e_scale_down * np.sin(delta_t[:midpoint_idx]*t_scale)
-        ttw_e_up = e_scale_up * np.sin(delta_t[midpoint_idx:]*t_scale)
-        ttw_n_down = n_scale_down * np.sin(delta_t[:midpoint_idx]*t_scale)
-        ttw_n_up = n_scale_up * np.sin(delta_t[midpoint_idx:]*t_scale)
+        ttw_e_down = e_scale_down * np.sin(delta_t[:midpoint_idx]*t_to_x)
+        ttw_e_up = e_scale_up * np.sin(delta_t[midpoint_idx:]*t_to_x)
+        ttw_n_down = n_scale_down * np.sin(delta_t[:midpoint_idx]*t_to_x)
+        ttw_n_up = n_scale_up * np.sin(delta_t[midpoint_idx:]*t_to_x)
         ttw_e = np.hstack((ttw_e_down, ttw_e_up))
         ttw_n = np.hstack((ttw_n_down, ttw_n_up))
     elif method.lower() =='linear':
