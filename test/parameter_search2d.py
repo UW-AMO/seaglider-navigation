@@ -37,10 +37,10 @@ times = dp.timepoints(adat, ddat)
 
 # %% No Range
 rho_g = rho_g
-rho_c = 1e2
-rho_v = 1e2
-rho_vs=rho_v * np.logspace(-5,0,1)
-rho_cs=rho_c * np.logspace(-5,0,1)
+rho_c = 1e4
+rho_v = 1e4
+rho_vs=rho_v * np.logspace(-8,0,6)
+rho_cs=rho_c * np.logspace(-8,0,6)
 rho_g=rho_g
 rho_t=rho_t
 rho_a=rho_a
@@ -70,8 +70,15 @@ for ((i, rv),(j, rc)) in product(enumerate(rho_vs), enumerate(rho_cs)):
     h = op.h(prob)
     # %% Plotting
 
-    path_error = np.linalg.norm(((Xs @ NV) + (Xs @ EV)) @ (x_sol-x))**2
-    current_error = np.linalg.norm((EC + NC) @ (x_sol-x))**2
+    err = x_sol-x
+    path_error = (
+        np.linalg.norm(Xs @ NV @ err)**2 + 
+        np.linalg.norm(Xs @ EV @ err)**2
+    )
+    current_error = (
+        np.linalg.norm(EC @ err)**2 +
+        np.linalg.norm(NC @ err)**2
+    )
     errmap[0,i,j] = path_error
     errmap[1,i,j] = current_error
     paths[i][j] = x_sol
