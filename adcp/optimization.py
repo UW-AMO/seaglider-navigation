@@ -19,8 +19,8 @@ import numpy as np
 import scipy.sparse
 from scipy.optimize import minimize
 
-from . import matbuilder as mb
-from . import dataprep as dp
+from adcp import matbuilder as mb
+from adcp import dataprep as dp
 
 class GliderProblem:
     defaults = dict(rho_v=1, rho_c=1, rho_t=1, rho_a=1, rho_g=1, rho_r=0)
@@ -69,7 +69,10 @@ def initial_kinematics(times, ddat):
     last_point = ddat['gps'].iloc[-1].to_numpy()
     first_time = ddat['gps'].index[0]
     last_time = ddat['gps'].index[-1]
-    speed = (last_point-first_point)/(last_time-first_time).seconds
+    if len(ddat['gps']) == 1:
+        speed = [0,0]
+    else:
+        speed = (last_point-first_point)/(last_time-first_time).seconds
     e0[:,0] = speed[0]
     n0[:,0] = speed[1]
 
@@ -105,12 +108,13 @@ def backsolve(prob):
     return x, (NV, EV, NC, EC, Xs, Vs)
 
 def time_rescale(x, t_s, m, n):
-    """Rescales the velocity measurements in a solution vector.
+    """Rescales the velocity measurements in a solution vector to undo
+    scaling factor t_s
 
     Parameters:
         x (numpy array): Previous solution
-        t_s (float): timescale (e.g. 1e3 for kiloseconds, 1e-3 for
-            milliseconds)
+        t_s (float): timescale to remove(e.g. 1e3 for kiloseconds, 1e-3
+            for milliseconds)
         m (int) : number of timepoints
         n (int) : number of depthpoints
     """
@@ -174,7 +178,7 @@ def solve_mats(prob, verbose=False):
     e_gps_select = A_gps @ Xs @ EV
     n_gps_select = A_gps @ Xs @ NV
 
-    A = (  kalman_mat
+    A = (  2* kalman_mat
          + 1/(prob.rho_t)*n_ttw_select.T @ n_ttw_select
          + 1/(prob.rho_t)*e_ttw_select.T @ e_ttw_select
          + 1/(prob.rho_a)*n_adcp_select.T @ n_adcp_select
@@ -186,17 +190,17 @@ def solve_mats(prob, verbose=False):
 
     if verbose:
         r100 = np.array(random.sample(range(0, 4*m+2*n), 100))
-        r1000 = np.array(random.sample(range(0, 4*m+2*n), 1000))
-        c1 = np.linalg.cond(kalman_mat.todense()[r1000[:,None],r1000])
+        # r1000 = np.array(random.sample(range(0, 4*m+2*n), 1000))
+        # c1 = np.linalg.cond(kalman_mat.todense()[r1000[:,None],r1000])
         c2 = np.linalg.cond(kalman_mat.todense()[r100[:,None],r100])
-        c3 = np.linalg.cond(A.todense()[r1000[:,None],r1000])
+        # c3 = np.linalg.cond(A.todense()[r1000[:,None],r1000])
         c4 = np.linalg.cond(A.todense()[r100[:,None],r100])
-        print('Condition number of kalman matrix (1000x1000): ',
-              f'{c1:e}')
+        # print('Condition number of kalman matrix (1000x1000): ',
+        #       f'{c1:e}')
         print('Condition number of kalman matrix (100x100): ',
               f'{c2:e}')
-        print('Condition number of A (1000x1000): ',
-              f'{c3:e}')
+        # print('Condition number of A (1000x1000): ',
+        #       f'{c3:e}')
         print('Condition number of A (100x100): ',
               f'{c4:e}')
 
@@ -235,9 +239,9 @@ def gen_kalman_mat(prob):
     EC = mb.ec_select(m, n)
     NC = mb.nc_select(m, n)
     kalman_mat = 1/2* (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
-                  NV.T @ Gv.T @ Qvinv @ Gv @ NV +
-                  EC.T @ Gc.T @ Qcinv @ Gc @ EC +
-                  NC.T @ Gc.T @ Qcinv @ Gc @ NC)
+                       NV.T @ Gv.T @ Qvinv @ Gv @ NV +
+                       EC.T @ Gc.T @ Qcinv @ Gc @ EC +
+                       NC.T @ Gc.T @ Qcinv @ Gc @ NC)
     kalman_mat = (kalman_mat+kalman_mat.T)/2
 
     return kalman_mat
@@ -623,18 +627,19 @@ def backsolve_test(x0, prob):
     v2 = grad_func(x0)
     return v1, v2, np.linalg.norm(v1), np.linalg.norm(v1-v2)
 
-def solve(prob, method='L-BFGS-B'):
+def solve(prob, method='L-BFGS-B', maxiter=50000, maxfun=50000):
     """Solve the ADCP navigation problem for given data."""
     times = dp.timepoints(prob.adat, prob.ddat)
     depths = dp.depthpoints(prob.adat, prob.ddat)
     x0 = init_x(prob)
+    m = len(times)
+    n = len(depths)
+    x0 = time_rescale(x0, 1/mb.t_scale, m, n)
     ffunc = f(prob)
     gfunc = g(prob)
     hfunc = h(prob)
     sol = minimize(ffunc, x0, method=method, jac=gfunc, hess=hfunc,
-                   options={'maxiter':50000, 'maxfun':50000, 'disp':True})
-    m = len(times)
-    n = len(depths)
+                   options={'maxiter':maxiter, 'maxfun':maxfun, 'disp':True})
     sol.x = time_rescale(sol.x, mb.t_scale, m, n)
 
     return sol

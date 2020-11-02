@@ -148,7 +148,7 @@ def sim_current_profile(depths, sim_params, method='cos'):
         pandas DataFrame of current (meters/sec) indexed by depth (meters)
     """
     all_depths= np.array(depths)
-    if method.lower() =='cos':
+    if method.lower() in ['cos', 'curved']:
         x_scale = np.pi/(sim_params.max_depth)
         e_scale_down = sim_params.sigma_c * np.random.normal()
         e_scale_up = sim_params.sigma_c * np.random.normal()
@@ -221,17 +221,17 @@ def sim_vehicle_path(depth_df, curr_df, sim_params, method='sin'):
     total_time = float((depth_df.index[-1]-depth_df.index[0]).value)
     delta_t = (depth_df.index-depth_df.index[0]).values
     delta_t = np.array([float(dt) for dt in delta_t])
-    if method.lower() == 'sin':
-        t_scale = 2*np.pi/total_time
+    if method.lower() in ['sin', 'curved']:
+        t_to_x = 2*np.pi/total_time
         e_scale_down = sim_params.sigma_t * np.random.normal()
         e_scale_up = sim_params.sigma_t * np.random.normal()
         n_scale_down = sim_params.sigma_t * np.random.normal()
         n_scale_up = sim_params.sigma_t * np.random.normal()
         midpoint_idx = len(delta_t)//2
-        ttw_e_down = e_scale_down * np.sin(delta_t[:midpoint_idx]*t_scale)
-        ttw_e_up = e_scale_up * np.sin(delta_t[midpoint_idx:]*t_scale)
-        ttw_n_down = n_scale_down * np.sin(delta_t[:midpoint_idx]*t_scale)
-        ttw_n_up = n_scale_up * np.sin(delta_t[midpoint_idx:]*t_scale)
+        ttw_e_down = e_scale_down * np.sin(delta_t[:midpoint_idx]*t_to_x)
+        ttw_e_up = e_scale_up * np.sin(delta_t[midpoint_idx:]*t_to_x)
+        ttw_n_down = n_scale_down * np.sin(delta_t[:midpoint_idx]*t_to_x)
+        ttw_n_up = n_scale_up * np.sin(delta_t[midpoint_idx:]*t_to_x)
         ttw_e = np.hstack((ttw_e_down, ttw_e_up))
         ttw_n = np.hstack((ttw_n_down, ttw_n_up))
     elif method.lower() =='linear':
@@ -241,7 +241,7 @@ def sim_vehicle_path(depth_df, curr_df, sim_params, method='sin'):
         last_e = sim_params.sigma_t * np.random.normal(size=1)
         ttw_n = np.linspace(first_n[0], last_n[0], len(delta_t))
         ttw_e = np.linspace(first_e[0], last_e[0], len(delta_t))
-    if method.lower() == 'constant':
+    elif method.lower() == 'constant':
         e_scale = sim_params.sigma_t * np.random.normal()
         n_scale = sim_params.sigma_t * np.random.normal()
         ttw_e = np.repeat(e_scale, len(delta_t))
@@ -285,9 +285,9 @@ def select_times(depth_df, sim_params):
     if n_timepoints < 3:
         raise ValueError('need at least 3 timepoints to assign')
     if sim_params.measure_points['gps'] == 'first':
-        gps_times = [timepoints[0]]
+        gps_times = timepoints[0:1]
     elif sim_params.measure_points['gps'] == 'last':
-        gps_times = [timepoints[-1]]
+        gps_times = timepoints[-2:-1]
     elif sim_params.measure_points['gps'] == 'endpoints':
         gps_times = timepoints[[0,-1]]
     elif (sim_params.measure_points['range']
@@ -340,7 +340,7 @@ def sim_measurement_noise(depth_df, adcp_df, curr_df, v_df, ttw_times,
             in this module
 
     Returns:
-        Tuple of dataframes of northward TTW velocity, eastward TTW
+        Dict of dataframes of northward TTW velocity, eastward TTW
             velocity, n/e adcp, n/e gps, and range, followed by range
             posits, the positions of the range measurement beacons
     """
@@ -377,8 +377,9 @@ def sim_measurement_noise(depth_df, adcp_df, curr_df, v_df, ttw_times,
                      +(range_posits[:,1]-v_df.loc[range_times, 'y'])**2)
     z_range = np.random.normal(loc=ranges, scale=sim_params.rho_r)
 
-    return (z_ttw_n, z_ttw_e, z_adcp_n, z_adcp_e, z_gps_n, z_gps_e,
-            z_range, range_posits)
+    return dict(z_ttw_n=z_ttw_n, z_ttw_e=z_ttw_e, z_adcp_n=z_adcp_n,
+                z_adcp_e=z_adcp_e, z_gps_n=z_gps_n, z_gps_e=z_gps_e,
+                z_range=z_range, range_posits=range_posits)
 
 # %%
 def construct_load_dicts(depth_df, adcp_df, measurements, ttw_times,
@@ -388,7 +389,7 @@ def construct_load_dicts(depth_df, adcp_df, measurements, ttw_times,
 
     Arguments:
         depth_df (pandas DataFrame): depth indexed by time
-        measurements (Tuple of numpy arrays): simulated measurements, a
+        measurements (dict of numpy arrays): simulated measurements, a
             result from sim_measurement_noise
         ttw_times (iterable of np.datetime64): times the hydrodynamic
             model measures
@@ -401,8 +402,14 @@ def construct_load_dicts(depth_df, adcp_df, measurements, ttw_times,
     Returns:
         Tuple of (dive data, adcp data)
     """
-    (z_ttw_n, z_ttw_e, z_adcp_n, z_adcp_e,
-         z_gps_n, z_gps_e, z_range, range_posits) = measurements
+    z_ttw_n = measurements['z_ttw_n']
+    z_ttw_e = measurements['z_ttw_e']
+    z_adcp_n = measurements['z_adcp_n']
+    z_adcp_e = measurements['z_adcp_e']
+    z_gps_n = measurements['z_gps_n']
+    z_gps_e = measurements['z_gps_e']
+    z_range = measurements['z_range']
+    range_posits = measurements['range_posits']
 
     gps_df = pd.DataFrame({'gps_nx_east':z_gps_e, 'gps_ny_north':z_gps_n},
                           index=pd.Index(gps_times, name='time'))

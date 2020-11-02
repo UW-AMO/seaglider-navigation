@@ -4,6 +4,7 @@ Created on Sun Dec 22 21:25:07 2019
 
 @author: 600301
 """
+import warnings
 
 import scipy.sparse
 import scipy.interpolate
@@ -82,7 +83,7 @@ def adcp_select(times, depths, ddat, adat):
     adcp_depths = adat['Z'].copy()
     adcp_depths[:,rising_times] = 2*deepest - adat['Z'][:,rising_times]
     d_list = list(depths)
-    idxdepth = [d_list.index(d) for d in adcp_depths[valid_obs]]
+    idxdepth = [d_list.index(d) for d in adcp_depths.T[valid_obs.T]]
     mat_shape = (len(idxdepth), len(depths))
     B = scipy.sparse.coo_matrix((np.ones(len(idxdepth)),
                                  (range(len(idxdepth)), idxdepth)),
@@ -130,6 +131,31 @@ def range_select(times, ddat):
     return A
 
 # %% Kalman Process Matrices
+class ConditionWarning(Warning):
+    def __init__(self, cond):
+        self.msg = f'The condition number of covariance matrix is high: {cond}'
+
+def q_cond(dts, dim=2):
+    """Calculates the condition number of a block diagonal covariance matrix
+    with intervals dts
+
+    Returns:
+        float: Condition number of Q
+    """
+    min_dt = min(dts)
+    max_dt = max(dts)
+    if dim == 2:
+        max_disc = 1+max_dt**2/3+max_dt**4/9
+        max_eig = 1/2 * (max_dt+max_dt **3/3 + max_dt * np.sqrt(max_disc))
+        min_disc = 1+min_dt**2/3+min_dt**4/9
+        min_eig = 1/2 * (min_dt+min_dt **3/3 - min_dt * np.sqrt(min_disc))
+        return max_eig / min_eig
+    elif dim == 1:
+        return max_dt/min_dt
+    else:
+        raise ValueError('Can only calculate condition number of 1 or 2'
+                         'dimensional kalman smoothing covariance.')
+
 def reduce_condition(deltas, method=None, minmax_ratio=.2):
     avg = deltas.mean()
     if method is None or method.lower()=='none':
@@ -137,8 +163,10 @@ def reduce_condition(deltas, method=None, minmax_ratio=.2):
     elif method.lower()=='avg':
         return avg*np.ones(len(deltas))
     elif method.lower()=='tanh':
-        factor= (1-minmax_ratio)/(1+minmax_ratio)*avg
-        return factor*np.tanh(deltas) + avg
+        factor= minmax_ratio*avg
+        max_deviation = max(*abs(deltas-avg),1e-3)
+        #tanh most active in [-3,3]
+        return factor*np.tanh(3*(deltas-avg)/max_deviation) + avg
     elif method.lower()=='sux':
         return np.ones(deltas)
     else:
@@ -150,6 +178,11 @@ def vehicle_Qinv(times, rho=1):
     delta_times = times[1:]-times[:-1]
     dts = delta_times.astype(float)/1e9/t_scale
     dts = reduce_condition(dts, method=conditioner)
+    cond = q_cond(dts, dim=2)
+    if cond > 1e3:
+        warnings.warn(ConditionWarning(cond))
+    elif cond <1:
+        raise RuntimeError('Calculated invalid condition number for Q')
     Qs = [t_scale**3*rho*np.array([[dt, dt**2/2],[dt**2/2, dt**3/3]]) for dt in dts]
     Qinvs = [np.linalg.inv(Q) for Q in Qs]
     return scipy.sparse.block_diag(Qinvs)
@@ -161,6 +194,11 @@ def vehicle_Q(times, rho=1):
     delta_times = times[1:]-times[:-1]
     dts = delta_times.astype(float)/1e9/t_scale
     dts = reduce_condition(dts, method=conditioner)
+    cond = q_cond(dts, dim=2)
+    if cond > 1e3:
+        warnings.warn(ConditionWarning(cond))
+    elif cond <1:
+        raise RuntimeError('Calculated invalid condition number for Q')
     Qs = [t_scale**3*rho*np.array([[dt, dt**2/2],[dt**2/2, dt**3/3]]) for dt in dts]
     return scipy.sparse.block_diag(Qs)
 
@@ -168,7 +206,7 @@ def vehicle_G(times):
     """Creates the update matrix for smoothing the vehicle"""
     delta_times = times[1:]-times[:-1]
     m = len(delta_times)*2
-    dts = delta_times.astype(float)/1e9/t_scale
+    dts = delta_times.astype(float)/1e9/t_scale # raw dts in nanoseconds
     dts = reduce_condition(dts, method=conditioner)
     negGs = [np.array([[-1, 0],[-dt, -1]]) for dt in dts]
     negG = scipy.sparse.block_diag(negGs)
@@ -183,6 +221,11 @@ def depth_Qinv(depths, rho=1):
     """
     delta_depths = depths[1:]-depths[:-1]
     dds = reduce_condition(delta_depths, method=conditioner)
+    cond = q_cond(dds, dim=1)
+    if cond > 1e3:
+        warnings.warn(ConditionWarning(cond))
+    elif cond <1:
+        raise RuntimeError('Calculated invalid condition number for Q')
     return t_scale**(-2)/rho*scipy.sparse.diags(1/dds, dtype=float)
 
 def depth_Q(depths, rho=1):
@@ -191,6 +234,11 @@ def depth_Q(depths, rho=1):
     """
     delta_depths = depths[1:]-depths[:-1]
     dds = reduce_condition(delta_depths, method=conditioner)
+    cond = q_cond(dds, dim=1)
+    if cond > 1e3:
+        warnings.warn(ConditionWarning(cond))
+    elif cond <1:
+        raise RuntimeError('Calculated invalid condition number for Q')
     return t_scale**(2)*rho*scipy.sparse.diags(dds, dtype=float)
 
 def depth_G(depths):
@@ -198,9 +246,6 @@ def depth_G(depths):
     length = len(depths)
     return scipy.sparse.spdiags((-np.ones(length), np.ones(length)),
                                 diags=(0,1), m=length-1, n=length)
-
-
-
 
 # %% Data selection
 def get_zttw(ddat, direction='north'):
@@ -220,9 +265,9 @@ def get_zadcp(adat, direction='north'):
     """
     valid_obs = np.isfinite(adat['UV'])
     if direction in ['u','north', 'u_north']:
-        return adat['UV'][valid_obs].imag*t_scale
+        return adat['UV'].T[valid_obs.T].imag*t_scale
     elif direction in ['v','east', 'v_east']:
-        return adat['UV'][valid_obs].real*t_scale
+        return adat['UV'].T[valid_obs.T].real*t_scale
     else:
         return None
     
