@@ -21,9 +21,9 @@ from adcp import optimization as op
 from adcp import viz
 
 # %% Simulate new data
-rho_t = 1e-2
-rho_a = 1e-2
-rho_g = 1e-0
+rho_t = 1e-1
+rho_a = 1e-1
+rho_g = 1e1
 
 sim_rho_v = 0
 sim_rho_c = 0
@@ -37,11 +37,11 @@ depths = dp.depthpoints(adat, ddat)
 times = dp.timepoints(adat, ddat)
 
 # %% No Range
-rho_c = 1e5
-rho_v = 1e3
-n_steps = 11
-v_factors = np.logspace(0,0, n_steps)
-c_factors = np.logspace(-10,0, n_steps)
+rho_c = 1e-9
+rho_v = 1e4
+n_steps = 25
+v_factors = np.logspace(-11,0, n_steps)
+c_factors = np.logspace(0,0, n_steps)
 rho_g=rho_g
 rho_t=rho_t
 rho_a=rho_a
@@ -88,17 +88,18 @@ for i, (v_factor, c_factor) in enumerate(zip(v_factors, c_factors)):
 def show_errmap(rho_vs: float, rho_cs: float) -> None:
     fig = plt.figure()
     ax1 = fig.gca()
-    ln1 = ax1.loglog(rho_cs, errmap[0,:], c='blue', label='Position Error')
+    n = len(rho_cs)
+    labels = list(map(
+        lambda tup: f'{tup[0]:.1e}\n{tup[1]:.1e}', zip(rho_vs, rho_cs)
+    ))
+    ln1 = ax1.semilogy(labels, errmap[0,:], c='blue', label='Position Error')
     ax2 = ax1.twinx()
-    ln2 = ax2.loglog(rho_cs, errmap[1,:], c='red', label='Current Error')
+    ln2 = ax2.semilogy(labels, errmap[1,:], c='red', label='Current Error')
     ax1.set_title(f'Error for 1_D rho_v & rho_c search')
     ax1.set_ylabel('Position Error')
     ax2.set_ylabel('Current Error')
     ax1.set_xlabel('rho_v\n rho_c')
-    ax1.set_xticklabels(
-        map(lambda tup: f'{tup[0]:.1e}\n{tup[1]:.1e}',
-        zip(rho_vs, rho_cs))
-    )
+    ax1.set_xticks(ax1.get_xticks()[::4])
     lns = ln1+ln2
     labs = [l.get_label() for l in lns]
     ax1.legend(lns, labs, loc=0)

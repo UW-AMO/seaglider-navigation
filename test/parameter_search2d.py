@@ -20,9 +20,9 @@ from adcp import optimization as op
 from adcp import viz
 
 # %% ...or simulate new data
-rho_t = 1e-2
-rho_a = 1e-2
-rho_g = 1e-0
+rho_t = 1e-1
+rho_a = 1e-1
+rho_g = 1e-1
 
 sim_rho_v = 0
 sim_rho_c = 0
@@ -36,14 +36,13 @@ depths = dp.depthpoints(adat, ddat)
 times = dp.timepoints(adat, ddat)
 
 # %% No Range
-rho_g = rho_g
-rho_c = 1e4
-rho_v = 1e4
-rho_vs=rho_v * np.logspace(-8,0,6)
-rho_cs=rho_c * np.logspace(-8,0,6)
+rho_c = 1e0
+rho_v = 1e0
+rho_vs=rho_v * np.logspace(-2,-1,4)
+rho_cs=rho_c * np.logspace(-4,-3,4)
 rho_g=rho_g
-rho_t=rho_t
-rho_a=rho_a
+rho_t=rho_t*1e10
+rho_a=rho_a*1e6
 rho_r=0
 print(f"""Solution method covariances:
     vehicle process: {rho_v}
