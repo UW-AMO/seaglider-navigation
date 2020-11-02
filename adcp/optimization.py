@@ -283,7 +283,6 @@ def _f_adcp(prob):
     EC = mb.ec_select(m, n)
     NC = mb.nc_select(m, n)
     Vs = mb.v_select(m)
-    Xs = mb.x_select(m)
     e_adcp_select = B_adcp @ EC - A_adcp @ Vs @ EV
     n_adcp_select = B_adcp @ NC - A_adcp @ Vs @ NV
     def f_eval(X):
@@ -302,9 +301,6 @@ def _f_gps(prob):
     n = len(prob.depths)
     EV = mb.ev_select(m, n)
     NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
-    Vs = mb.v_select(m)
     Xs = mb.x_select(m)
 
     e_gps_select = A_gps @ Xs @ EV
@@ -324,9 +320,6 @@ def _f_range(prob):
     n = len(prob.depths)
     EV = mb.ev_select(m, n)
     NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
-    Vs = mb.v_select(m)
     Xs = mb.x_select(m)
 
     e_range_select = A_range @ Xs @ EV 
@@ -398,7 +391,6 @@ def _g_adcp(prob):
 
     m = len(prob.times)
     n = len(prob.depths)
-    Xs = mb.x_select(m)
     Vs = mb.v_select(m)
     EV = mb.ev_select(m, n)
     NV = mb.nv_select(m, n)
@@ -427,7 +419,6 @@ def _g_gps(prob):
     m = len(prob.times)
     n = len(prob.depths)
     Xs = mb.x_select(m)
-    Vs = mb.v_select(m)
     EV = mb.ev_select(m, n)
     NV = mb.nv_select(m, n)
     EC = mb.ec_select(m, n)
@@ -646,8 +637,8 @@ def solve(prob, method='L-BFGS-B', maxiter=50000, maxfun=50000):
     x0 = time_rescale(x0, 1/mb.t_scale, m, n)
     ffunc = f(prob)
     gfunc = g(prob)
-    print("Starting objective: ", ffunc(x0))
-    sol = minimize(ffunc, x0, method=method, jac=gfunc,
+    hfunc = h(prob)
+    sol = minimize(ffunc, x0, method=method, jac=gfunc, hess=hfunc,
                    options={'maxiter':maxiter, 'maxfun':maxfun, 'disp':True})
     sol.x = time_rescale(sol.x, mb.t_scale, m, n)
 
