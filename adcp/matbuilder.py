@@ -202,16 +202,24 @@ def vehicle_Q(times, rho=1):
     Qs = [t_scale**3*rho*np.array([[dt, dt**2/2],[dt**2/2, dt**3/3]]) for dt in dts]
     return scipy.sparse.block_diag(Qs)
 
-def vehicle_G(times):
+def vehicle_G(times, order=2):
     """Creates the update matrix for smoothing the vehicle"""
     delta_times = times[1:]-times[:-1]
-    m = len(delta_times)*2
     dts = delta_times.astype(float)/1e9/t_scale # raw dts in nanoseconds
     dts = reduce_condition(dts, method=conditioner)
-    negGs = [np.array([[-1, 0],[-dt, -1]]) for dt in dts]
+    if order == 2:
+        negGs = [np.array([[-1, 0],[-dt, -1]]) for dt in dts]
+    elif order == 3:
+        negGs = [np.array(
+            [[-1,       0,   0],
+            [-dt,      -1,   0],
+            [-dt**2/2, -dt, -1]]) for dt in dts]
+    else:
+        raise ValueError
     negG = scipy.sparse.block_diag(negGs)
+    m = len(delta_times)*order
     posG = scipy.sparse.eye(m)
-    append_me = scipy.sparse.coo_matrix(([],([],[])), (m,2))
+    append_me = scipy.sparse.coo_matrix(([],([],[])), (m,order))
     return (scipy.sparse.hstack((negG, append_me))
             + scipy.sparse.hstack((append_me,posG)))
 
