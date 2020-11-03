@@ -399,22 +399,24 @@ def nv_select(m, n):
     """
     return scipy.sparse.eye(2*m, 4*m+2*n, 2*m)
 
-def ec_select(m, n):
+def ec_select(m, n, order=2):
     """Creates a selection matrix for choosing indexes of X
     related to easterly current.
     
     Parameters:
         m (int) : number of timepoints
         n (int) : number of depthpoints
+        order (int) : order of vehicle smoothing. 2=velocity, 3=accel
     """
-    return scipy.sparse.eye(n, 4*m+2*n, 4*m)
+    return scipy.sparse.eye(n, 2*order*m+2*n, 2*order*m)
 
-def nc_select(m, n):
+def nc_select(m, n, order=2):
     """Creates a selection matrix for choosing indexes of X
     related to northerly current.
     
     Parameters:
         m (int) : number of timepoints
         n (int) : number of depthpoints
+        order (int) : order of vehicle smoothing. 2=velocity, 3=accel
     """
-    return scipy.sparse.eye(n, 4*m+2*n, 4*m+n)
+    return scipy.sparse.eye(n, 2*order*m+2*n, 2*order*m+n)
