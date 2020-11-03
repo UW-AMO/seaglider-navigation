@@ -379,25 +379,27 @@ def n_select(m, n):
     NC = nc_select(m,n)
     return scipy.sparse.vstack((NV, NC))
 
-def ev_select(m, n):
+def ev_select(m, n, order=2):
     """Creates a selection matrix for choosing indexes of X
     related to easterly vehicle kinematics.
     
     Parameters:
         m (int) : number of timepoints
         n (int) : number of depthpoints
+        order (int) : order of vehicle smoothing. 2=velocity, 3=accel
     """
-    return scipy.sparse.eye(2*m, 4*m+2*n)
+    return scipy.sparse.eye(order*m, 2*order*m+2*n)
 
-def nv_select(m, n):
+def nv_select(m, n, order=2):
     """Creates a selection matrix for choosing indexes of X
     related to northerly vehicle kinematics.
     
     Parameters:
         m (int) : number of timepoints
         n (int) : number of depthpoints
+        order (int) : order of vehicle smoothing. 2=velocity, 3=accel
     """
-    return scipy.sparse.eye(2*m, 4*m+2*n, 2*m)
+    return scipy.sparse.eye(order*m, 2*order*m+2*n, order*m)
 
 def ec_select(m, n, order=2):
     """Creates a selection matrix for choosing indexes of X
