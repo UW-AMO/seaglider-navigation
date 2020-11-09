@@ -247,9 +247,9 @@ def vehicle_G(times, order=2):
     return (scipy.sparse.hstack((negG, append_me))
             + scipy.sparse.hstack((append_me,posG)))
 
-def depth_Qinv(depths, rho=1):
+def depth_Qinv(depths, rho=1, order=2):
     """Creates the precision matrix for smoothing the currint with depth
-    covariance eta.
+    covariance rho.
     """
     delta_depths = depths[1:]-depths[:-1]
     dds = reduce_condition(delta_depths, method=conditioner)
@@ -258,11 +258,21 @@ def depth_Qinv(depths, rho=1):
         warnings.warn(ConditionWarning(cond))
     elif cond <1:
         raise RuntimeError('Calculated invalid condition number for Q')
-    return t_scale**(-2)/rho*scipy.sparse.diags(1/dds, dtype=float)
+    if order == 3:
+        Qs = [rho*np.array([
+            [dd * t_scale**4,      dd**2/2 * t_scale**3],
+            [dd**2/2 * t_scale**3, dd**3/3 * t_scale**2]
+        ]) for dd in dds]
+    elif order == 2:
+        Qs = [t_scale**2*rho*np.array([[dd]]) for dd in dds]
+    else:
+        raise ValueError
+    Qinvs = [np.linalg.inv(Q) for Q in Qs]
+    return scipy.sparse.block_diag(Qinvs)
 
-def depth_Q(depths, rho=1):
-    """Creates the covariance matrix for smoothing the currint with depth
-    covariance eta.
+def depth_Q(depths, rho=1, order=2):
+    """Creates the covariance matrix for smoothing the current with depth
+    covariance rho.
     """
     delta_depths = depths[1:]-depths[:-1]
     dds = reduce_condition(delta_depths, method=conditioner)
@@ -271,13 +281,38 @@ def depth_Q(depths, rho=1):
         warnings.warn(ConditionWarning(cond))
     elif cond <1:
         raise RuntimeError('Calculated invalid condition number for Q')
-    return t_scale**(2)*rho*scipy.sparse.diags(dds, dtype=float)
+    if order == 3:
+        Qs = [rho*np.array([
+            [dd * t_scale**4,      dd**2/2 * t_scale**3],
+            [dd**2/2 * t_scale**3, dd**3/3 * t_scale**2]
+        ]) for dd in dds]
+    elif order == 2:
+        Qs = [t_scale**2*rho*np.array([[dd]]) for dd in dds]
+    else:
+        raise ValueError
+    return scipy.sparse.block_diag(Qs, dtype=float)
 
-def depth_G(depths):
+def depth_G(depths, order=2):
     """Creates the update matrix for smoothing the current"""
     length = len(depths)
-    return scipy.sparse.spdiags((-np.ones(length), np.ones(length)),
-                                diags=(0,1), m=length-1, n=length)
+    delta_depths = depths[1:]-depths[:-1]
+    dds = reduce_condition(delta_depths, method=conditioner)
+
+    if order == 2:
+        negGs = [np.array([[-1]]) for dd in dds]
+    elif order == 3:
+        negGs = [np.array(
+            [[-1,       0,],
+            [-dd,      -1,]]) for dd in dds]
+    else:
+        raise ValueError
+    negG = scipy.sparse.block_diag(negGs)
+    m = len(delta_depths)*(order-1)
+    posG = scipy.sparse.eye(m)
+    append_me = scipy.sparse.coo_matrix(([],([],[])), (m,order-1))
+    return (scipy.sparse.hstack((negG, append_me))
+            + scipy.sparse.hstack((append_me,posG)))
+
 
 # %% Data selection
 def get_zttw(ddat, direction='north'):
