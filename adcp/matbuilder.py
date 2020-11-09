@@ -397,6 +397,21 @@ def v_select(timesteps, order=2):
                                      range(order-2,order*timesteps, order))),
                                     shape=mat_shape)
 
+def cv_select(depthsteps, order=2):
+    """Creates the matrix that selects the current velocity entries of
+    the state vector for the vehicle in one direction,
+    e.g. [v1, x1, v2, x2, v3, ...].
+
+    Parameters:
+        timesteps (int) : number of timesteps
+        order (int) : order of vehicle smoothing. 2=velocity, 3=accel
+    """
+    mat_shape = (depthsteps, order*depthsteps)
+    return scipy.sparse.coo_matrix((np.ones(depthsteps),
+                                    (range(depthsteps),
+                                     range(order-1,order*depthsteps, order))),
+                                    shape=mat_shape)
+
 
 
 def x_select(timesteps, order=2):
