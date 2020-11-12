@@ -292,24 +292,38 @@ def depth_Q(depths, rho=1, order=2):
         raise ValueError
     return scipy.sparse.block_diag(Qs, dtype=float)
 
-def depth_G(depths, order=2):
+def depth_G(depths, order=2, depth_rate=None):
     """Creates the update matrix for smoothing the current"""
     length = len(depths)
     delta_depths = depths[1:]-depths[:-1]
+    if depth_rate is None:
+        order -= 1
+        depth_rate = np.ones(len(delta_depths))
+    elif order == 1:
+        raise ValueError('If including depth_rate/modeling vttw, minimum ' \
+            'order is 2.')
     dds = reduce_condition(delta_depths, method=conditioner)
 
-    if order == 2:
+    dr_neg1 = depth_rate ** -1
+    if order == 1:
         negGs = [np.array([[-1]]) for dd in dds]
+    elif order == 2:
+        negGs = [np.array([
+            [-1,        0],
+            [-dd * dr1, -1]
+        ]) for dd, dr1 in zip(dds, dr_neg1)]
     elif order == 3:
-        negGs = [np.array(
-            [[-1,       0,],
-            [-dd,      -1,]]) for dd in dds]
+        negGs = [np.array([
+            [-1,              0,        0],
+            [-dd,      -1,        0],
+            [-dd**2/2 * dr1, -dd * dr1, -1]
+        ]) for dd, dr1 in zip(dds, dr_neg1)]
     else:
         raise ValueError
     negG = scipy.sparse.block_diag(negGs)
-    m = len(delta_depths)*(order-1)
+    m = len(delta_depths)*(order)
     posG = scipy.sparse.eye(m)
-    append_me = scipy.sparse.coo_matrix(([],([],[])), (m,order-1))
+    append_me = scipy.sparse.coo_matrix(([],([],[])), (m,order))
     return (scipy.sparse.hstack((negG, append_me))
             + scipy.sparse.hstack((append_me,posG)))
 
