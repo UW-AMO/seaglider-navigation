@@ -247,50 +247,61 @@ def vehicle_G(times, order=2):
     return (scipy.sparse.hstack((negG, append_me))
             + scipy.sparse.hstack((append_me,posG)))
 
-def depth_Qinv(depths, rho=1, order=2):
+
+def depth_Qblocks(depths, rho=1, order=2, depth_rate=None):
+    """Create the diagonal blocks of the kalman matrix for smoothing
+    current"""
+
+    delta_depths = depths[1:]-depths[:-1]
+    if depth_rate is None:
+        order -= 1
+        depth_rate = np.ones(len(delta_depths))
+    elif order == 1:
+        raise ValueError('If including depth_rate/modeling vttw, minimum ' \
+            'order is 2.')
+    dds = reduce_condition(delta_depths, method=conditioner)
+    cond = q_cond(dds, dim=1)
+
+    dr_neg1 = depth_rate ** -1
+    dr_neg2 = depth_rate ** -2
+    if cond > 1e3:
+        warnings.warn(ConditionWarning(cond))
+    elif cond <1:
+        raise RuntimeError('Calculated invalid condition number for Q')
+    if order == 1:
+        Qs = [t_scale**2 * rho * np.array([[dd]]) for dd in dds]
+    elif order == 2:
+        Qs = [t_scale**2 * rho * np.array([
+             [dd,            dd**2/2 * dr1],
+             [dd**2/2 * dr1, dd**3/3 * dr2]
+        ]) for dd, dr1, dr2 in zip(dds, dr_neg1, dr_neg2)]
+    elif order == 3:
+        Qs = [t_scale**2 * rho * np.array([
+             [dd,            dd**2/2,       dd**3/6 * dr1],
+             [dd**2/2,       dd**3/3,       dd**4/8 * dr1],
+             [dd**3/6 * dr1, dd**4/8 * dr1, dd**5/20 * dr2]
+        ]) for dd, dr1, dr2 in zip(dds, dr_neg1, dr_neg2)]
+    else:
+        raise ValueError
+    return Qs
+
+
+def depth_Qinv(depths, rho=1, order=2, depth_rate=None):
     """Creates the precision matrix for smoothing the currint with depth
     covariance rho.
     """
-    delta_depths = depths[1:]-depths[:-1]
-    dds = reduce_condition(delta_depths, method=conditioner)
-    cond = q_cond(dds, dim=1)
-    if cond > 1e3:
-        warnings.warn(ConditionWarning(cond))
-    elif cond <1:
-        raise RuntimeError('Calculated invalid condition number for Q')
-    if order == 3:
-        Qs = [rho*np.array([
-            [dd * t_scale**4,      dd**2/2 * t_scale**3],
-            [dd**2/2 * t_scale**3, dd**3/3 * t_scale**2]
-        ]) for dd in dds]
-    elif order == 2:
-        Qs = [t_scale**2*rho*np.array([[dd]]) for dd in dds]
-    else:
-        raise ValueError
+    Qs = depth_Qblocks(depths, rho, order, depth_rate)
     Qinvs = [np.linalg.inv(Q) for Q in Qs]
     return scipy.sparse.block_diag(Qinvs)
 
-def depth_Q(depths, rho=1, order=2):
+
+def depth_Q(depths, rho=1, order=2, depth_rate=None):
     """Creates the covariance matrix for smoothing the current with depth
     covariance rho.
     """
-    delta_depths = depths[1:]-depths[:-1]
-    dds = reduce_condition(delta_depths, method=conditioner)
-    cond = q_cond(dds, dim=1)
-    if cond > 1e3:
-        warnings.warn(ConditionWarning(cond))
-    elif cond <1:
-        raise RuntimeError('Calculated invalid condition number for Q')
-    if order == 3:
-        Qs = [rho*np.array([
-            [dd * t_scale**4,      dd**2/2 * t_scale**3],
-            [dd**2/2 * t_scale**3, dd**3/3 * t_scale**2]
-        ]) for dd in dds]
-    elif order == 2:
-        Qs = [t_scale**2*rho*np.array([[dd]]) for dd in dds]
-    else:
-        raise ValueError
+    Qs = depth_Qblocks(depths, rho, order, depth_rate)
     return scipy.sparse.block_diag(Qs, dtype=float)
+
 
 def depth_G(depths, order=2, depth_rate=None):
     """Creates the update matrix for smoothing the current"""
