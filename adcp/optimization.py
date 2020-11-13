@@ -50,7 +50,7 @@ class GliderProblem:
             if k not in self.__dict__:
                 raise AttributeError(f'{k} not a argument for Problem'\
                                      ' constructor')
-        if vehicle_vel == 'ttw':
+        if self.vehicle_vel == 'ttw':
             self.depth_rates = dp.depth_rates(
                 self.times,
                 self.depths,
@@ -60,13 +60,20 @@ class GliderProblem:
 
 # %%
 def init_x(prob):
-    ev0, nv0 = initial_kinematics(prob.times, prob.ddat)
+    ev0, nv0 = initial_kinematics(
+        prob.times,
+        prob.ddat,
+        prob.vehicle_order,
+    )
     n = len(prob.depths)
-    ec0 = np.zeros(n)
-    nc0 = np.zeros(n)
+    current_order = prob.current_order
+    if prob.vehicle_vel ==  'otg':
+        current_order = prob.current_order - 1
+    ec0 = np.zeros(current_order * n)
+    nc0 = np.zeros(current_order * n)
     return np.hstack((ev0, nv0, ec0, nc0))
 
-def initial_kinematics(times, ddat):
+def initial_kinematics(times, ddat, vehicle_order):
     """Creates an guess for X, both V_otg and position, based off of
     interpolation from gps.
     
@@ -81,9 +88,12 @@ def initial_kinematics(times, ddat):
         Can convert between meters in rectangular coordinate system
         to lat/lon using the positions of the sensors in range
         measurements
+
+    Note:
+        Does not matter whether modeling v_otg or v_ttw
     """
-    e0 = np.zeros((len(times), 2))
-    n0 = np.zeros((len(times), 2))
+    e0 = np.zeros((len(times), vehicle_order))
+    n0 = np.zeros((len(times), vehicle_order))
     first_point = ddat['gps'].iloc[0].to_numpy()
     last_point = ddat['gps'].iloc[-1].to_numpy()
     first_time = ddat['gps'].index[0]
@@ -92,8 +102,8 @@ def initial_kinematics(times, ddat):
         speed = [0,0]
     else:
         speed = (last_point-first_point)/(last_time-first_time).seconds
-    e0[:,0] = speed[0]
-    n0[:,0] = speed[1]
+    e0[:, vehicle_order-1] = speed[0]
+    n0[:, vehicle_order-1] = speed[1]
 
     time_offset = (times - first_time.to_numpy()).astype(float)/1e9 #ns -> s
     e0[:,1] = time_offset * speed[0] + first_point[0]
@@ -115,9 +125,11 @@ def backsolve(prob):
     A, b = solve_mats(prob)
     x = scipy.sparse.linalg.spsolve(A, b)
     m = len(prob.times)
-    Vs = mb.v_select(m)
-    Xs = mb.x_select(m)
     n = len(prob.depths)
+    As = mb.a_select(m, prob.vehicle_order)
+    Vs = mb.v_select(m, prob.vehicle_order)
+    Xs = mb.x_select(m, prob.vehicle_order)
+    CV = mb.cv_select(n, prob.current_order, prob.vehicle_vel)
     EV = mb.ev_select(m, n)
     NV = mb.nv_select(m, n)
     EC = mb.ec_select(m, n)
