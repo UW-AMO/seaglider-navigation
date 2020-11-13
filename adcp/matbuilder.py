@@ -144,7 +144,18 @@ def q_cond(dts, dim=2):
     """
     min_dt = min(dts)
     max_dt = max(dts)
-    if dim == 2:
+    if dim == 3:
+        arr_func = lambda dt: np.array([
+            [dt,      dt**2/2, dt**3/6],
+            [dt**2/2, dt**3/3, dt**4/8],
+            [dt**3/6, dt**4/8, dt**5/20],
+        ])
+        max_arr = arr_func(max_dt)
+        min_arr = arr_func(min_dt)
+        max_eig = max(abs(np.linalg.eigvals(max_arr)))
+        min_eig = min(abs(np.linalg.eigvals(min_arr)))
+        return max_eig / min_eig
+    elif dim == 2:
         max_disc = 1+max_dt**2/3+max_dt**4/9
         max_eig = 1/2 * (max_dt+max_dt **3/3 + max_dt * np.sqrt(max_disc))
         min_disc = 1+min_dt**2/3+min_dt**4/9
@@ -153,7 +164,7 @@ def q_cond(dts, dim=2):
     elif dim == 1:
         return max_dt/min_dt
     else:
-        raise ValueError('Can only calculate condition number of 1 or 2'
+        raise ValueError('Can only calculate condition number of 1, 2, or 3'
                          'dimensional kalman smoothing covariance.')
 
 def reduce_condition(deltas, method=None, minmax_ratio=.2):
