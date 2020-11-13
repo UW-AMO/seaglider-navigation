@@ -407,6 +407,8 @@ def a_select(m, order=3):
             Must be greater than or equal to 3
     """
     mat_shape = (m, order*m)
+    if order < 3:
+        return None
     return scipy.sparse.coo_matrix((np.ones(m),
                                     (range(m),
                                      range(order-3,order*m, order))),
@@ -426,6 +428,22 @@ def v_select(m, order=2):
     return scipy.sparse.coo_matrix((np.ones(m),
                                     (range(m),
                                      range(order-2,order*m, order))),
+                                    shape=mat_shape)
+
+
+def x_select(m, order=2):
+    """Creates the matrix that selects the position entries of the
+    state vector for the vehicle in one direction,
+    e.g. [v1, x1, v2, x2, v3, ...].
+
+    Parameters:
+        m (int) : number of timepoints
+        order (int) : order of vehicle smoothing. 2=velocity, 3=accel
+    """
+    mat_shape = (m, order*m)
+    return scipy.sparse.coo_matrix((np.ones(m),
+                                    (range(m),
+                                     range(order-1,order*m, order))),
                                     shape=mat_shape)
 
 
@@ -451,22 +469,6 @@ def cv_select(n, order=2, vehicle_vel='otg'):
     return scipy.sparse.coo_matrix((np.ones(n),
                                     (range(n),
                                      cols)),
-                                    shape=mat_shape)
-
-
-def x_select(m, order=2):
-    """Creates the matrix that selects the position entries of the
-    state vector for the vehicle in one direction,
-    e.g. [v1, x1, v2, x2, v3, ...].
-    
-    Parameters:
-        m (int) : number of timepoints
-        order (int) : order of vehicle smoothing. 2=velocity, 3=accel
-    """
-    mat_shape = (m, order*m)
-    return scipy.sparse.coo_matrix((np.ones(m),
-                                    (range(m),
-                                     range(order-1,order*m, order))),
                                     shape=mat_shape)
 
 
