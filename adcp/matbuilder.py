@@ -483,7 +483,7 @@ def cv_select(n, order=2, vehicle_vel='otg'):
                                     shape=mat_shape)
 
 
-def e_select(m, n, vehicle_order=2, current_order=1):
+def e_select(m, n, vehicle_order=2, current_order=2, vehicle_vel='otg'):
     """Creates a selection matrix for choosing indexes of X
     related to easterly variables.
 
@@ -492,14 +492,16 @@ def e_select(m, n, vehicle_order=2, current_order=1):
         n (int) : number of depthpoints
         vehicle_order (int) : order of vehicle smoothing in matrix Q
         current_order (int) : order of current smoothing in matrix Q
+        vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
+    current_order -= vehicle_vel == 'otg'
     EV = ev_select(m, n, vehicle_order, current_order)
     EC = ec_select(m, n, vehicle_order, current_order)
     return scipy.sparse.vstack((EV, EC))
 
 
-def n_select(m, n, vehicle_order=2, current_order=1):
+def n_select(m, n, vehicle_order=2, current_order=2, vehicle_vel='otg'):
     """Creates a selection matrix for choosing indexes of X
     related to easterly vehicle kinematics.
 
@@ -508,14 +510,16 @@ def n_select(m, n, vehicle_order=2, current_order=1):
         n (int) : number of depthpoints
         vehicle_order (int) : order of vehicle smoothing in matrix Q
         current_order (int) : order of current smoothing in matrix Q
+        vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
+    current_order -= vehicle_vel == 'otg'
     NV = nv_select(m, n, vehicle_order, current_order)
     NC = nc_select(m, n, vehicle_order, current_order)
     return scipy.sparse.vstack((NV, NC))
 
 
-def ev_select(m, n, vehicle_order=2, current_order=1):
+def ev_select(m, n, vehicle_order=2, current_order=2, vehicle_vel='otg'):
     """Creates a selection matrix for choosing indexes of X
     related to easterly vehicle kinematics.
     
@@ -524,14 +528,16 @@ def ev_select(m, n, vehicle_order=2, current_order=1):
         n (int) : number of depthpoints
         vehicle_order (int) : order of vehicle smoothing in matrix Q
         current_order (int) : order of current smoothing in matrix Q
+        vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
+    current_order -= vehicle_vel == 'otg'
     n_rows = vehicle_order*m
     n_cols = size_of_x(m, n, vehicle_order, current_order)
     return scipy.sparse.eye(n_rows, n_cols)
 
 
-def nv_select(m, n, vehicle_order=2, current_order=1):
+def nv_select(m, n, vehicle_order=2, current_order=2, vehicle_vel='otg'):
     """Creates a selection matrix for choosing indexes of X
     related to northerly vehicle kinematics.
     
@@ -540,8 +546,10 @@ def nv_select(m, n, vehicle_order=2, current_order=1):
         n (int) : number of depthpoints
         vehicle_order (int) : order of vehicle smoothing in matrix Q
         current_order (int) : order of current smoothing in matrix Q
+        vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
+    current_order -= vehicle_vel == 'otg'
     n_rows = vehicle_order * m
     n_cols = size_of_x(m, n, vehicle_order, current_order)
     diag = vehicle_order * m
@@ -549,7 +557,7 @@ def nv_select(m, n, vehicle_order=2, current_order=1):
     return scipy.sparse.eye(n_rows, n_cols, diag)
 
 
-def ec_select(m, n, vehicle_order=2, current_order=1):
+def ec_select(m, n, vehicle_order=2, current_order=2, vehicle_vel='otg'):
     """Creates a selection matrix for choosing indexes of X
     related to easterly current.
     
@@ -558,8 +566,10 @@ def ec_select(m, n, vehicle_order=2, current_order=1):
         n (int) : number of depthpoints
         vehicle_order (int) : order of vehicle smoothing in matrix Q
         current_order (int) : order of current smoothing in matrix Q
+        vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
+    current_order -= vehicle_vel == 'otg'
     n_rows = current_order * n
     n_cols = size_of_x(m, n, vehicle_order, current_order)
     diag = 2 * vehicle_order * m
@@ -567,7 +577,7 @@ def ec_select(m, n, vehicle_order=2, current_order=1):
     return scipy.sparse.eye(n_rows, n_cols, diag)
 
 
-def nc_select(m, n, vehicle_order=2, current_order=1):
+def nc_select(m, n, vehicle_order=2, current_order=2, vehicle_vel='otg'):
     """Creates a selection matrix for choosing indexes of X
     related to northerly current.
     
@@ -576,8 +586,10 @@ def nc_select(m, n, vehicle_order=2, current_order=1):
         n (int) : number of depthpoints
         vehicle_order (int) : order of vehicle smoothing in matrix Q
         current_order (int) : order of current smoothing in matrix Q
+        vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
+    current_order -= vehicle_vel == 'otg'
     n_rows = current_order * n
     n_cols = size_of_x(m, n, vehicle_order, current_order)
     diag = 2 * vehicle_order * m + current_order * n
