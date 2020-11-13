@@ -11,6 +11,7 @@ import datetime as dt
 import h5py
 
 from scipy.io import loadmat
+from scipy.interpolate import interp1d
 import numpy as np
 import pandas as pd
 
@@ -174,6 +175,31 @@ def depthpoints(adat, ddat):
     depths = np.unique(np.concatenate(depth_arrays))
     return depths
 
+
+def depth_rates(times, depths, ddat):
+    """Calculate the depth rate of the vehicle for each interval between
+    all possible measurement depths.
+
+     Parameters:
+        times ([numpy.datetime64,]) : the times of observations
+        depths ([numpy.datetime64,]) : the depths of observations
+        adat (dict): the recorded ADCP data returned by load_adcp()
+    """
+
+    depth_df = _depth_interpolator(times, ddat)
+    depth_df = depth_df.reset_index().set_index('depth')
+    x = depth_df.index
+    y = depth_df["time"].values # in nanoseconds
+    interp_func = interp1d(x, y, fill_value='extrapolate')
+    depth_df = pd.DataFrame(interp_func(depths), columns=['time'], index=depths)
+
+    depth_diff = depth_df.index.values[1:] - depth_df.index.values[:-1]
+    time_diff = depth_df['time'].values[1:] - depth_df['time'].values[:-1]
+    time_diff = time_diff/1e9 # back to seconds
+
+    return depth_diff/time_diff
+
+
 def _depth_interpolator(times, ddat):
     """Create a dataframe to interpolate depth to all the times in <times>
     
@@ -188,7 +214,7 @@ def _depth_interpolator(times, ddat):
     new_times = pd.DataFrame([], index=times, columns=['depth'])
     new_times.index.name = 'time'
     depth_df = ddat['depth'].append(new_times)
-    depth_df = depth_df.interpolate('time', limit_direction='both')
+    depth_df = depth_df.interpolate(method='time', limit_direction='both')
     depth_df = depth_df.reset_index().drop_duplicates(subset=['time'])
     depth_df = depth_df.set_index('time')
     

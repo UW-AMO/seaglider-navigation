@@ -50,6 +50,13 @@ class GliderProblem:
             if k not in self.__dict__:
                 raise AttributeError(f'{k} not a argument for Problem'\
                                      ' constructor')
+        if vehicle_vel == 'ttw':
+            self.depth_rates = dp.depth_rates(
+                self.times,
+                self.depths,
+                self.ddat
+            )
+
 
 # %%
 def init_x(prob):
