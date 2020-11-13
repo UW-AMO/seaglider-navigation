@@ -383,134 +383,190 @@ def get_zrange(ddat):
     return r, x, y
 
 
-def a_select(timesteps, order=3):
+def size_of_x(m: int, n: int, vehicle_order: int=2, current_order: int=1
+) -> int:
+    """Calculates the size of the state vector
+
+    Parameters:
+        m (int) : number of timepoints
+        n (int) : number of depthpoints
+        vehicle_order (int) : order of vehicle smoothing in matrix Q
+        current_order (int) : order of current smoothing in matrix Q
+    """
+    return 2 * (m * vehicle_order + n * current_order)
+
+
+def a_select(m, order=3):
     """Creates the matrix that selects the acceleration entries of the
     state vector for the vehicle in one direction,
     e.g. [v1, x1, v2, x2, v3, ...].
 
     Parameters:
-        timesteps (int) : number of timesteps
+        m (int) : number of timesteps
         order (int) : order of vehicle smoothing. 2=velocity, 3=accel
             Must be greater than or equal to 3
     """
-    mat_shape = (timesteps, order*timesteps)
-    return scipy.sparse.coo_matrix((np.ones(timesteps),
-                                    (range(timesteps),
-                                     range(order-3,order*timesteps, order))),
+    mat_shape = (m, order*m)
+    return scipy.sparse.coo_matrix((np.ones(m),
+                                    (range(m),
+                                     range(order-3,order*m, order))),
                                     shape=mat_shape)
 
 
-def v_select(timesteps, order=2):
+def v_select(m, order=2):
     """Creates the matrix that selects the velocity entries of the
     state vector for the vehicle in one direction,
     e.g. [v1, x1, v2, x2, v3, ...].
     
     Parameters:
-        timesteps (int) : number of timesteps
+        m (int) : number of timesteps
         order (int) : order of vehicle smoothing. 2=velocity, 3=accel
     """
-    mat_shape = (timesteps, order*timesteps)
-    return scipy.sparse.coo_matrix((np.ones(timesteps),
-                                    (range(timesteps), 
-                                     range(order-2,order*timesteps, order))),
+    mat_shape = (m, order*m)
+    return scipy.sparse.coo_matrix((np.ones(m),
+                                    (range(m),
+                                     range(order-2,order*m, order))),
                                     shape=mat_shape)
 
-def cv_select(depthsteps, order=2):
+
+def cv_select(n, order=2, vehicle_vel='otg'):
     """Creates the matrix that selects the current velocity entries of
     the state vector for the vehicle in one direction,
     e.g. [v1, x1, v2, x2, v3, ...].
 
     Parameters:
-        timesteps (int) : number of timesteps
-        order (int) : order of vehicle smoothing. 2=velocity, 3=accel
+        n (int) : number of depthpoints
+        order (int) : order of current smoothing. 2=velocity, 3=accel
+        vehicle_vel (str) : whether vehicle velocity models through-the
+            -water velocity or over-the-ground
     """
-    mat_shape = (depthsteps, order*depthsteps)
-    return scipy.sparse.coo_matrix((np.ones(depthsteps),
-                                    (range(depthsteps),
-                                     range(order-1,order*depthsteps, order))),
+    if vehicle_vel == 'otg':
+        order = order-1
+        cols = range(order-1,order*n, order)
+    elif vehicle_vel == 'ttw':
+        cols = range(order-2,order*n, order)
+    else:
+        raise ValueError
+    mat_shape = (n, order*n)
+    return scipy.sparse.coo_matrix((np.ones(n),
+                                    (range(n),
+                                     cols)),
                                     shape=mat_shape)
 
 
-
-def x_select(timesteps, order=2):
+def x_select(m, order=2):
     """Creates the matrix that selects the position entries of the
     state vector for the vehicle in one direction,
     e.g. [v1, x1, v2, x2, v3, ...].
     
     Parameters:
-        timesteps (int) : number of timesteps
+        m (int) : number of timepoints
         order (int) : order of vehicle smoothing. 2=velocity, 3=accel
     """
-    mat_shape = (timesteps, order*timesteps)
-    return scipy.sparse.coo_matrix((np.ones(timesteps),
-                                    (range(timesteps), 
-                                     range(order-1,order*timesteps, order))),
+    mat_shape = (m, order*m)
+    return scipy.sparse.coo_matrix((np.ones(m),
+                                    (range(m),
+                                     range(order-1,order*m, order))),
                                     shape=mat_shape)
 
-def e_select(m, n):
+
+def e_select(m, n, vehicle_order=2, current_order=1):
     """Creates a selection matrix for choosing indexes of X
     related to easterly variables.
 
     Parameters:
         m (int) : number of timepoints
         n (int) : number of depthpoints
+        vehicle_order (int) : order of vehicle smoothing in matrix Q
+        current_order (int) : order of current smoothing in matrix Q
     """
-    EV = ev_select(m,n)
-    EC = ec_select(m,n)
+
+    EV = ev_select(m, n, vehicle_order, current_order)
+    EC = ec_select(m, n, vehicle_order, current_order)
     return scipy.sparse.vstack((EV, EC))
 
-def n_select(m, n):
+
+def n_select(m, n, vehicle_order=2, current_order=1):
     """Creates a selection matrix for choosing indexes of X
     related to easterly vehicle kinematics.
 
     Parameters:
         m (int) : number of timepoints
         n (int) : number of depthpoints
+        vehicle_order (int) : order of vehicle smoothing in matrix Q
+        current_order (int) : order of current smoothing in matrix Q
     """
-    NV = nv_select(m,n)
-    NC = nc_select(m,n)
+
+    NV = nv_select(m, n, vehicle_order, current_order)
+    NC = nc_select(m, n, vehicle_order, current_order)
     return scipy.sparse.vstack((NV, NC))
 
-def ev_select(m, n, order=2):
+
+def ev_select(m, n, vehicle_order=2, current_order=1):
     """Creates a selection matrix for choosing indexes of X
     related to easterly vehicle kinematics.
     
     Parameters:
         m (int) : number of timepoints
         n (int) : number of depthpoints
-        order (int) : order of vehicle smoothing. 2=velocity, 3=accel
+        vehicle_order (int) : order of vehicle smoothing in matrix Q
+        current_order (int) : order of current smoothing in matrix Q
     """
-    return scipy.sparse.eye(order*m, 2*order*m+2*n)
 
-def nv_select(m, n, order=2):
+    n_rows = vehicle_order*m
+    n_cols = size_of_x(m, n, vehicle_order, current_order)
+    return scipy.sparse.eye(n_rows, n_cols)
+
+
+def nv_select(m, n, vehicle_order=2, current_order=1):
     """Creates a selection matrix for choosing indexes of X
     related to northerly vehicle kinematics.
     
     Parameters:
         m (int) : number of timepoints
         n (int) : number of depthpoints
-        order (int) : order of vehicle smoothing. 2=velocity, 3=accel
+        vehicle_order (int) : order of vehicle smoothing in matrix Q
+        current_order (int) : order of current smoothing in matrix Q
     """
-    return scipy.sparse.eye(order*m, 2*order*m+2*n, order*m)
 
-def ec_select(m, n, order=2):
+    n_rows = vehicle_order * m
+    n_cols = size_of_x(m, n, vehicle_order, current_order)
+    diag = vehicle_order * m
+
+    return scipy.sparse.eye(n_rows, n_cols, diag)
+
+
+def ec_select(m, n, vehicle_order=2, current_order=1):
     """Creates a selection matrix for choosing indexes of X
     related to easterly current.
     
     Parameters:
         m (int) : number of timepoints
         n (int) : number of depthpoints
-        order (int) : order of vehicle smoothing. 2=velocity, 3=accel
+        vehicle_order (int) : order of vehicle smoothing in matrix Q
+        current_order (int) : order of current smoothing in matrix Q
     """
-    return scipy.sparse.eye(n, 2*order*m+2*n, 2*order*m)
 
-def nc_select(m, n, order=2):
+    n_rows = current_order * n
+    n_cols = size_of_x(m, n, vehicle_order, current_order)
+    diag = 2 * vehicle_order * m
+
+    return scipy.sparse.eye(n_rows, n_cols, diag)
+
+
+def nc_select(m, n, vehicle_order=2, current_order=1):
     """Creates a selection matrix for choosing indexes of X
     related to northerly current.
     
     Parameters:
         m (int) : number of timepoints
         n (int) : number of depthpoints
-        order (int) : order of vehicle smoothing. 2=velocity, 3=accel
+        vehicle_order (int) : order of vehicle smoothing in matrix Q
+        current_order (int) : order of current smoothing in matrix Q
     """
-    return scipy.sparse.eye(n, 2*order*m+2*n, 2*order*m+n)
+
+    n_rows = current_order * n
+    n_cols = size_of_x(m, n, vehicle_order, current_order)
+    diag = 2 * vehicle_order * m + current_order * n
+
+    return scipy.sparse.eye(n_rows, n_cols, diag)
