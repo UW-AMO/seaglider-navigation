@@ -171,38 +171,12 @@ def reduce_condition(deltas, method=None, minmax_ratio=.2):
         return np.ones(deltas)
     else:
         raise Exception('reduce_condition received bad method parameter')
-def vehicle_Qinv(times, rho=1, order=2):
-    """Creates the precision matrix for smoothing the vehicle with velocity
-    covariance rho.
-    """
-    delta_times = times[1:]-times[:-1]
-    dts = delta_times.astype(float)/1e9/t_scale
-    dts = reduce_condition(dts, method=conditioner)
-    cond = q_cond(dts, dim=2)
-    if cond > 1e3:
-        warnings.warn(ConditionWarning(cond))
-    elif cond <1:
-        raise RuntimeError('Calculated invalid condition number for Q')
-    if order == 2:
-        Qs = [t_scale**3*rho*np.array([
-            [dt,      dt**2/2],
-            [dt**2/2, dt**3/3]
-        ]) for dt in dts]
-    elif order == 3:
-        Qs = [t_scale**5*rho*np.array([
-            [dt,      dt**2/2, dt**3/6],
-            [dt**2/2, dt**3/3, dt**4/8],
-            [dt**3/6, dt**4/8, dt**5/20]
-        ]) for dt in dts]
-    else:
-        raise ValueError
-    Qinvs = [np.linalg.inv(Q) for Q in Qs]
-    return scipy.sparse.block_diag(Qinvs)
 
-def vehicle_Q(times, rho=1, order=2):
-    """Creates the covariance matrix for smoothing the vehicle with velocity
-    covariance rho.
-    """
+
+def vehicle_Qblocks(times, rho=1, order=2):
+    """Create the diagonal blocks of the kalman matrix for smoothing
+    vehicle motion"""
+
     delta_times = times[1:]-times[:-1]
     dts = delta_times.astype(float)/1e9/t_scale
     dts = reduce_condition(dts, method=conditioner)
@@ -224,7 +198,26 @@ def vehicle_Q(times, rho=1, order=2):
         ]) for dt in dts]
     else:
         raise ValueError
+    return Qs
+
+def vehicle_Qinv(times, rho=1, order=2):
+    """Creates the precision matrix for smoothing the vehicle with velocity
+    covariance rho.
+    """
+
+    Qs = vehicle_Qblocks(times, rho, order)
+    Qinvs = [np.linalg.inv(Q) for Q in Qs]
+    return scipy.sparse.block_diag(Qinvs)
+
+
+def vehicle_Q(times, rho=1, order=2):
+    """Creates the covariance matrix for smoothing the vehicle with velocity
+    covariance rho.
+    """
+
+    Qs = vehicle_Qblocks(times, rho, order)
     return scipy.sparse.block_diag(Qs)
+
 
 def vehicle_G(times, order=2):
     """Creates the update matrix for smoothing the vehicle"""
