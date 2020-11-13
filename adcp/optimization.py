@@ -23,7 +23,19 @@ from adcp import matbuilder as mb
 from adcp import dataprep as dp
 
 class GliderProblem:
-    defaults = dict(rho_v=1, rho_c=1, rho_t=1, rho_a=1, rho_g=1, rho_r=0)
+    defaults = dict(
+        rho_v = 1,
+        rho_c = 1,
+        rho_t = 1,
+        rho_a = 1,
+        rho_g = 1,
+        rho_r = 0,
+        t_scale = 1e3,
+        conditioner = 'tanh',
+        vehicle_order = 2,
+        current_order = 2,
+        vehicle_vel = 'otg'
+    )
     def __init__(self, ddat, adat, **kwargs):
         self.ddat = ddat
         self.adat = adat
