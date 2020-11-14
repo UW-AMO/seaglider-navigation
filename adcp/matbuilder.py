@@ -410,7 +410,7 @@ def size_of_x(m: int, n: int, vehicle_order: int=2, current_order: int=1
 def a_select(m, order=3):
     """Creates the matrix that selects the acceleration entries of the
     state vector for the vehicle in one direction,
-    e.g. [v1, x1, v2, x2, v3, ...].
+    e.g. [a1, v1, x1, a2, v2, x2, v3, ...].
 
     Parameters:
         m (int) : number of timesteps
@@ -458,6 +458,33 @@ def x_select(m, order=2):
                                     shape=mat_shape)
 
 
+def ca_select(n, order=3, vehicle_vel='otg'):
+    """Creates the matrix that selects the current velocity entries of
+    the state vector for the vehicle in one direction,
+    e.g. [v1, x1, v2, x2, v3, ...].
+
+    Parameters:
+        n (int) : number of depthpoints
+        order (int) : order of current smoothing. 2=velocity, 3=accel
+        vehicle_vel (str) : whether vehicle velocity models through-the
+            -water velocity or over-the-ground
+    """
+    if order < 3:
+        return None
+    if vehicle_vel == 'otg':
+        order = order-1
+        cols = range(order-2,order*n, order)
+    elif vehicle_vel == 'ttw':
+        cols = range(order-3,order*n, order)
+    else:
+        raise ValueError
+    mat_shape = (n, order*n)
+    return scipy.sparse.coo_matrix((np.ones(n),
+                                    (range(n),
+                                     cols)),
+                                    shape=mat_shape)
+
+
 def cv_select(n, order=2, vehicle_vel='otg'):
     """Creates the matrix that selects the current velocity entries of
     the state vector for the vehicle in one direction,
@@ -474,6 +501,31 @@ def cv_select(n, order=2, vehicle_vel='otg'):
         cols = range(order-1,order*n, order)
     elif vehicle_vel == 'ttw':
         cols = range(order-2,order*n, order)
+    else:
+        raise ValueError
+    mat_shape = (n, order*n)
+    return scipy.sparse.coo_matrix((np.ones(n),
+                                    (range(n),
+                                     cols)),
+                                    shape=mat_shape)
+
+
+def cx_select(n, order=2, vehicle_vel='otg'):
+    """Creates the matrix that selects the current velocity entries of
+    the state vector for the vehicle in one direction,
+    e.g. [v1, x1, v2, x2, v3, ...].
+
+    Parameters:
+        n (int) : number of depthpoints
+        order (int) : order of current smoothing. 2=velocity, 3=accel
+        vehicle_vel (str) : whether vehicle velocity models through-the
+            -water velocity or over-the-ground
+    """
+    if vehicle_vel == 'otg':
+        raise ValueError('Current X position not modeled when vehicle velocity'
+                        'is measured over ground.')
+    elif vehicle_vel == 'ttw':
+        cols = range(order-1,order*n, order)
     else:
         raise ValueError
     mat_shape = (n, order*n)
