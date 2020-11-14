@@ -211,7 +211,7 @@ def vehicle_Qblocks(times, rho=1, order=2, conditioner=conditioner, t_scale=t_sc
         raise ValueError
     return Qs
 
-def vehicle_Qinv(times, rho=1, order=2, conditioner=conditioner, t_scale, t_scale):
+def vehicle_Qinv(times, rho=1, order=2, conditioner=conditioner, t_scale=t_scale):
     """Creates the precision matrix for smoothing the vehicle with velocity
     covariance rho.
     """
@@ -221,7 +221,7 @@ def vehicle_Qinv(times, rho=1, order=2, conditioner=conditioner, t_scale, t_scal
     return scipy.sparse.block_diag(Qinvs)
 
 
-def vehicle_Q(times, rho=1, order=2, conditioner=conditioner, t_scale):
+def vehicle_Q(times, rho=1, order=2, conditioner=conditioner, t_scale=t_scale):
     """Creates the covariance matrix for smoothing the vehicle with velocity
     covariance rho.
     """
@@ -522,9 +522,10 @@ def cx_select(n, order=2, vehicle_vel='otg'):
         vehicle_vel (str) : whether vehicle velocity models through-the
             -water velocity or over-the-ground
     """
+
     if vehicle_vel == 'otg':
-        raise ValueError('Current X position not modeled when vehicle velocity'
-                        'is measured over ground.')
+        return None
+        # Current X position not modeled when vehicle velocity is measured over ground.
     elif vehicle_vel == 'ttw':
         cols = range(order-1,order*n, order)
     else:
