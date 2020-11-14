@@ -184,7 +184,7 @@ def reduce_condition(deltas, method=None, minmax_ratio=.2):
         raise Exception('reduce_condition received bad method parameter')
 
 
-def vehicle_Qblocks(times, rho=1, order=2):
+def vehicle_Qblocks(times, rho=1, order=2, conditioner=conditioner, t_scale=t_scale):
     """Create the diagonal blocks of the kalman matrix for smoothing
     vehicle motion"""
 
@@ -211,26 +211,26 @@ def vehicle_Qblocks(times, rho=1, order=2):
         raise ValueError
     return Qs
 
-def vehicle_Qinv(times, rho=1, order=2):
+def vehicle_Qinv(times, rho=1, order=2, conditioner=conditioner, t_scale, t_scale):
     """Creates the precision matrix for smoothing the vehicle with velocity
     covariance rho.
     """
 
-    Qs = vehicle_Qblocks(times, rho, order)
+    Qs = vehicle_Qblocks(times, rho, order, conditioner, t_scale)
     Qinvs = [np.linalg.inv(Q) for Q in Qs]
     return scipy.sparse.block_diag(Qinvs)
 
 
-def vehicle_Q(times, rho=1, order=2):
+def vehicle_Q(times, rho=1, order=2, conditioner=conditioner, t_scale):
     """Creates the covariance matrix for smoothing the vehicle with velocity
     covariance rho.
     """
 
-    Qs = vehicle_Qblocks(times, rho, order)
+    Qs = vehicle_Qblocks(times, rho, order, conditioner, t_scale)
     return scipy.sparse.block_diag(Qs)
 
 
-def vehicle_G(times, order=2):
+def vehicle_G(times, order=2, conditioner=conditioner, t_scale=t_scale):
     """Creates the update matrix for smoothing the vehicle"""
     delta_times = times[1:]-times[:-1]
     dts = delta_times.astype(float)/1e9/t_scale # raw dts in nanoseconds
@@ -252,7 +252,7 @@ def vehicle_G(times, order=2):
             + scipy.sparse.hstack((append_me,posG)))
 
 
-def depth_Qblocks(depths, rho=1, order=2, depth_rate=None):
+def depth_Qblocks(depths, rho=1, order=2, depth_rate=None, conditioner=conditioner, t_scale=t_scale):
     """Create the diagonal blocks of the kalman matrix for smoothing
     current"""
 
@@ -290,26 +290,25 @@ def depth_Qblocks(depths, rho=1, order=2, depth_rate=None):
     return Qs
 
 
-def depth_Qinv(depths, rho=1, order=2, depth_rate=None):
+def depth_Qinv(depths, rho=1, order=2, depth_rate=None, conditioner=conditioner, t_scale=t_scale):
     """Creates the precision matrix for smoothing the currint with depth
     covariance rho.
     """
-    Qs = depth_Qblocks(depths, rho, order, depth_rate)
+    Qs = depth_Qblocks(depths, rho, order, depth_rate, conditioner, t_scale)
     Qinvs = [np.linalg.inv(Q) for Q in Qs]
     return scipy.sparse.block_diag(Qinvs)
 
 
-def depth_Q(depths, rho=1, order=2, depth_rate=None):
+def depth_Q(depths, rho=1, order=2, depth_rate=None, conditioner=conditioner):
     """Creates the covariance matrix for smoothing the current with depth
     covariance rho.
     """
-    Qs = depth_Qblocks(depths, rho, order, depth_rate)
+    Qs = depth_Qblocks(depths, rho, order, depth_rate, conditioner, t_scale)
     return scipy.sparse.block_diag(Qs, dtype=float)
 
 
-def depth_G(depths, order=2, depth_rate=None):
+def depth_G(depths, order=2, depth_rate=None, conditioner=conditioner):
     """Creates the update matrix for smoothing the current"""
-    length = len(depths)
     delta_depths = depths[1:]-depths[:-1]
     if depth_rate is None:
         order -= 1
@@ -344,7 +343,7 @@ def depth_G(depths, order=2, depth_rate=None):
 
 
 # %% Data selection
-def get_zttw(ddat, direction='north'):
+def get_zttw(ddat, direction='north', t_scale=t_scale):
     """Select the hydrodynamic measurements vector in the specified 
     direction.
     """
@@ -355,7 +354,7 @@ def get_zttw(ddat, direction='north'):
     else:
         return None
     
-def get_zadcp(adat, direction='north'):
+def get_zadcp(adat, direction='north', t_scale=t_scale):
     """Select the adcp measurements vector in the specified 
     direction.
     """
@@ -469,6 +468,7 @@ def ca_select(n, order=3, vehicle_vel='otg'):
         vehicle_vel (str) : whether vehicle velocity models through-the
             -water velocity or over-the-ground
     """
+
     if order < 3:
         return None
     if vehicle_vel == 'otg':
@@ -496,6 +496,7 @@ def cv_select(n, order=2, vehicle_vel='otg'):
         vehicle_vel (str) : whether vehicle velocity models through-the
             -water velocity or over-the-ground
     """
+
     if vehicle_vel == 'otg':
         order = order-1
         cols = range(order-1,order*n, order)
