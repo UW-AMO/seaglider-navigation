@@ -147,21 +147,19 @@ def backsolve(prob):
     """
     A, b = solve_mats(prob)
     x = scipy.sparse.linalg.spsolve(A, b)
-    m = len(prob.times)
-    n = len(prob.depths)
-    As = mb.a_select(m, prob.vehicle_order)
-    Vs = mb.v_select(m, prob.vehicle_order)
-    Xs = mb.x_select(m, prob.vehicle_order)
-    CV = mb.cv_select(n, prob.current_order, prob.vehicle_vel)
-    EV = mb.ev_select(m, n)
-    NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
+    As = prob.As
+    Vs = prob.Vs
+    Xs = prob.Xs
+    CV = prob.CV
+    EV = prob.EV
+    NV = prob.NV
+    EC = prob.EC
+    NC = prob.NC
 
-    x = time_rescale(x, mb.t_scale, m, n)
-    return x, (NV, EV, NC, EC, Xs, Vs)
+    x = time_rescale(x, prob.t_scale, prob)
+    return x, (NV, EV, NC, EC, CV, Xs, Vs, As)
 
-def time_rescale(x, t_s, m, n):
+def time_rescale(x, t_s, prob):
     """Rescales the velocity measurements in a solution vector to undo
     scaling factor t_s
 
@@ -169,66 +167,91 @@ def time_rescale(x, t_s, m, n):
         x (numpy array): Previous solution
         t_s (float): timescale to remove(e.g. 1e3 for kiloseconds, 1e-3
             for milliseconds)
-        m (int) : number of timepoints
-        n (int) : number of depthpoints
+        prob (GliderProblem) : A glider problem
     """
-    Vs = mb.v_select(m)
-    Xs = mb.x_select(m)
-    EV = mb.ev_select(m, n)
-    NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
-    velocity_scaler = scipy.sparse.vstack((1/t_s * Vs @ NV,
-                                           Xs @ NV,
-                                           1/t_s * Vs @ EV,
-                                           Xs @ EV,
-                                           1/t_s * NC,
-                                           1/t_s * EC))
-    vel_reshaper = scipy.sparse.vstack((Vs @ NV,
-                                        Xs @ NV,
-                                        Vs @ EV,
-                                        Xs @ EV,
-                                        NC,
-                                        EC))
+
+    As = prob.As
+    Vs = prob.Vs
+    Xs = prob.Xs
+    CA = prob.CA
+    CV = prob.CV
+    CX = prob.CX
+    EV = prob.EV
+    NV = prob.NV
+    EC = prob.EC
+    NC = prob.NC
+
+    nm = lambda x, y : None if x is None or y is None else x * y # nt = "None, multiplied"
+    nmm = lambda A, B : None if A is None or B is None else A @ B # "None, matrix multiplied"
+    velocity_scaler = scipy.sparse.vstack((
+        nm(1/t_s**2, nmm(As, NV)),
+        1/t_s * Vs @ NV,
+        Xs @ NV,
+        nm(1/t_s**2, nmm(As, EV)),
+        1/t_s * Vs @ EV,
+        Xs @ EV,
+        nm(1/t_s, nmm(CA, NC)),
+        1/t_s * CV @ NC,
+        nmm(CX, NC),
+        nm(1/t_s, nmm(CA, EC)),
+        1/t_s * CV @ EC,
+        nmm(CX, EC),
+    ))
+    vel_reshaper = scipy.sparse.vstack((
+        nmm(As, NV),
+        1/t_s * Vs @ NV,
+        Xs @ NV,
+        nmm(As, EV),
+        1/t_s * Vs @ EV,
+        Xs @ EV,
+        nmm(CA, NC),
+        1/t_s * CV @ NC,
+        nmm(CX, NC),
+        nmm(CA, EC),
+        1/t_s * CV @ EC,
+        nmm(CX, EC),
+    ))
     return vel_reshaper.T @ velocity_scaler @ x
+
 
 def solve_mats(prob, verbose=False):
     """Create A, b for which Ax=b solves linear least squares problem
 
     Parameters:
-        prob (GliderProblem) : the glider problem to consider
+        prob (GliderProblem)
 
     Returns:
         tuple of numpy arrays, (A,b)
     """
-    zttw_e = mb.get_zttw(prob.ddat, 'east')
-    zttw_n = mb.get_zttw(prob.ddat, 'north')
+    m = len(prob.times)
+    n = len(prob.depths)
+    zttw_e = mb.get_zttw(prob.ddat, 'east', prob.t_scale)
+    zttw_n = mb.get_zttw(prob.ddat, 'north', prob.t_scale)
     A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat)
-    Vs = mb.v_select(len(prob.times))
+    Vs = mb.v_select(m, prob.vehicle_order)
 
-    zadcp_e = mb.get_zadcp(prob.adat, 'east')
-    zadcp_n = mb.get_zadcp(prob.adat, 'north')
+    zadcp_e = mb.get_zadcp(prob.adat, 'east', prob.t_scale)
+    zadcp_n = mb.get_zadcp(prob.adat, 'north', prob.t_scale)
     A_adcp, B_adcp = mb.adcp_select(prob.times, prob.depths, prob.ddat,
                                     prob.adat)
 
     zgps_e = mb.get_zgps(prob.ddat, 'east')
     zgps_n = mb.get_zgps(prob.ddat, 'north')
     A_gps = mb.gps_select(prob.times, prob.ddat)
-    Xs = mb.x_select(len(prob.times))
 
-    m = len(prob.times)
-    n = len(prob.depths)
-    EV = mb.ev_select(m, n)
-    NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
+    Xs = prob.Xs
+    CV = prob.CV
+    EV = prob.EV
+    NV = prob.NV
+    EC = prob.EC
+    NC = prob.NC
 
     kalman_mat = gen_kalman_mat(prob)
 
-    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
-    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
-    e_adcp_select = B_adcp @ EC - A_adcp @ Vs @ EV
-    n_adcp_select = B_adcp @ NC - A_adcp @ Vs @ NV
+    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ CV @ EC
+    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ CV @ NC
+    e_adcp_select = B_adcp @ CV @ EC - A_adcp @ Vs @ EV
+    n_adcp_select = B_adcp @ CV @ NC - A_adcp @ Vs @ NV
     e_gps_select = A_gps @ Xs @ EV
     n_gps_select = A_gps @ Xs @ NV
 
@@ -276,22 +299,39 @@ def gen_kalman_mat(prob):
     Parameters:
         prob (GliderProblem) : the glider problem to consider
     """
-    Gv = mb.vehicle_G(prob.times)
-    Gc = mb.depth_G(prob.depths)
+    Gv = mb.vehicle_G(prob.times, prob.vehicle_order, prob.conditioner, prob.t_scale)
+    Gc = mb.depth_G(prob.depths, prob.current_order, prob.depth_rates, prob.conditioner)
     if prob.rho_v != 0:
-        Qvinv = mb.vehicle_Qinv(prob.times, rho=prob.rho_v)
+        Qvinv = mb.vehicle_Qinv(
+            prob.times,
+            prob.rho_v,
+            prob.vehicle_order,
+            prob.conditioner,
+            prob.t_scale
+        )
     else:
-        Qvinv = scipy.sparse.csr_matrix((2*(len(prob.times)-1), 2*(len(prob.times)-1)))
+        Qvinv = scipy.sparse.csr_matrix(
+            (2*(len(prob.times)-1),
+            2*(len(prob.times)-1))
+        )
     if prob.rho_c != 0:
-        Qcinv = mb.depth_Qinv(prob.depths, rho=prob.rho_c)
+        Qcinv = mb.depth_Qinv(
+            prob.depths,
+            prob.rho_c,
+            prob.current_order,
+            prob.depth_rates,
+            prob.conditioner,
+            prob.t_scale
+        )
     else:
-        Qcinv = scipy.sparse.csr_matrix((len(prob.depths)-1, len(prob.depths)-1))
-    m = len(prob.times)
-    n = len(prob.depths)
-    EV = mb.ev_select(m, n)
-    NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
+        Qcinv = scipy.sparse.csr_matrix(
+            (len(prob.depths)-1,
+            len(prob.depths)-1)
+        )
+    EV = prob.EV
+    NV = prob.NV
+    EC = prob.EC
+    NC = prob.NC
     kalman_mat = 1/2* (EV.T @ Gv.T @ Qvinv @ Gv @ EV +
                        NV.T @ Gv.T @ Qvinv @ Gv @ NV +
                        EC.T @ Gc.T @ Qcinv @ Gc @ EC +
@@ -307,18 +347,18 @@ def _f_kalman(prob):
         return kalman_error
     return f_eval
 def _f_ttw(prob):
-    zttw_e = mb.get_zttw(prob.ddat, 'east')
-    zttw_n = mb.get_zttw(prob.ddat, 'north')
+    zttw_e = mb.get_zttw(prob.ddat, 'east', prob.t_scale)
+    zttw_n = mb.get_zttw(prob.ddat, 'north', prob.t_sclae)
     A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat)
-    m = len(prob.times)
-    n = len(prob.depths)
-    Vs = mb.v_select(m)
-    EV = mb.ev_select(m, n)
-    NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
-    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
-    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
+
+    Vs = prob.Vs
+    CV = prob.CV
+    EV = prob.EV
+    NV = prob.NV
+    EC = prob.EC
+    NC = prob.NC
+    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ CV @ EC
+    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ CV @ NC
     def f_eval(X):
         hydrodynamic_error = 1/(2*prob.rho_t)*(
                                 np.square(zttw_n-n_ttw_select @ X).sum() +
@@ -326,19 +366,18 @@ def _f_ttw(prob):
         return hydrodynamic_error
     return f_eval
 def _f_adcp(prob):
-    zadcp_e = mb.get_zadcp(prob.adat, 'east')
-    zadcp_n = mb.get_zadcp(prob.adat, 'north')
+    zadcp_e = mb.get_zadcp(prob.adat, 'east', prob.t_scale)
+    zadcp_n = mb.get_zadcp(prob.adat, 'north', prob.t_scale)
     A_adcp, B_adcp = mb.adcp_select(prob.times, prob.depths, prob.ddat,
                                     prob.adat)
-    m = len(prob.times)
-    n = len(prob.depths)
-    EV = mb.ev_select(m, n)
-    NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
-    Vs = mb.v_select(m)
-    e_adcp_select = B_adcp @ EC - A_adcp @ Vs @ EV
-    n_adcp_select = B_adcp @ NC - A_adcp @ Vs @ NV
+    Vs = prob.Vs
+    CV = prob.CV
+    EV = prob.EV
+    NV = prob.NV
+    EC = prob.EC
+    NC = prob.NC
+    e_adcp_select = B_adcp @ CV @ EC - A_adcp @ Vs @ EV
+    n_adcp_select = B_adcp @ CV @ NC - A_adcp @ Vs @ NV
     def f_eval(X):
         adcp_error = 1/(2*prob.rho_a)*(
                                 np.square(zadcp_n-n_adcp_select @ X).sum() +
@@ -351,11 +390,9 @@ def _f_gps(prob):
     zgps_n = mb.get_zgps(prob.ddat, 'north')
     A_gps = mb.gps_select(prob.times, prob.ddat)
 
-    m = len(prob.times)
-    n = len(prob.depths)
-    EV = mb.ev_select(m, n)
-    NV = mb.nv_select(m, n)
-    Xs = mb.x_select(m)
+    EV = prob.EV
+    NV = prob.NV
+    Xs = prob.Xs
 
     e_gps_select = A_gps @ Xs @ EV
     n_gps_select = A_gps @ Xs @ NV
@@ -370,11 +407,9 @@ def _f_range(prob):
     zr, zx, zy = mb.get_zrange(prob.ddat)
     A_range = mb.range_select(prob.times, prob.ddat)
 
-    m = len(prob.times)
-    n = len(prob.depths)
-    EV = mb.ev_select(m, n)
-    NV = mb.nv_select(m, n)
-    Xs = mb.x_select(m)
+    EV = prob.EV
+    NV = prob.NV
+    Xs = prob.Xs
 
     e_range_select = A_range @ Xs @ EV 
     n_range_select = A_range @ Xs @ NV
@@ -384,7 +419,7 @@ def _f_range(prob):
             ranges = np.sqrt((zx-e_range_select @ X) ** 2 +
                              (zy-n_range_select @ X) ** 2)
             range_error = 1/(2*prob.rho_r)*np.square(zr-ranges).sum()
-        else: range_error=0
+        else: range_error = 0
         return range_error
     return f_eval
 
@@ -414,19 +449,19 @@ def _g_kalman(prob):
     return g_eval
 
 def _g_ttw(prob):
-    zttw_e = mb.get_zttw(prob.ddat, 'east')
-    zttw_n = mb.get_zttw(prob.ddat, 'north')
+    zttw_e = mb.get_zttw(prob.ddat, 'east', prob.t_scale)
+    zttw_n = mb.get_zttw(prob.ddat, 'north', prob.t_scale)
     A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat)
-    m = len(prob.times)
-    n = len(prob.depths)
-    Vs = mb.v_select(m)
-    EV = mb.ev_select(m, n)
-    NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
 
-    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
-    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
+    Vs = prob.Vs
+    CV = prob.CV
+    EV = prob.EV
+    NV = prob.NV
+    EC = prob.EC
+    NC = prob.NC
+
+    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ CV @ EC
+    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ CV @ NC
     e_ttw_mat = 2 * e_ttw_select.T @ e_ttw_select 
     e_ttw_constant = 2*e_ttw_select.T @ zttw_e
     n_ttw_mat = 2 * n_ttw_select.T @ n_ttw_select 
@@ -438,21 +473,20 @@ def _g_ttw(prob):
     return g_eval
 
 def _g_adcp(prob):
-    zadcp_e = mb.get_zadcp(prob.adat, 'east')
-    zadcp_n = mb.get_zadcp(prob.adat, 'north')
+    zadcp_e = mb.get_zadcp(prob.adat, 'east', prob.t_scale)
+    zadcp_n = mb.get_zadcp(prob.adat, 'north', prob.t_scale)
     A_adcp, B_adcp = mb.adcp_select(prob.times, prob.depths, prob.ddat,
                                     prob.adat)
 
-    m = len(prob.times)
-    n = len(prob.depths)
-    Vs = mb.v_select(m)
-    EV = mb.ev_select(m, n)
-    NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
+    Vs = prob.Vs
+    CV = prob.CV
+    EV = prob.EV
+    NV = prob.NV
+    EC = prob.EC
+    NC = prob.NC
     
-    e_adcp_select = B_adcp @ EC - A_adcp @ Vs @ EV
-    n_adcp_select = B_adcp @ NC - A_adcp @ Vs @ NV
+    e_adcp_select = B_adcp @ CV @ EC - A_adcp @ Vs @ EV
+    n_adcp_select = B_adcp @ CV @ NC - A_adcp @ Vs @ NV
     e_adcp_mat = 2* e_adcp_select.T @ e_adcp_select
     e_adcp_constant = 2 * e_adcp_select.T @ zadcp_e
     n_adcp_mat = 2* n_adcp_select.T @ n_adcp_select
@@ -470,13 +504,9 @@ def _g_gps(prob):
     zgps_n = mb.get_zgps(prob.ddat, 'north')
     A_gps = mb.gps_select(prob.times, prob.ddat)
 
-    m = len(prob.times)
-    n = len(prob.depths)
-    Xs = mb.x_select(m)
-    EV = mb.ev_select(m, n)
-    NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
+    EV = prob.EV
+    NV = prob.NV
+    Xs = prob.Xs
     
     e_gps_select = A_gps @ Xs @ EV
     n_gps_select = A_gps @ Xs @ NV
@@ -494,14 +524,9 @@ def _g_range(prob):
     zr, zx, zy = mb.get_zrange(prob.ddat)
     A_range = mb.range_select(prob.times, prob.ddat)
 
-    m = len(prob.times)
-    n = len(prob.depths)
-    Xs = mb.x_select(m)
-    Vs = mb.v_select(m)
-    EV = mb.ev_select(m, n)
-    NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
+    EV = prob.EV
+    NV = prob.NV
+    Xs = prob.Xs
     
     A1 = A_range @ Xs @ EV  #e_range_select
     A2 = A_range @ Xs @ NV  #n_range_select
@@ -543,17 +568,16 @@ def _h_kalman(prob):
     return h_eval
 def _h_ttw(prob):
     A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat)
-    m = len(prob.times)
-    n = len(prob.depths)
-    EV = mb.ev_select(m, n)
-    NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
-    Vs = mb.v_select(m)
-    Xs = mb.x_select(m)
-    
-    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ EC
-    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ NC
+
+    Vs = prob.Vs
+    CV = prob.CV
+    EV = prob.EV
+    NV = prob.NV
+    EC = prob.EC
+    NC = prob.NC
+
+    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ CV @ EC
+    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ CV @ NC
     e_ttw_mat = 2 * e_ttw_select.T @ e_ttw_select 
     n_ttw_mat = 2 * n_ttw_select.T @ n_ttw_select 
     def h_eval(X):
@@ -563,16 +587,16 @@ def _h_ttw(prob):
 
 def _h_adcp(prob):
     A_adcp, B_adcp = mb.adcp_select(prob.times, prob.depths, prob.ddat, prob.adat)
-    m = len(prob.times)
-    n = len(prob.depths)
-    EV = mb.ev_select(m, n)
-    NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
-    Vs = mb.v_select(m)
-    Xs = mb.x_select(m)
-    e_adcp_select = B_adcp @ EC - A_adcp @ Vs @ EV
-    n_adcp_select = B_adcp @ NC - A_adcp @ Vs @ NV
+
+    Vs = prob.Vs
+    CV = prob.CV
+    EV = prob.EV
+    NV = prob.NV
+    EC = prob.EC
+    NC = prob.NC
+
+    e_adcp_select = B_adcp @ CV @ EC - A_adcp @ Vs @ EV
+    n_adcp_select = B_adcp @ CV @ NC - A_adcp @ Vs @ NV
     e_adcp_mat = 2* e_adcp_select.T @ e_adcp_select
     n_adcp_mat = 2* n_adcp_select.T @ n_adcp_select
     def h_eval(X):
@@ -582,14 +606,10 @@ def _h_adcp(prob):
 
 def _h_gps(prob):
     A_gps = mb.gps_select(prob.times, prob.ddat)
-    m = len(prob.times)
-    n = len(prob.depths)
-    EV = mb.ev_select(m, n)
-    NV = mb.nv_select(m, n)
-    EC = mb.ec_select(m, n)
-    NC = mb.nc_select(m, n)
-    Vs = mb.v_select(m)
-    Xs = mb.x_select(m)
+
+    EV = prob.EV
+    NV = prob.NV
+    Xs = prob.Xs
 
     e_gps_select = A_gps @ Xs @ EV
     n_gps_select = A_gps @ Xs @ NV
@@ -683,17 +703,13 @@ def backsolve_test(x0, prob):
 
 def solve(prob, method='L-BFGS-B', maxiter=50000, maxfun=50000):
     """Solve the ADCP navigation problem for given data."""
-    times = dp.timepoints(prob.adat, prob.ddat)
-    depths = dp.depthpoints(prob.adat, prob.ddat)
     x0 = init_x(prob)
-    m = len(times)
-    n = len(depths)
-    x0 = time_rescale(x0, 1/mb.t_scale, m, n)
+    x0 = time_rescale(x0, 1/prob.t_scale, prob)
     ffunc = f(prob)
     gfunc = g(prob)
     hfunc = h(prob)
     sol = minimize(ffunc, x0, method=method, jac=gfunc, hess=hfunc,
                    options={'maxiter':maxiter, 'maxfun':maxfun, 'disp':True})
-    sol.x = time_rescale(sol.x, mb.t_scale, m, n)
+    sol.x = time_rescale(sol.x, prob.t_scale, prob)
 
     return sol
