@@ -211,6 +211,7 @@ def vehicle_Qblocks(times, rho=1, order=2, conditioner=conditioner, t_scale=t_sc
         raise ValueError
     return Qs
 
+
 def vehicle_Qinv(times, rho=1, order=2, conditioner=conditioner, t_scale=t_scale):
     """Creates the precision matrix for smoothing the vehicle with velocity
     covariance rho.

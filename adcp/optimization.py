@@ -56,6 +56,29 @@ class GliderProblem:
                 self.depths,
                 self.ddat
             )
+        else:
+            self.depth_rates = None
+        self.m = len(self.times)
+        self.n = len(self.depths)
+        self.As = mb.a_select(self.m, self.vehicle_order)
+        self.Vs = mb.v_select(self.m, self.vehicle_order)
+        self.Xs = mb.x_select(self.m, self.vehicle_order)
+        self.CA = mb.ca_select(self.n, self.current_order, self.vehicle_vel)
+        self.CV = mb.cv_select(self.n, self.current_order, self.vehicle_vel)
+        self.CX = mb.cx_select(self.n, self.current_order, self.vehicle_vel)
+        self.EV = mb.ev_select(
+            self.m, self.n, self.vehicle_order, self.current_order, self.vehicle_vel
+        )
+        self.NV = mb.nv_select(
+            self.m, self.n, self.vehicle_order, self.current_order, self.vehicle_vel
+        )
+        self.EC = mb.ec_select(
+            self.m, self.n, self.vehicle_order, self.current_order, self.vehicle_vel
+        )
+        self.NC = mb.nc_select(
+            self.m, self.n, self.vehicle_order, self.current_order, self.vehicle_vel
+        )
+
 
 
 # %%
