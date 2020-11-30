@@ -21,7 +21,7 @@ control condition number of problem.
 conditioner = 'tanh'
 
 # %% Vector item selection
-def uv_select(times, depths, ddat):
+def uv_select(times, depths, ddat, vehicle_vel="otg"):
     """Creates the matrices that will select the appropriate V_otg
     and current values for comparing with hydrodynamic model
     uv measurements.
@@ -29,6 +29,8 @@ def uv_select(times, depths, ddat):
     Parameters:
         times ([numpy.datetime64,]) : all of the sample times to predict
             V_otg for.  returned by dataprep.timepoints()
+        depths ([numpy.datetime64,]) : all of the sample depths to predict
+            current for.  returned by dataprep.depthpoints()
         ddat (dict): the recorded dive data returned by load_dive()
         
     Returns:
@@ -59,8 +61,11 @@ def adcp_select(times, depths, ddat, adat, vehicle_vel="otg"):
     Parameters:
         times ([numpy.datetime64,]) : all of the sample times to predict
             V_otg for.  returned by dataprep.timepoints()
+        depths ([numpy.datetime64,]) : all of the sample depths to predict
+            current for.  returned by dataprep.depthpoints()
         ddat (dict): the recorded dive data returned by load_dive()
         adat (dict): the recorded ADCP data returned by load_adcp()
+        vehicle_vel (str): whether modeling "otg" or "ttw" vehicle velocity
         
     Returns:
         tuple of nupmy arrays.  The first multiplies the vehicle
@@ -114,20 +119,24 @@ def adcp_select(times, depths, ddat, adat, vehicle_vel="otg"):
             B2 = scipy.sparse.coo_matrix((), shape=mat_shape)
     return A, B1 + B2
 
-def gps_select(times, ddat, vehicle_method="otg"):
+def gps_select(times, depths, ddat, adat, vehicle_vel="otg"):
     """Creates the matrix that will select the appropriate position
     for comparing with GPS measurements
     
     Parameters:
         times ([numpy.datetime64,]) : all of the sample times to predict
             V_otg for.  returned by dataprep.timepoints()
+        depths ([numpy.datetime64,]) : all of the sample depths to predict
+            current for.  returned by dataprep.depthpoints()
         ddat (dict): the recorded dive data returned by load_dive()
+        adat (dict): the recorded ADCP data returned by load_adcp()
         vehicle_method (str): Whether the vehicle modeling describes
             over-the-ground (world referenced) or through-the-water
             (relative to water) metrics
         
     Returns:
-        Nupmy array to multiply the X_otg vector.
+        Tuple: sparse array to multiply the vehicle posit vector and one
+        to multiply the current posit vector, if modeling ttw velocity
     """
     gps_times = ddat['gps'].index.unique().to_numpy()
     idxgps = [k for k, t in enumerate(times) if t in gps_times]
@@ -135,7 +144,26 @@ def gps_select(times, ddat, vehicle_method="otg"):
     A = scipy.sparse.coo_matrix((np.ones(len(idxgps)),
                                  (range(len(idxgps)),idxgps)),
                                 shape=mat_shape)
-    return A
+
+    if vehicle_method == 'ttw':
+        mat_shape = (len(idxgps), len(depths))
+        d_list = list(depths)
+        depth_df = dp._depth_interpolator(times, ddat)
+        gps_depth = depth_df.loc[gps_times, "depth"].values
+        idxdepth = [d_list.index(d) for d in gps_depth]
+
+        B = scipy.sparse.coo_matrix(
+            (
+                np.ones(len(idxdepth)),
+                (range(len(idxdepth)), idxdepth)
+            ),
+            shape=mat_shape
+        )
+        else:
+            B = None
+
+
+    return A, B
 
 def range_select(times, ddat):
     """Creates the matrix that will select the appropriate position

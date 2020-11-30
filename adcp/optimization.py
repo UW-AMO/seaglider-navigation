@@ -236,10 +236,12 @@ def solve_mats(prob, verbose=False):
 
     zgps_e = mb.get_zgps(prob.ddat, 'east')
     zgps_n = mb.get_zgps(prob.ddat, 'north')
-    A_gps = mb.gps_select(prob.times, prob.ddat)
+    A_gps, B_gps = mb.gps_select(prob.times, prob.depths, prob.ddat,
+                                prob.adat, prob.vehicle_vel)
 
     Xs = prob.Xs
     CV = prob.CV
+    CX = prob.CX
     EV = prob.EV
     NV = prob.NV
     EC = prob.EC
@@ -253,6 +255,9 @@ def solve_mats(prob, verbose=False):
     n_adcp_select = B_adcp @ CV @ NC - A_adcp @ Vs @ NV
     e_gps_select = A_gps @ Xs @ EV
     n_gps_select = A_gps @ Xs @ NV
+    if B_gps is not None:
+        e_gps_select += B_gps @ CX @ EC
+        n_gps_select += B_gps @ CX @ NC
 
     A = (  2* kalman_mat
          + 1/(prob.rho_t)*n_ttw_select.T @ n_ttw_select
@@ -389,18 +394,21 @@ def _f_adcp(prob):
 def _f_gps(prob):
     zgps_e = mb.get_zgps(prob.ddat, 'east')
     zgps_n = mb.get_zgps(prob.ddat, 'north')
-    A_gps = mb.gps_select(prob.times, prob.ddat)
+    A_gps, B_gps = mb.gps_select(prob.times, prob.depths, prob.ddat,
+                                prob.adat, prob.vehicle_vel)
 
     EV = prob.EV
     NV = prob.NV
     Xs = prob.Xs
 
-    EC = prob.EC
-    NC = prob.NC
-    CX = prob.CX
-
     e_gps_select = A_gps @ Xs @ EV
     n_gps_select = A_gps @ Xs @ NV
+    if B_gps is not None:
+        CX = prob.CX
+        EC = prob.EC
+        NC = prob.NC
+        e_gps_select += B_gps @ CX @ EC
+        n_gps_select += B_gps @ CX @ NC
     def f_eval(X):
         gps_error = 1/(2*prob.rho_g)*(
                     np.square(zgps_n-n_gps_select @ X).sum() +
@@ -507,7 +515,8 @@ def _g_adcp(prob):
 def _g_gps(prob):
     zgps_e = mb.get_zgps(prob.ddat, 'east')
     zgps_n = mb.get_zgps(prob.ddat, 'north')
-    A_gps = mb.gps_select(prob.times, prob.ddat)
+    A_gps, B_gps = mb.gps_select(prob.times, prob.depths, prob.ddat,
+                                prob.adat, prob.vehicle_vel)
 
     EV = prob.EV
     NV = prob.NV
@@ -515,6 +524,13 @@ def _g_gps(prob):
     
     e_gps_select = A_gps @ Xs @ EV
     n_gps_select = A_gps @ Xs @ NV
+    if B_gps is not None:
+        CX = prob.CX
+        EC = prob.EC
+        NC = prob.NC
+        e_gps_select += B_gps @ CX @ EC
+        n_gps_select += B_gps @ CX @ NC
+
     e_gps_mat = 2* e_gps_select.T @ e_gps_select
     e_gps_constant = 2 * e_gps_select.T @ zgps_e
     n_gps_mat = 2* n_gps_select.T @ n_gps_select
@@ -611,7 +627,8 @@ def _h_adcp(prob):
     return h_eval
 
 def _h_gps(prob):
-    A_gps = mb.gps_select(prob.times, prob.ddat)
+    A_gps, B_gps = mb.gps_select(prob.times, prob.depths, prob.ddat,
+                                prob.adat, prob.vehicle_vel)
 
     EV = prob.EV
     NV = prob.NV
@@ -619,6 +636,13 @@ def _h_gps(prob):
 
     e_gps_select = A_gps @ Xs @ EV
     n_gps_select = A_gps @ Xs @ NV
+    if B_gps is not None:
+        CX = prob.CX
+        EC = prob.EC
+        NC = prob.NC
+        e_gps_select += B_gps @ CX @ EC
+        n_gps_select += B_gps @ CX @ NC
+
     e_gps_mat = 2* e_gps_select.T @ e_gps_select
     n_gps_mat = 2* n_gps_select.T @ n_gps_select
 
