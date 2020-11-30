@@ -226,8 +226,8 @@ def solve_mats(prob, verbose=False):
     n = len(prob.depths)
     zttw_e = mb.get_zttw(prob.ddat, 'east', prob.t_scale)
     zttw_n = mb.get_zttw(prob.ddat, 'north', prob.t_scale)
-    A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat)
-    Vs = mb.v_select(m, prob.vehicle_order)
+    A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat,
+                                prob.adat, prob.vehicle_vel)
 
     zadcp_e = mb.get_zadcp(prob.adat, 'east', prob.t_scale)
     zadcp_n = mb.get_zadcp(prob.adat, 'north', prob.t_scale)
@@ -239,6 +239,7 @@ def solve_mats(prob, verbose=False):
     A_gps, B_gps = mb.gps_select(prob.times, prob.depths, prob.ddat,
                                 prob.adat, prob.vehicle_vel)
 
+    Vs = prob.Vs
     Xs = prob.Xs
     CV = prob.CV
     CX = prob.CX
@@ -353,7 +354,8 @@ def _f_kalman(prob):
 def _f_ttw(prob):
     zttw_e = mb.get_zttw(prob.ddat, 'east', prob.t_scale)
     zttw_n = mb.get_zttw(prob.ddat, 'north', prob.t_scale)
-    A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat)
+    A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat,
+                                prob.adat, prob.vehicle_vel)
 
     Vs = prob.Vs
     CV = prob.CV
@@ -361,10 +363,9 @@ def _f_ttw(prob):
     NV = prob.NV
     EC = prob.EC
     NC = prob.NC
-    v_otg = prob.vehicle_vel == 'otg'
 
-    e_ttw_select = A_ttw @ Vs @ EV - v_otg * B_ttw @ CV @ EC
-    n_ttw_select = A_ttw @ Vs @ NV - v_otg * B_ttw @ CV @ NC
+    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ CV @ EC
+    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ CV @ NC
     def f_eval(X):
         hydrodynamic_error = 1/(2*prob.rho_t)*(
                                 np.square(zttw_n-n_ttw_select @ X).sum() +
@@ -464,7 +465,8 @@ def _g_kalman(prob):
 def _g_ttw(prob):
     zttw_e = mb.get_zttw(prob.ddat, 'east', prob.t_scale)
     zttw_n = mb.get_zttw(prob.ddat, 'north', prob.t_scale)
-    A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat)
+    A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat,
+                                prob.adat, prob.vehicle_vel)
 
     Vs = prob.Vs
     CV = prob.CV
@@ -588,7 +590,8 @@ def _h_kalman(prob):
         return 2* kalman_mat
     return h_eval
 def _h_ttw(prob):
-    A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat)
+    A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat,
+                                prob.adat, prob.vehicle_vel)
 
     Vs = prob.Vs
     CV = prob.CV

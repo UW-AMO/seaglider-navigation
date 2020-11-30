@@ -21,7 +21,7 @@ control condition number of problem.
 conditioner = 'tanh'
 
 # %% Vector item selection
-def uv_select(times, depths, ddat, vehicle_vel="otg"):
+def uv_select(times, depths, ddat, adat=None, vehicle_vel="otg"):
     """Creates the matrices that will select the appropriate V_otg
     and current values for comparing with hydrodynamic model
     uv measurements.
@@ -32,6 +32,8 @@ def uv_select(times, depths, ddat, vehicle_vel="otg"):
         depths ([numpy.datetime64,]) : all of the sample depths to predict
             current for.  returned by dataprep.depthpoints()
         ddat (dict): the recorded dive data returned by load_dive()
+        adat (dict): the recorded ADCP data returned by load_adcp()
+        vehicle_vel (str): whether modeling "otg" or "ttw" vehicle velocity
         
     Returns:
         tuple of nupmy arrays.  The first multiplies the V_otg vector,
@@ -49,9 +51,12 @@ def uv_select(times, depths, ddat, vehicle_vel="otg"):
     d_list = list(depths)
     idxdepth = [d_list.index(d) for d in uv_depths]
     mat_shape = (len(idxdepth), len(depths))
-    B = scipy.sparse.coo_matrix((np.ones(len(idxdepth)),
-                                 (range(len(idxdepth)),idxdepth)),
-                                shape=mat_shape)
+    if vehicle_vel == 'otg':
+        B = scipy.sparse.coo_matrix((np.ones(len(idxdepth)),
+                                    (range(len(idxdepth)),idxdepth)),
+                                    shape=mat_shape)
+    else:
+        B = scipy.sparse.coo_matrix((), shape=mat_shape)
     return A, B
 
 def adcp_select(times, depths, ddat, adat, vehicle_vel="otg"):
