@@ -80,7 +80,6 @@ class GliderProblem:
         )
 
 
-
 # %%
 def init_x(prob):
     ev0, nv0 = initial_kinematics(
@@ -348,7 +347,7 @@ def _f_kalman(prob):
     return f_eval
 def _f_ttw(prob):
     zttw_e = mb.get_zttw(prob.ddat, 'east', prob.t_scale)
-    zttw_n = mb.get_zttw(prob.ddat, 'north', prob.t_sclae)
+    zttw_n = mb.get_zttw(prob.ddat, 'north', prob.t_scale)
     A_ttw, B_ttw = mb.uv_select(prob.times, prob.depths, prob.ddat)
 
     Vs = prob.Vs
@@ -357,8 +356,10 @@ def _f_ttw(prob):
     NV = prob.NV
     EC = prob.EC
     NC = prob.NC
-    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ CV @ EC
-    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ CV @ NC
+    v_otg = prob.vehicle_vel == 'otg'
+
+    e_ttw_select = A_ttw @ Vs @ EV - v_otg * B_ttw @ CV @ EC
+    n_ttw_select = A_ttw @ Vs @ NV - v_otg * B_ttw @ CV @ NC
     def f_eval(X):
         hydrodynamic_error = 1/(2*prob.rho_t)*(
                                 np.square(zttw_n-n_ttw_select @ X).sum() +
@@ -393,6 +394,10 @@ def _f_gps(prob):
     EV = prob.EV
     NV = prob.NV
     Xs = prob.Xs
+
+    EC = prob.EC
+    NC = prob.NC
+    CX = prob.CX
 
     e_gps_select = A_gps @ Xs @ EV
     n_gps_select = A_gps @ Xs @ NV
