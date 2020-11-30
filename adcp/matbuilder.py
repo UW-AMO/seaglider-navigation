@@ -5,6 +5,7 @@ Created on Sun Dec 22 21:25:07 2019
 @author: 600301
 """
 import warnings
+from itertools import repeat
 
 import scipy.sparse
 import scipy.interpolate
@@ -51,7 +52,7 @@ def uv_select(times, depths, ddat):
                                 shape=mat_shape)
     return A, B
 
-def adcp_select(times, depths, ddat, adat):
+def adcp_select(times, depths, ddat, adat, vehicle_vel="otg"):
     """Creates the matrices that will select the appropriate V_otg
     and current values for comparing with ADCP measurements.
     
@@ -62,8 +63,8 @@ def adcp_select(times, depths, ddat, adat):
         adat (dict): the recorded ADCP data returned by load_adcp()
         
     Returns:
-        tuple of nupmy arrays.  The first multiplies the V_otg vector,
-        the second multiplies the current vector
+        tuple of nupmy arrays.  The first multiplies the vehicle
+        velocity vector, the second multiplies the current vector
     """
     adcp_times = np.unique(adat['time'])
     idxadcp = [k for k, t in enumerate(times) if t in adcp_times]
@@ -90,7 +91,7 @@ def adcp_select(times, depths, ddat, adat):
                                 shape=mat_shape)
     return A, B
 
-def gps_select(times, ddat):
+def gps_select(times, ddat, vehicle_method="otg"):
     """Creates the matrix that will select the appropriate position
     for comparing with GPS measurements
     
@@ -98,6 +99,9 @@ def gps_select(times, ddat):
         times ([numpy.datetime64,]) : all of the sample times to predict
             V_otg for.  returned by dataprep.timepoints()
         ddat (dict): the recorded dive data returned by load_dive()
+        vehicle_method (str): Whether the vehicle modeling describes
+            over-the-ground (world referenced) or through-the-water
+            (relative to water) metrics
         
     Returns:
         Nupmy array to multiply the X_otg vector.
@@ -650,3 +654,45 @@ def nc_select(m, n, vehicle_order=2, current_order=2, vehicle_vel='otg'):
     diag = 2 * vehicle_order * m + current_order * n
 
     return scipy.sparse.eye(n_rows, n_cols, diag)
+
+
+def legacy_select(m, n, vehicle_order=2, current_order=2, vehicle_vel='otg'):
+    """Creates a selection matrix for choosing indexes of X
+    related to northerly current.
+
+    Parameters:
+        m (int) : number of timepoints
+        n (int) : number of depthpoints
+        vehicle_order (int) : order of vehicle smoothing in matrix Q
+        current_order (int) : order of current smoothing in matrix Q
+        vehicle_vel (str) : if "otg", then current skips modeling 1st order
+    """
+
+    EC = ec_select(m, n, vehicle_order, current_order, vehicle_vel)
+    NC = nc_select(m, n, vehicle_order, current_order, vehicle_vel)
+    CV = cv_select(n, current_order, vehicle_vel)
+
+    current_order -= vehicle_vel == 'otg'
+    vehicle_block = scipy.sparse.diags(
+        np.ones(2), vehicle_order-2, (2,vehicle_order)
+    )
+    vehicle_mat = scipy.sparse.block_diag(
+        [mat for mat in repeat(vehicle_block,m)]
+    )
+
+    vehicle_mat_e = scipy.sparse.hstack((
+        vehicle_mat,
+        scipy.sparse.csr_matrix((2 * m, vehicle_order * m)),
+        scipy.sparse.csr_matrix((2 * m, current_order * 2 * n))
+    ))
+    vehicle_mat_n = scipy.sparse.hstack((
+        scipy.sparse.csr_matrix((2 * m, vehicle_order * m)),
+        vehicle_mat,
+        scipy.sparse.csr_matrix((2 * m, current_order * 2 * n))
+    ))
+    current_mat_n = CV @ NC
+    current_mat_e = CV @ EC
+
+    return scipy.sparse.vstack((
+        vehicle_mat_e, vehicle_mat_n, current_mat_e, current_mat_n
+    ))
