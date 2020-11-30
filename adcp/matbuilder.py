@@ -83,13 +83,36 @@ def adcp_select(times, depths, ddat, adat, vehicle_vel="otg"):
     rising_times = pd.to_datetime(adat['time']) > turnaround
     adcp_depths = adat['Z'].copy()
     adcp_depths[:,rising_times] = 2*deepest - adat['Z'][:,rising_times]
+
     d_list = list(depths)
     idxdepth = [d_list.index(d) for d in adcp_depths.T[valid_obs.T]]
     mat_shape = (len(idxdepth), len(depths))
-    B = scipy.sparse.coo_matrix((np.ones(len(idxdepth)),
-                                 (range(len(idxdepth)), idxdepth)),
-                                shape=mat_shape)
-    return A, B
+    B1 = scipy.sparse.coo_matrix(
+        (
+            np.ones(len(idxdepth)),
+            (range(len(idxdepth)), idxdepth)
+        ),
+        shape=mat_shape
+    )
+
+    if vehicle_vel == 'ttw':
+        adcp_vehicle_depths = depth_df.loc[adcp_times, "depth"].values
+        adcp_vehicle_depths = np.repeat(
+            adcp_vehicle_depths[:,np.newaxis],
+            valid_obs.shape[0],
+            axis=1
+        ).T
+        idx_v_depth = [d_list.index(d) for d in adcp_vehicle_depths.T[valid_obs.T]]
+        B2 = scipy.sparse.coo_matrix(
+            (
+                -np.ones(len(idxdepth)),
+                (range(len(idxdepth)), idx_v_depth)
+            ),
+            shape=mat_shape
+        )
+        else:
+            B2 = scipy.sparse.coo_matrix((), shape=mat_shape)
+    return A, B1 + B2
 
 def gps_select(times, ddat, vehicle_method="otg"):
     """Creates the matrix that will select the appropriate position

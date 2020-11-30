@@ -232,7 +232,7 @@ def solve_mats(prob, verbose=False):
     zadcp_e = mb.get_zadcp(prob.adat, 'east', prob.t_scale)
     zadcp_n = mb.get_zadcp(prob.adat, 'north', prob.t_scale)
     A_adcp, B_adcp = mb.adcp_select(prob.times, prob.depths, prob.ddat,
-                                    prob.adat)
+                                    prob.adat, prob.vehicle_vel)
 
     zgps_e = mb.get_zgps(prob.ddat, 'east')
     zgps_n = mb.get_zgps(prob.ddat, 'north')
@@ -370,7 +370,7 @@ def _f_adcp(prob):
     zadcp_e = mb.get_zadcp(prob.adat, 'east', prob.t_scale)
     zadcp_n = mb.get_zadcp(prob.adat, 'north', prob.t_scale)
     A_adcp, B_adcp = mb.adcp_select(prob.times, prob.depths, prob.ddat,
-                                    prob.adat)
+                                    prob.adat, prob.vehicle_vel)
     Vs = prob.Vs
     CV = prob.CV
     EV = prob.EV
@@ -481,7 +481,7 @@ def _g_adcp(prob):
     zadcp_e = mb.get_zadcp(prob.adat, 'east', prob.t_scale)
     zadcp_n = mb.get_zadcp(prob.adat, 'north', prob.t_scale)
     A_adcp, B_adcp = mb.adcp_select(prob.times, prob.depths, prob.ddat,
-                                    prob.adat)
+                                    prob.adat, prob.vehicle_vel)
 
     Vs = prob.Vs
     CV = prob.CV
@@ -591,7 +591,8 @@ def _h_ttw(prob):
     return h_eval
 
 def _h_adcp(prob):
-    A_adcp, B_adcp = mb.adcp_select(prob.times, prob.depths, prob.ddat, prob.adat)
+    A_adcp, B_adcp = mb.adcp_select(prob.times, prob.depths, prob.ddat,
+                                    prob.adat, prob.vehicle_vel)
 
     Vs = prob.Vs
     CV = prob.CV
