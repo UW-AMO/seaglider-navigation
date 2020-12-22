@@ -198,16 +198,16 @@ def time_rescale(x, t_s, prob):
     ))
     vel_reshaper = scipy.sparse.vstack((
         nmm(As, NV),
-        1/t_s * Vs @ NV,
+        Vs @ NV,
         Xs @ NV,
         nmm(As, EV),
-        1/t_s * Vs @ EV,
+        Vs @ EV,
         Xs @ EV,
         nmm(CA, NC),
-        1/t_s * CV @ NC,
+        CV @ NC,
         nmm(CX, NC),
         nmm(CA, EC),
-        1/t_s * CV @ EC,
+        CV @ EC,
         nmm(CX, EC),
     ))
     return vel_reshaper.T @ velocity_scaler @ x
