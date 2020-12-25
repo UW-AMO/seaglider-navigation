@@ -56,7 +56,7 @@ def uv_select(times, depths, ddat, adat=None, vehicle_vel="otg"):
                                     (range(len(idxdepth)),idxdepth)),
                                     shape=mat_shape)
     else:
-        B = scipy.sparse.coo_matrix((), shape=mat_shape)
+        B = scipy.sparse.coo_matrix(mat_shape)
     return A, B
 
 def adcp_select(times, depths, ddat, adat, vehicle_vel="otg"):
@@ -120,8 +120,8 @@ def adcp_select(times, depths, ddat, adat, vehicle_vel="otg"):
             ),
             shape=mat_shape
         )
-        else:
-            B2 = scipy.sparse.coo_matrix((), shape=mat_shape)
+    else:
+        B2 = scipy.sparse.coo_matrix(mat_shape)
     return A, B1 + B2
 
 def gps_select(times, depths, ddat, adat, vehicle_vel="otg"):
@@ -150,7 +150,7 @@ def gps_select(times, depths, ddat, adat, vehicle_vel="otg"):
                                  (range(len(idxgps)),idxgps)),
                                 shape=mat_shape)
 
-    if vehicle_method == 'ttw':
+    if vehicle_vel == 'ttw':
         mat_shape = (len(idxgps), len(depths))
         d_list = list(depths)
         depth_df = dp._depth_interpolator(times, ddat)
@@ -164,8 +164,8 @@ def gps_select(times, depths, ddat, adat, vehicle_vel="otg"):
             ),
             shape=mat_shape
         )
-        else:
-            B = None
+    else:
+        B = None
 
 
     return A, B
