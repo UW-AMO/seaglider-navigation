@@ -156,7 +156,7 @@ def backsolve(prob):
     NC = prob.NC
 
     x = time_rescale(x, prob.t_scale, prob)
-    return x, (NV, EV, NC, EC, CV, Xs, Vs, As)
+    return x
 
 def time_rescale(x, t_s, prob):
     """Rescales the velocity measurements in a solution vector to undo

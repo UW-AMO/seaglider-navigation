@@ -62,7 +62,7 @@ for ((i, rv),(j, rc)) in product(enumerate(rho_vs), enumerate(rho_cs)):
     print(i, ' ', j)
     # %%  Solve problem
     seed = 3453
-    x_sol, (NV, EV, NC, EC, Xs, Vs) = op.backsolve(prob)
+    x_sol = op.backsolve(prob)
 
     f = op.f(prob, verbose=True)
     g = op.g(prob)
