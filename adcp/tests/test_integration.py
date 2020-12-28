@@ -1,0 +1,159 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Apr  5 11:04:36 2020
+
+@author: 600301
+"""
+import math
+from itertools import product, repeat
+from typing import Tuple
+import random
+
+import numpy as np
+from matplotlib import colors
+from matplotlib import pyplot as plt
+import pytest
+
+from adcp import dataprep as dp
+from adcp import simulation as sim
+from adcp import matbuilder as mb
+from adcp import optimization as op
+from adcp import viz
+
+def test_integration():
+      errors = standard_sim()
+      assert errors['path_error'] < 1e6 and errors['current_error'] < 1e0
+      
+
+# %% ...or simulate new data
+def standard_sim():
+      rho_t = 1e-3
+      rho_a = 1e-3
+      rho_g = 1e-1
+
+      sim_rho_v = 0
+      sim_rho_c = 0
+      sp = sim.SimParams(rho_t=rho_t, rho_a=rho_a, rho_g=rho_g, rho_v=sim_rho_v,
+                        rho_c=sim_rho_c,
+                        sigma_t=.4, sigma_c=.3, n_timepoints=2000,
+                        measure_points=dict(gps='endpoints', ttw=.5, range=.05),
+                        vehicle_method='curved', curr_method='curved')
+      ddat, adat, x, curr_df, v_df = sim.simulate(sp, verbose=True)
+      depths = dp.depthpoints(adat, ddat)
+      times = dp.timepoints(adat, ddat)
+
+      # %% No Range
+      rho_c = 1e0
+      rho_v = 1e0
+      rho_v = 1e-8
+      rho_c = 1e-8
+      rho_g=rho_g
+      rho_t=rho_t
+      rho_a=rho_a
+      rho_r=0
+      print(f"""Solution method covariances:
+      vehicle process: {rho_v}
+      current process:{rho_c}
+      GPS measurement: {rho_g}
+      TTW measurement: {rho_t}
+      ADCP meawsurement: {rho_a}""")
+
+      prob=op.GliderProblem(ddat, adat, rho_v=rho_v, rho_c=rho_c, rho_g=rho_g,
+                        rho_t=rho_t, rho_a=rho_a, rho_r=rho_r,
+                        t_scale=1e3, conditioner="tanh",
+                        vehicle_vel='otg', current_order=2,
+                        vehicle_order=2)
+
+      # %%  Solve problem
+      seed = 3453
+      x_sol = op.backsolve(prob)
+
+      f = op.f(prob, verbose=True)
+      g = op.g(prob)
+      h = op.h(prob)
+
+      Xs = prob.Xs
+      EV = prob.EV
+      NV = prob.NV
+      EC = prob.EC
+      NC = prob.NC
+      CV = prob.CV
+
+
+      err = x_sol-x
+      path_error = (
+            np.linalg.norm(Xs @ NV @ err)**2 + 
+            np.linalg.norm(Xs @ EV @ err)**2
+      )
+      current_error = (
+            np.linalg.norm(EC @ err)**2 +
+            np.linalg.norm(NC @ err)**2
+      )
+      return {
+            'path_error':path_error,
+            'current_error':current_error,
+            'x_true':x,
+            'x_sol':x_sol,
+            'prob':prob,
+      }
+
+
+# %%
+def main():
+      """Print summary detail and plots of solution"""
+      res_dict = standard_sim()
+      prob = res_dict['prob']
+
+      legacy = mb.legacy_select(
+            prob.m,
+            prob.n,
+            prob.vehicle_order,
+            prob.current_order,
+            prob.vehicle_vel
+      )
+
+      x_plot = legacy @ res_dict['x_sol']
+      x_true = legacy @ res_dict['x_true']
+      perror = res_dict['path_error']
+      cerror = res_dict['current_error']
+
+      print('Navigation position error:', perror)
+      print('Current error:', cerror)
+      plot_bundle(x_plot, x_true, prob)
+      c1, c2, c3, c4 = check_condition(prob)
+      print('100x100 sample of kalman matrix has condition number ', c1)
+      print('100x100 sample of backsolve matrix has condition number ', c2)
+      print('1000x1000 sample of kalman matrix has condition number ', c3)
+      print('1000x1000 sample of backsolve matrix has condition number ', c4)
+
+
+def plot_bundle(sol_x, x_true, prob):
+    ax1 = viz.vehicle_speed_plot(sol_x, prob.ddat, prob.times, prob.depths,
+                              direction='both', x_true=x_true, ttw=False)
+    ax2 = viz.inferred_ttw_error_plot(sol_x, prob.adat, prob.ddat,
+                                    direction='both', x_true=x_true)
+    ax3 = viz.current_depth_plot(sol_x, prob.adat, prob.ddat, direction='both',
+                                    x_true=x_true)
+    ax4 = viz.inferred_adcp_error_plot(sol_x, prob.adat, prob.ddat,
+                                    direction='both', x_true=x_true)
+    ax5 = viz.vehicle_posit_plot(sol_x, prob.ddat, prob.times, prob.depths,
+                                x_true=x_true, dead_reckon=True)
+
+def check_condition(prob: op.GliderProblem) -> Tuple:
+    """Checks condition on matrices for glider problem"""
+    m = len(prob.times)
+    n = len(prob.depths)
+    kalman_mat = op.gen_kalman_mat(prob)
+    A, _ = op.solve_mats(prob)
+
+    r100 = np.array(random.sample(range(0, 4*m+2*n), 100))
+    r1000 = np.array(random.sample(range(0, 4*m+2*n), 1000))
+    c1 = np.linalg.cond(kalman_mat.todense()[r100[:,None],r100])
+    c2 = np.linalg.cond(A.todense()[r100[:,None],r100])
+    c3 = np.linalg.cond(kalman_mat.todense()[r1000[:,None],r1000])
+    c4 = np.linalg.cond(A.todense()[r1000[:,None],r1000])
+
+    return c1, c2, c3, c4
+
+if __name__ == '__main__':
+      main()
