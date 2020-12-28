@@ -4,17 +4,11 @@ Created on Sun Apr  5 11:04:36 2020
 
 @author: 600301
 """
-import math
-from itertools import product, repeat
 from typing import Tuple
 import random
 
 import numpy as np
-from matplotlib import colors
-from matplotlib import pyplot as plt
-import pytest
 
-from adcp import dataprep as dp
 from adcp import simulation as sim
 from adcp import matbuilder as mb
 from adcp import optimization as op
@@ -43,13 +37,11 @@ def standard_sim():
         sigma_t=0.4,
         sigma_c=0.3,
         n_timepoints=2000,
-        measure_points=dict(gps="endpoints", ttw=0.5, range=0.05),
+        measure_points={"gps": "endpoints", "ttw": 0.5, "range": 0.05},
         vehicle_method="curved",
         curr_method="curved",
     )
     ddat, adat, x, curr_df, v_df = sim.simulate(sp, verbose=True)
-    depths = dp.depthpoints(adat, ddat)
-    times = dp.timepoints(adat, ddat)
 
     # %% No Range
     rho_c = 1e0
@@ -86,19 +78,13 @@ def standard_sim():
     )
 
     # %%  Solve problem
-    seed = 3453
     x_sol = op.backsolve(prob)
-
-    f = op.f(prob, verbose=True)
-    g = op.g(prob)
-    h = op.h(prob)
 
     Xs = prob.Xs
     EV = prob.EV
     NV = prob.NV
     EC = prob.EC
     NC = prob.NC
-    CV = prob.CV
 
     err = x_sol - x
     path_error = (
@@ -146,7 +132,7 @@ def main():
 
 
 def plot_bundle(sol_x, x_true, prob):
-    ax1 = viz.vehicle_speed_plot(
+    viz.vehicle_speed_plot(
         sol_x,
         prob.ddat,
         prob.times,
@@ -155,16 +141,16 @@ def plot_bundle(sol_x, x_true, prob):
         x_true=x_true,
         ttw=False,
     )
-    ax2 = viz.inferred_ttw_error_plot(
+    viz.inferred_ttw_error_plot(
         sol_x, prob.adat, prob.ddat, direction="both", x_true=x_true
     )
-    ax3 = viz.current_depth_plot(
+    viz.current_depth_plot(
         sol_x, prob.adat, prob.ddat, direction="both", x_true=x_true
     )
-    ax4 = viz.inferred_adcp_error_plot(
+    viz.inferred_adcp_error_plot(
         sol_x, prob.adat, prob.ddat, direction="both", x_true=x_true
     )
-    ax5 = viz.vehicle_posit_plot(
+    viz.vehicle_posit_plot(
         sol_x,
         prob.ddat,
         prob.times,

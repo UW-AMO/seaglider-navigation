@@ -6,6 +6,7 @@ Created on Sun Dec 22 21:25:07 2019
 """
 import warnings
 from itertools import repeat
+from typing import Iterable
 
 import scipy.sparse
 import scipy.interpolate
@@ -19,6 +20,7 @@ t_scale = 1e3
 control condition number of problem.
 """
 conditioner = "tanh"
+
 
 # %% Vector item selection
 def uv_select(times, depths, ddat, adat=None, vehicle_vel="otg"):
@@ -203,13 +205,16 @@ def q_cond(dts, dim=2):
     min_dt = min(dts)
     max_dt = max(dts)
     if dim == 3:
-        arr_func = lambda dt: np.array(
-            [
-                [dt, dt ** 2 / 2, dt ** 3 / 6],
-                [dt ** 2 / 2, dt ** 3 / 3, dt ** 4 / 8],
-                [dt ** 3 / 6, dt ** 4 / 8, dt ** 5 / 20],
-            ]
-        )
+
+        def arr_func(dt: Iterable) -> np.Array:
+            return np.array(
+                [
+                    [dt, dt ** 2 / 2, dt ** 3 / 6],
+                    [dt ** 2 / 2, dt ** 3 / 3, dt ** 4 / 8],
+                    [dt ** 3 / 6, dt ** 4 / 8, dt ** 5 / 20],
+                ]
+            )
+
         max_arr = arr_func(max_dt)
         min_arr = arr_func(min_dt)
         max_eig = max(abs(np.linalg.eigvals(max_arr)))
@@ -645,7 +650,7 @@ def cx_select(n, order=2, vehicle_vel="otg"):
 
     if vehicle_vel == "otg":
         return None
-        # Current X position not modeled when vehicle velocity is measured over ground.
+        # Current X position not modeled when vehicle velocity is measured over ground. # noqa
     elif vehicle_vel == "ttw":
         cols = range(order - 1, order * n, order)
     else:
@@ -790,9 +795,7 @@ def legacy_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
     vehicle_block = scipy.sparse.diags(
         np.ones(2), vehicle_order - 2, (2, vehicle_order)
     )
-    vehicle_mat = scipy.sparse.block_diag(
-        [mat for mat in repeat(vehicle_block, m)]
-    )
+    vehicle_mat = scipy.sparse.block_diag(list(repeat(vehicle_block, m)))
 
     vehicle_mat_e = scipy.sparse.hstack(
         (

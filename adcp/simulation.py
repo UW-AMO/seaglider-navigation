@@ -12,33 +12,34 @@ import pandas as pd
 import adcp.matbuilder as mb
 import adcp.dataprep as dp
 
+
 # %%
 class SimParams:
     """Statically holds glider dive simulation parameters."""
 
-    defaults = dict(
-        duration=pd.Timedelta("3 hours"),
-        max_depth=750,
-        n_dives=1,
-        n_timepoints=1001,
-        rho_v=0.1,
-        rho_c=0.1,
-        rho_t=1,
-        rho_a=1,
-        rho_g=1,
-        rho_r=1,
-        adcp_bins=4,
-        seed=124,
-        sigma_t=1,
-        sigma_c=1,
-        curr_method="constant",
-        vehicle_method="constant",
-        measure_points=dict(
-            gps="endpoints",
-            ttw=0.5,
-            range=0.05,
-        ),
-    )
+    defaults = {
+        "duration": pd.Timedelta("3 hours"),
+        "max_depth": 750,
+        "n_dives": 1,
+        "n_timepoints": 1001,
+        "rho_v": 0.1,
+        "rho_c": 0.1,
+        "rho_t": 1,
+        "rho_a": 1,
+        "rho_g": 1,
+        "rho_r": 1,
+        "adcp_bins": 4,
+        "seed": 124,
+        "sigma_t": 1,
+        "sigma_c": 1,
+        "curr_method": "constant",
+        "vehicle_method": "constant",
+        "measure_points": {
+            "gps": "endpoints",
+            "ttw": 0.5,
+            "range": 0.05,
+        },
+    }
 
     def __init__(self, **kwargs):
         """Creates a SimParams object
@@ -48,25 +49,27 @@ class SimParams:
             max_depth (int, float): depth at apogee.
             n_dives (int): number of total dives.  Only tested with n=1.
             n_timepoints (int): number of timepoints to sample
-            rho_v (float): process variance of vehicle velocity.  Exact use
-                depends upon vehicle_method
-            rho_c (float): process variance of current profile.  Exact use
-                depends upon curr_method
-            rho_t (float): variance of error in TTW hydrodynamic model measurement
+            rho_v (float): process variance of vehicle velocity.  Exact
+                use depends upon vehicle_method
+            rho_c (float): process variance of current profile.  Exact
+                use depends upon curr_method
+            rho_t (float): variance of error in TTW hydrodynamic model
+                measurement
             rho_a (float): variance of error in ADCP measurement
             rho_g (float): variance of error in gps measurement
             rho_r (float): variance of error in range measurement
             adcp_bins (int): number of ADCP bins measured.
             seed (int): random seed
-            sigma_t (float): variance of max vehicle velocity generator.  Exact
-                use depends on vehicle_method
+            sigma_t (float): variance of max vehicle velocity generator.
+                Exact use depends on vehicle_method
             sigma_c (float): variance of max current generator.  Exact
                 use depends on curr_method
             curr_method (str): method to simulate current profile
-            vehicle_method (str): method to simulate vehicle TTW trajectory
-            measure_points (dict): dictionary with keys 'gps', 'ttw' and 'range'
-                to describe how measurement points in time are assigned to
-                different measurement devices.
+            vehicle_method (str): method to simulate vehicle TTW
+                trajectory
+            measure_points (dict): dictionary with keys 'gps', 'ttw' and
+                'range' to describe how measurement points in time are
+                assigned to different measurement devices.
         """
         for k, v in self.defaults.items():
             if k in kwargs:
@@ -374,7 +377,7 @@ def select_times(depth_df, sim_params):
         )
         unallocated_times -= set(gps_times)
 
-    adcp_times = pd.to_datetime(sorted(list(unallocated_times)))
+    adcp_times = pd.to_datetime(sorted(unallocated_times))
 
     return {
         "gps": gps_times,
@@ -416,7 +419,7 @@ def sim_measurement_noise(
             velocity, n/e adcp, n/e gps, and range, followed by range
             posits, the positions of the range measurement beacons
     """
-    ### Calculate & simulate z_ttw, z_adcp, and z_gps
+    # Calculate & simulate z_ttw, z_adcp, and z_gps
     z_ttw_n = np.random.normal(
         loc=v_df.loc[ttw_times, "ttw_n"], scale=sim_params.rho_t
     )
@@ -449,7 +452,7 @@ def sim_measurement_noise(
         loc=v_df.loc[gps_times, "x"], scale=sim_params.rho_g
     )
 
-    ## Simulate range
+    # Simulate range
     # Choose a covariance based upon maximum position deviation from origin
     range_scale = np.abs((v_df.y.min(), v_df.x.min())).max() / 10
     range_posit_randomness = (
@@ -462,16 +465,16 @@ def sim_measurement_noise(
     )
     z_range = np.random.normal(loc=ranges, scale=sim_params.rho_r)
 
-    return dict(
-        z_ttw_n=z_ttw_n,
-        z_ttw_e=z_ttw_e,
-        z_adcp_n=z_adcp_n,
-        z_adcp_e=z_adcp_e,
-        z_gps_n=z_gps_n,
-        z_gps_e=z_gps_e,
-        z_range=z_range,
-        range_posits=range_posits,
-    )
+    return {
+        "z_ttw_n": z_ttw_n,
+        "z_ttw_e": z_ttw_e,
+        "z_adcp_n": z_adcp_n,
+        "z_adcp_e": z_adcp_e,
+        "z_gps_n": z_gps_n,
+        "z_gps_e": z_gps_e,
+        "z_range": z_range,
+        "range_posits": range_posits,
+    }
 
 
 # %%
@@ -542,7 +545,7 @@ def construct_load_dicts(
     adf = adcp_df.loc[adcp_times]
     reflect = (adf.loc[adcp_times] > sim_params.max_depth).all(axis=1)
     adf.loc[reflect] = 2 * sim_params.max_depth - adf.loc[reflect]
-    ### Construct dataframes & dictionaries for ADCP data
+    # Construct dataframes & dictionaries for ADCP data
     ddat = {"gps": gps_df, "depth": ddf, "uv": ttw_df, "range": range_df}
     adat = {
         "time": adcp_times.to_numpy(),
@@ -569,7 +572,7 @@ def true_solution(curr_df, v_df, final_depths, sim_params):
     Returns:
         1-D numpy array
     """
-    ### Construct ideal optimization result
+    # Construct ideal optimization result
     m = sim_params.n_timepoints
     n = len(final_depths)
     EV = mb.ev_select(m, n)
@@ -585,9 +588,9 @@ def true_solution(curr_df, v_df, final_depths, sim_params):
     x += NV.T @ Xs.T @ v_df.y
     x += NV.T @ Vs.T @ v_df.v_otg_n
 
-    #### Inference just uses depth in the dive to guess turnaround not
-    #### max depth from sim_params.  Thus need to interpolate current to
-    #### the calculated ascending depths
+    # Inference just uses depth in the dive to guess turnaround not
+    # max depth from sim_params.  Thus need to interpolate current to
+    # the calculated ascending depths
     cdf = curr_df.append(
         pd.DataFrame(index=final_depths, columns=["curr_e", "curr_n"])
     )

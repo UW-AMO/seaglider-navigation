@@ -12,6 +12,7 @@ from adcp import matbuilder as mb
 
 cmap = plt.get_cmap("tab10")
 
+
 # %%
 def inferred_adcp_error_plot(
     solx, adat, ddat, direction="north", x_true=None, x_sol=None
@@ -513,7 +514,7 @@ def vehicle_speed_plot(
         lns.append(ln5[0])
     ax.set_ylabel("meters/second")
     ax.set_xlabel("time")
-    labs = [l.get_label() for l in lns]
+    labs = [line.get_label() for line in lns]
     ax.legend(lns, labs)
     return ax
 

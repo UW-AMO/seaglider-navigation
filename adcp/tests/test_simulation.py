@@ -1,20 +1,11 @@
-"""
-============================
-Distribution Testing Module.
-============================
-
-
-"""
 # Standard library imports
 import unittest
-import os
 
 # Third party imports
 import pandas as pd
 import numpy as np
 
 # Local application/library-specific imports
-import adcp.matbuilder as mb
 import adcp.simulation as sim
 
 
@@ -93,6 +84,8 @@ class SimTest(unittest.TestCase):
         )
         curr_df = sim.sim_current_profile(all_depths, sim_params, "constant")
         v_df = sim.sim_vehicle_path(depth_df, curr_df, sim_params, "constant")
+        assert v_df is not None
+        assert curr_df is not None
 
         raise NotImplementedError
 

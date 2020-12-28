@@ -13,7 +13,6 @@ line-length = 79
 verbose = 1
 exclude = '''
 (
-    setup.py
   | adcp-env
 )
 '''

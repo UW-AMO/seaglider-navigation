@@ -6,7 +6,6 @@ Created on Sun Feb  2 14:52:24 2020
 """
 
 from adcp import dataprep as dp
-from adcp.simulation import simulate
 from adcp import optimization as op
 from adcp import viz
 
@@ -46,7 +45,7 @@ prob = op.GliderProblem(
 )
 prob2 = op.GliderProblem(
     ddat2,
-    adat2,
+    adat,
     rho_v=rho_v,
     rho_c=rho_c,
     rho_g=rho_g,

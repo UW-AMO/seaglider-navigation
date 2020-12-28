@@ -35,7 +35,7 @@ sp = sim.SimParams(
     sigma_t=0.4,
     sigma_c=0.3,
     n_timepoints=2000,
-    measure_points=dict(gps="endpoints", ttw=0.5, range=0.05),
+    measure_points={"gps": "endpoints", "ttw": 0.5, "range": 0.05},
     vehicle_method="curved",
     curr_method="curved",
 )
@@ -123,6 +123,7 @@ for ((i, rv), (j, rc)) in product(enumerate(rho_vs), enumerate(rho_cs)):
     # print(f"\tPath error: {path_error}")
     # print(f"\tCurrent error: {current_error}\n")
 
+
 # %%
 def show_errmap(index: int = 0, rho_vs: list = [], rho_cs: list = []) -> None:
     fig = plt.figure()
@@ -157,17 +158,13 @@ curr_x = paths[i2][j2]
 
 
 def plot_bundle(sol_x):
-    ax1 = viz.vehicle_speed_plot(
+    viz.vehicle_speed_plot(
         sol_x, ddat, times, depths, direction="both", x_true=x, ttw=False
     )
-    ax2 = viz.inferred_ttw_error_plot(
-        sol_x, adat, ddat, direction="both", x_true=x
-    )
-    ax3 = viz.current_depth_plot(sol_x, adat, ddat, direction="both", x_true=x)
-    ax4 = viz.inferred_adcp_error_plot(
-        sol_x, adat, ddat, direction="both", x_true=x
-    )
-    ax5 = viz.vehicle_posit_plot(
+    viz.inferred_ttw_error_plot(sol_x, adat, ddat, direction="both", x_true=x)
+    viz.current_depth_plot(sol_x, adat, ddat, direction="both", x_true=x)
+    viz.inferred_adcp_error_plot(sol_x, adat, ddat, direction="both", x_true=x)
+    viz.vehicle_posit_plot(
         sol_x, ddat, times, depths, x_true=x, dead_reckon=True
     )
 

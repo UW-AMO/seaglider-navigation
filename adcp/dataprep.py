@@ -51,51 +51,68 @@ def load_dive(run_num):
     dive = "dv" + str(run_num)
     dive_data = loadmat(data_dir / (dive + ".mat"))[dive]
 
-    gps = dict(
-        unixtime=dive_data["GPS"][0][0]["unixtime"][0][0],
-        gps_nx_east=dive_data["GPS"][0][0]["nx_east"][0][0],
-        gps_ny_north=dive_data["GPS"][0][0]["ny_north"][0][0],
-    )
-    depth = dict(
-        depth=dive_data["DEPTH"][0][0]["depth"][0][0],
-        unixtime=dive_data["DEPTH"][0][0]["unixtime"][0][0],
-    )
-    uv = dict(
-        u_north=dive_data["UV"][0][0]["U_north"][0][0],
-        v_east=dive_data["UV"][0][0]["V_east"][0][0],
-        unixtime=dive_data["UV"][0][0]["unixtime"][0][0],
-    )
+    gps = {
+        "unixtime": dive_data["GPS"][0][0]["unixtime"][0][0],
+        "gps_nx_east": dive_data["GPS"][0][0]["nx_east"][0][0],
+        "gps_ny_north": dive_data["GPS"][0][0]["ny_north"][0][0],
+    }
+    depth = {
+        "depth": dive_data["DEPTH"][0][0]["depth"][0][0],
+        "unixtime": dive_data["DEPTH"][0][0]["unixtime"][0][0],
+    }
+    uv = {
+        "u_north": dive_data["UV"][0][0]["U_north"][0][0],
+        "v_east": dive_data["UV"][0][0]["V_east"][0][0],
+        "unixtime": dive_data["UV"][0][0]["unixtime"][0][0],
+    }
     try:
-        ranges = dict(
-            unixtime=dive_data["RANGE"][0][0]["unixtime"][0][0],
-            src_lat=dive_data["RANGE"][0][0]["src_lat"][0][0],
-            src_lon=dive_data["RANGE"][0][0]["src_lon"][0][0],
-            src_pos_e=dive_data["RANGE"][0][0]["src_pos_enu"][0][0][:, 0],
-            src_pos_n=dive_data["RANGE"][0][0]["src_pos_enu"][0][0][:, 1],
-            src_pos_u=dive_data["RANGE"][0][0]["src_pos_enu"][0][0][:, 2],
-            range=dive_data["RANGE"][0][0]["range"][0][0],
-        )
-    except ValueError:  # Range is stored in field 'range_km' instead of 'range'
+        ranges = {
+            "unixtime": dive_data["RANGE"][0][0]["unixtime"][0][0],
+            "src_lat": dive_data["RANGE"][0][0]["src_lat"][0][0],
+            "src_lon": dive_data["RANGE"][0][0]["src_lon"][0][0],
+            "src_pos_e": dive_data["RANGE"][0][0]["src_pos_enu"][0][0][:, 0],
+            "src_pos_n": dive_data["RANGE"][0][0]["src_pos_enu"][0][0][:, 1],
+            "src_pos_u": dive_data["RANGE"][0][0]["src_pos_enu"][0][0][:, 2],
+            "range": dive_data["RANGE"][0][0]["range"][0][0],
+        }
+    # When range is stored in field 'range_km' instead of 'range'
+    except ValueError:
         try:
-            ranges = dict(
-                unixtime=dive_data["RANGE"][0][0]["unixtime"][0][0],
-                src_lat=dive_data["RANGE"][0][0]["src_lat"][0][0],
-                src_lon=dive_data["RANGE"][0][0]["src_lon"][0][0],
-                src_pos_e=dive_data["RANGE"][0][0]["src_pos_enu"][0][0][:, 0],
-                src_pos_n=dive_data["RANGE"][0][0]["src_pos_enu"][0][0][:, 1],
-                src_pos_u=dive_data["RANGE"][0][0]["src_pos_enu"][0][0][:, 2],
-                range=1000 * dive_data["RANGE"][0][0]["range_km"][0][0],
-            )
-        except ValueError:  # Range is stored in field 'range_sphere_km' instead of 'range_km'
-            ranges = dict(
-                unixtime=dive_data["RANGE"][0][0]["unixtime"][0][0],
-                src_lat=dive_data["RANGE"][0][0]["src_lat"][0][0],
-                src_lon=dive_data["RANGE"][0][0]["src_lon"][0][0],
-                src_pos_e=dive_data["RANGE"][0][0]["src_pos_enu"][0][0][:, 0],
-                src_pos_n=dive_data["RANGE"][0][0]["src_pos_enu"][0][0][:, 1],
-                src_pos_u=dive_data["RANGE"][0][0]["src_pos_enu"][0][0][:, 2],
-                range=1000 * dive_data["RANGE"][0][0]["range_sphere_km"][0][0],
-            )
+            ranges = {
+                "unixtime": dive_data["RANGE"][0][0]["unixtime"][0][0],
+                "src_lat": dive_data["RANGE"][0][0]["src_lat"][0][0],
+                "src_lon": dive_data["RANGE"][0][0]["src_lon"][0][0],
+                "src_pos_e": dive_data["RANGE"][0][0]["src_pos_enu"][0][0][
+                    :, 0
+                ],  # noqa: E501
+                "src_pos_n": dive_data["RANGE"][0][0]["src_pos_enu"][0][0][
+                    :, 1
+                ],  # noqa: E501
+                "src_pos_u": dive_data["RANGE"][0][0]["src_pos_enu"][0][0][
+                    :, 2
+                ],  # noqa: E501
+                "range": 1000 * dive_data["RANGE"][0][0]["range_km"][0][0],
+            }
+        # When range is stored in field 'range_sphere_km' instead of 'range_km'
+        except ValueError:
+            ranges = {
+                "unixtime": dive_data["RANGE"][0][0]["unixtime"][0][0],
+                "src_lat": dive_data["RANGE"][0][0]["src_lat"][0][0],
+                "src_lon": dive_data["RANGE"][0][0]["src_lon"][0][0],
+                "src_pos_e": dive_data["RANGE"][0][0]["src_pos_enu"][0][0][
+                    :, 0
+                ],  # noqa: E501
+                "src_pos_n": dive_data["RANGE"][0][0]["src_pos_enu"][0][0][
+                    :, 1
+                ],  # noqa: E501
+                "src_pos_u": dive_data["RANGE"][0][0]["src_pos_enu"][0][0][
+                    :, 2
+                ],  # noqa: E501
+                "range": 1000
+                * dive_data["RANGE"][0][0]["range_sphere_km"][0][
+                    0
+                ],  # noqa: E501
+            }
 
     gpsdf = _array_dict2df(gps)
     depthdf = _array_dict2df(depth)
@@ -103,7 +120,7 @@ def load_dive(run_num):
     uvdf = uvdf.reset_index().drop_duplicates(subset=["time"], keep="last")
     uvdf = uvdf.set_index("time")
     rangedf = _array_dict2df(ranges)
-    return dict(gps=gpsdf, depth=depthdf, uv=uvdf, range=rangedf)
+    return {"gps": gpsdf, "depth": depthdf, "uv": uvdf, "range": rangedf}
 
 
 def load_adcp(run_num):

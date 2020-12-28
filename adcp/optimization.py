@@ -6,12 +6,12 @@ Created on Mon Dec 30 11:31:38 2019
 
 This module provides functions for creating an optimization problem
 to solve for current and navigation profile given data.  Throughout
-this module, profiles are assumed to be in a single vector.  The 
+this module, profiles are assumed to be in a single vector.  The
 vector is structured as a vector of easterly kinematics, with velocity
 and position interleaved, starting with the first time point's velocity.
-This easterly kinematic vector is stacked on top of a northerly 
+This easterly kinematic vector is stacked on top of a northerly
 kinematic vector of the same format.  The kinematic vector is stacked
-on top of an easterly current vector from 0 to 2*max depth which is 
+on top of an easterly current vector from 0 to 2*max depth which is
 in turn stacked on top of a similar northerly current vector.
 """
 import random
@@ -24,19 +24,19 @@ from adcp import dataprep as dp
 
 
 class GliderProblem:
-    defaults = dict(
-        rho_v=1,
-        rho_c=1,
-        rho_t=1,
-        rho_a=1,
-        rho_g=1,
-        rho_r=0,
-        t_scale=1e3,
-        conditioner="tanh",
-        vehicle_order=2,
-        current_order=2,
-        vehicle_vel="otg",
-    )
+    defaults = {
+        "rho_v": 1,
+        "rho_c": 1,
+        "rho_t": 1,
+        "rho_a": 1,
+        "rho_g": 1,
+        "rho_r": 0,
+        "t_scale": 1e3,
+        "conditioner": "tanh",
+        "vehicle_order": 2,
+        "current_order": 2,
+        "vehicle_vel": "otg",
+    }
 
     def __init__(self, ddat, adat, **kwargs):
         self.ddat = ddat
@@ -166,15 +166,6 @@ def backsolve(prob):
     """
     A, b = solve_mats(prob)
     x = scipy.sparse.linalg.spsolve(A, b)
-    As = prob.As
-    Vs = prob.Vs
-    Xs = prob.Xs
-    CV = prob.CV
-    EV = prob.EV
-    NV = prob.NV
-    EC = prob.EC
-    NC = prob.NC
-
     x = time_rescale(x, prob.t_scale, prob)
     return x
 

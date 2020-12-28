@@ -3,7 +3,7 @@
 Created on Thu Jun 18 11:37:53 2020
 
 @author: 600301
-made to run validation tests on the results of sim_test.  Requires 
+made to run validation tests on the results of sim_test.  Requires
 variables in namespace from that run.
 """
 import numpy as np
