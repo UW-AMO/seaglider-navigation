@@ -1,6 +1,5 @@
 [build-system]
 requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
 
 [tool.coverage.run]
 source = ["adcp"]
@@ -9,8 +8,8 @@ omit = [
     "*/tests/*"
 ]
 
-
 [tool.black]
+line-length = 79
 verbose = 1
 exclude = '''
 (
