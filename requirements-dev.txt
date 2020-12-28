@@ -2,3 +2,5 @@ coverage
 black 
 flake8 
 sphinx 
+pre-commit 
+sphinx 
