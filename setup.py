@@ -12,7 +12,10 @@ setup(
     "Aleksandr Aravkin",
     author_email="jmsh@uw.com",
     license="None",
-    packages=["adcp"],  # Packages & subpackages for the directory
+    packages=[
+        "adcp",
+        "adcp.tests",
+    ],  # Packages & subpackages for the directory
     # containintby setup.py
     py_modules=["dataprep", "matbuilder"],  # This package's modules
     install_requires=[
