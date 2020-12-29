@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+
+[tool.coverage.run]
+source = ["adcp"]
+omit = [
+    "*/__init__.py",
+    "*/tests/*"
+]
+
+[tool.black]
+line-length = 79
+verbose = 1
+exclude = '''
+(
+  | adcp-env
+)
+'''

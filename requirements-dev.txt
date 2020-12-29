@@ -1,0 +1,6 @@
+coverage 
+black 
+flake8 
+flake8-comprehensions>=3.1.0
+sphinx 
+pre-commit 

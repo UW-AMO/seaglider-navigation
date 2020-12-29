@@ -8,12 +8,15 @@ pipeline {
             steps {
                 sh 'python3 --version'
                 sh 'pip3 install -e .'
+                sh 'pip install -r requirements-dev.txt'
+                sh 'pre-commit install'
             }
         }
         stage('test') {
             steps {
-                sh 'python3 -m unittest -v test/test.py'
-                sh 'python3 -m unittest -v test/sim_test.py'
+                sh 'pre-commit run --all-files'
+                sh 'coverage run -m pytest adcp'
+                sh 'coverage report'
             }
         }
     }
