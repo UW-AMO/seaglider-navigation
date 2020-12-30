@@ -50,6 +50,7 @@ class GliderProblem:
                 setattr(self, k, v)
         for k in kwargs:
             if k not in self.__dict__:
+                print(self.__dict__)
                 raise AttributeError(
                     f"{k} not a argument for Problem" " constructor"
                 )
