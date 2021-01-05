@@ -206,7 +206,7 @@ def q_cond(dts, dim=2):
     max_dt = max(dts)
     if dim == 3:
 
-        def arr_func(dt: Iterable) -> np.Array:
+        def arr_func(dt: Iterable) -> np.ndarray:
             return np.array(
                 [
                     [dt, dt ** 2 / 2, dt ** 3 / 6],
