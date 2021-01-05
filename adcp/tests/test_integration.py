@@ -44,8 +44,6 @@ def standard_sim():
     ddat, adat, x, curr_df, v_df = sim.simulate(sp, verbose=True)
 
     # %% No Range
-    rho_c = 1e0
-    rho_v = 1e0
     rho_v = 1e-8
     rho_c = 1e-8
     rho_g = rho_g
