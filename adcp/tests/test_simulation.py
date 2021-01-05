@@ -1,8 +1,8 @@
 # Standard library imports
 import unittest
+import pytest
 
 # Third party imports
-import pandas as pd
 import numpy as np
 
 # Local application/library-specific imports
@@ -11,27 +11,6 @@ import adcp.simulation as sim
 
 class SimTest(unittest.TestCase):
     """Tests the simulation module"""
-
-    def test_defaults(self):
-        old_defaults = (
-            pd.Timedelta("3 hours"),
-            750,
-            1,
-            1001,
-            0.1,
-            0.1,
-            1,
-            1,
-            1,
-            1,
-            4,
-            124,
-            1,
-            1,
-            {"gps": "endpoints", "ttw": 0.6, "range": 0.1},
-        )
-        sim_params = sim.SimParams()
-        self.assertEqual(sim_params, old_defaults)
 
     def test_dive_profile(self):
         sim_params = sim.SimParams()
@@ -73,6 +52,8 @@ class SimTest(unittest.TestCase):
     #        raise NotImplementedError
     #    def test_vehicle_sim_linear(self):
     #        raise NotImplementedError
+
+    @pytest.mark.skip("Not yet implemented")
     def test_vehicle_sim_constant(self):
         sim_params = sim.SimParams(vehicle_method="constant", rho_v=0)
         depth_df = sim.gen_dive(sim_params)
@@ -86,8 +67,6 @@ class SimTest(unittest.TestCase):
         v_df = sim.sim_vehicle_path(depth_df, curr_df, sim_params, "constant")
         assert v_df is not None
         assert curr_df is not None
-
-        raise NotImplementedError
 
 
 #    def test_select_times(self):
