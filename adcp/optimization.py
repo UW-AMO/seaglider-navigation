@@ -276,8 +276,12 @@ def solve_mats(prob, verbose=False):
 
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ CV @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ CV @ NC
-    e_adcp_select = B_adcp @ CV @ EC - A_adcp @ Vs @ EV
-    n_adcp_select = B_adcp @ CV @ NC - A_adcp @ Vs @ NV
+    e_adcp_select = (
+        B_adcp @ CV @ EC - A_adcp @ Vs @ EV
+    )  # down doppler is positive
+    n_adcp_select = (
+        B_adcp @ CV @ NC - A_adcp @ Vs @ NV
+    )  # down doppler is positive
     e_gps_select = A_gps @ Xs @ EV
     n_gps_select = A_gps @ Xs @ NV
     if B_gps is not None:

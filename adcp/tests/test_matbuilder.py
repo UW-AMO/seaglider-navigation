@@ -8,6 +8,7 @@ from adcp.matbuilder import (
     depth_Q,
     depth_Qinv,
     depth_G,
+    legacy_select,
 )
 
 # %%
@@ -177,3 +178,12 @@ class TestKalman:
     @pytest.mark.skip("Not yet implemented")
     def test_current_g_ttw_3rd_order_smoothing(self):
         pass
+
+    def test_legacy_select_ttw(self):
+        L = legacy_select(
+            1, 1, vehicle_order=3, current_order=3, vehicle_vel="ttw"
+        )
+        X = np.array([[0.1, 1, 10, 0.2, 2, 20, 0.3, 3, 30, 0.4, 4, 40]]).T
+        result = L @ X
+        expected = np.array([[4, 40, 6, 60, 3, 4]]).T
+        assert np.linalg.norm(result - expected) < 1e-15

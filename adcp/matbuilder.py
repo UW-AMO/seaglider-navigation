@@ -784,7 +784,8 @@ def nc_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
 
 def legacy_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
     """Creates a selection matrix for choosing indexes of X
-    related to northerly current.
+    that align with the original modeling variable (smoothing order=2,
+    vehicle_vel="otg").
 
     Parameters:
         m (int) : number of timepoints
@@ -804,18 +805,30 @@ def legacy_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
     )
     vehicle_mat = scipy.sparse.block_diag(list(repeat(vehicle_block, m)))
 
+    if vehicle_vel == "otg":
+        vehicle_c_mat = scipy.sparse.csr_matrix((2 * m, current_order * n))
+    else:
+        vehicle_c_block = scipy.sparse.diags(
+            np.ones(2), current_order - 2, (2, current_order)
+        )
+        vehicle_c_mat = scipy.sparse.block_diag(
+            list(repeat(vehicle_c_block, m))
+        )
+
     vehicle_mat_e = scipy.sparse.hstack(
         (
             vehicle_mat,
             scipy.sparse.csr_matrix((2 * m, vehicle_order * m)),
-            scipy.sparse.csr_matrix((2 * m, current_order * 2 * n)),
+            vehicle_c_mat,
+            scipy.sparse.csr_matrix((2 * m, current_order * n)),
         )
     )
     vehicle_mat_n = scipy.sparse.hstack(
         (
             scipy.sparse.csr_matrix((2 * m, vehicle_order * m)),
             vehicle_mat,
-            scipy.sparse.csr_matrix((2 * m, current_order * 2 * n)),
+            scipy.sparse.csr_matrix((2 * m, current_order * n)),
+            vehicle_c_mat,
         )
     )
     current_mat_n = CV @ NC
