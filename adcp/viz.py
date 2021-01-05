@@ -400,9 +400,10 @@ def current_depth_plot(
 
     ax.legend()
     ax.invert_yaxis()
-    ax.set_title(direction.title() + "erly Current")
-    ax.set_xlabel("Current (meters/sec)".title())
-    ax.set_ylabel("Depth (m); Descending=warm, Ascending=cool")
+    font_dict = {"size": "medium"}
+    ax.set_title(direction.title() + "erly Current", **font_dict)
+    ax.set_xlabel("Current (meters/sec)".title(), **font_dict)
+    ax.set_ylabel("Depth (m); Descending=warm, Ascending=cool", **font_dict)
     plt.tight_layout()
 
     # Adjust ylim if just plotting surface
@@ -479,7 +480,8 @@ def vehicle_speed_plot(
     )
     Vs = mb.v_select(m)
     cmap = plt.get_cmap("tab10")
-    ax.set_title(f"{direction}ward Vehicle Velocity".title())
+    font_dict = {"size": "medium"}
+    ax.set_title(f"{direction}ward Vehicle Velocity".title(), **font_dict)
     ln1 = ax.plot(
         times, Vs @ dirV @ solx, "--", color=cmap(0), label="LBFGS Votg"
     )
@@ -495,12 +497,20 @@ def vehicle_speed_plot(
         lns.append(ln2[0])
     if x0 is not None:
         ln3 = ax.plot(
-            times, Vs @ dirV @ x0, ":", color=cmap(4), label="x0 Votg"
+            times,
+            Vs @ dirV @ x0,
+            ":",
+            color=cmap(4),
+            label="x0 Votg",
         )
         lns.append(ln3[0])
     if x_true is not None:
         ln4 = ax.plot(
-            times, Vs @ dirV @ x_true, "-", color=cmap(1), label="Votg_true"
+            times,
+            Vs @ dirV @ x_true,
+            "-",
+            color=cmap(1),
+            label="Votg_true",
         )
         lns.append(ln4[0])
     if ttw:
@@ -512,8 +522,8 @@ def vehicle_speed_plot(
             label="TTW measured",
         )
         lns.append(ln5[0])
-    ax.set_ylabel("meters/second")
-    ax.set_xlabel("time")
+    ax.set_ylabel("meters/second", **font_dict)
+    ax.set_xlabel("time", **font_dict)
     labs = [line.get_label() for line in lns]
     ax.legend(lns, labs)
     return ax
