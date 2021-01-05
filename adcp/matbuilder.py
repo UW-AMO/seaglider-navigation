@@ -15,7 +15,7 @@ import pandas as pd
 
 from . import dataprep as dp
 
-t_scale = 1e3
+t_scale = 1
 """timescale, 1=seconds, 1e-3=milliseconds, 1e3=kiloseconds.  Used to
 control condition number of problem.
 """
@@ -415,7 +415,14 @@ def depth_Qinv(
     return scipy.sparse.block_diag(Qinvs)
 
 
-def depth_Q(depths, rho=1, order=2, depth_rate=None, conditioner=conditioner):
+def depth_Q(
+    depths,
+    rho=1,
+    order=2,
+    depth_rate=None,
+    conditioner=conditioner,
+    t_scale=t_scale,
+):
     """Creates the covariance matrix for smoothing the current with depth
     covariance rho.
     """
