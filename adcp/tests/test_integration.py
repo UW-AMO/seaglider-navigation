@@ -21,7 +21,13 @@ def test_integration():
 
 
 # %% ...or simulate new data
-def standard_sim():
+def standard_sim(
+    t_scale=1e3,
+    conditioner="tanh",
+    vehicle_vel="otg",
+    current_order=2,
+    vehicle_order=2,
+):
     rho_t = 1e-3
     rho_a = 1e-3
     rho_g = 1e-1
@@ -68,11 +74,11 @@ def standard_sim():
         rho_t=rho_t,
         rho_a=rho_a,
         rho_r=rho_r,
-        t_scale=1e3,
-        conditioner="tanh",
-        vehicle_vel="otg",
-        current_order=2,
-        vehicle_order=2,
+        t_scale=t_scale,
+        conditioner=conditioner,
+        vehicle_vel=vehicle_vel,
+        current_order=current_order,
+        vehicle_order=vehicle_order,
     )
 
     # %%  Solve problem

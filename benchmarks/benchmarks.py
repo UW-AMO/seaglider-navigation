@@ -1,5 +1,6 @@
 # Write the benchmarking functions here.
 # See "Writing benchmarks" in the asv docs for more information.
+from adcp.tests import test_integration as it
 
 
 class TimeSuite:
@@ -12,6 +13,9 @@ class TimeSuite:
         self.d = {}
         for x in range(500):
             self.d[x] = None
+
+    def time_standard(self):
+        it.standard_sim()
 
     def time_keys(self):
         for key in self.d.keys():
