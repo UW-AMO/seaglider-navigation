@@ -2,84 +2,40 @@
 # See "Writing benchmarks" in the asv docs for more information.
 
 
-class IntegrationSuite:
-    def time_standard(self):
-        3 + 3
-        # rho_t = 1e-3
-        # rho_a = 1e-3
-        # rho_g = 1e-1
+class TimeSuite:
+    """
+    An example benchmark that times the performance of various kinds
+    of iterating over dictionaries in Python.
+    """
 
-        # sim_rho_v = 0
-        # sim_rho_c = 0
-        # sp = sim.SimParams(
-        #     rho_t=rho_t,
-        #     rho_a=rho_a,
-        #     rho_g=rho_g,
-        #     rho_v=sim_rho_v,
-        #     rho_c=sim_rho_c,
-        #     sigma_t=0.4,
-        #     sigma_c=0.3,
-        #     n_timepoints=2000,
-        #     measure_points={"gps": "endpoints", "ttw": 0.5, "range": 0.05},
-        #     vehicle_method="curved",
-        #     curr_method="curved",
-        # )
-        # ddat, adat, x, curr_df, v_df = sim.simulate(sp, verbose=True)
+    def setup(self):
+        self.d = {}
+        for x in range(500):
+            self.d[x] = None
 
-        # # %% No Range
-        # rho_c = 1e0
-        # rho_v = 1e0
-        # rho_v = 1e-8
-        # rho_c = 1e-8
-        # rho_g = rho_g
-        # rho_t = rho_t
-        # rho_a = rho_a
-        # rho_r = 0
-        # print(
-        #     f"""Solution method covariances:
-        # vehicle process: {rho_v}
-        # current process:{rho_c}
-        # GPS measurement: {rho_g}
-        # TTW measurement: {rho_t}
-        # ADCP meawsurement: {rho_a}"""
-        # )
+    def time_keys(self):
+        for key in self.d.keys():
+            pass
 
-        # prob = op.GliderProblem(
-        #     ddat,
-        #     adat,
-        #     rho_v=rho_v,
-        #     rho_c=rho_c,
-        #     rho_g=rho_g,
-        #     rho_t=rho_t,
-        #     rho_a=rho_a,
-        #     rho_r=rho_r,
-        #     t_scale=1e3,
-        #     conditioner="tanh",
-        #     vehicle_vel="otg",
-        #     current_order=2,
-        #     vehicle_order=2,
-        # )
+    def time_iterkeys(self):
+        for key in self.d.iterkeys():
+            pass
 
-        # # %%  Solve problem
-        # op.backsolve(prob)
+    def time_range(self):
+        d = self.d
+        for key in range(500):
+            x = d[key]
+            if x is not None:
+                print("hahahah")
 
-        # Xs = prob.Xs
-        # EV = prob.EV
-        # NV = prob.NV
-        # EC = prob.EC
-        # NC = prob.NC
+    def time_xrange(self):
+        d = self.d
+        for key in range(500):
+            x = d[key]
+            if x is not None:
+                print("hahahah")
 
-        # err = x_sol - x
-        # path_error = (
-        #     np.linalg.norm(Xs @ NV @ err) ** 2
-        #     + np.linalg.norm(Xs @ EV @ err) ** 2
-        # )
-        # current_error = (
-        #     np.linalg.norm(EC @ err) ** 2 + np.linalg.norm(NC @ err) ** 2
-        # )
 
-    def time_no_scaling(self):
-        pass
-
-    def time_no_conditioner(self):
-        pass
+class MemSuite:
+    def mem_list(self):
+        return [0] * 256
