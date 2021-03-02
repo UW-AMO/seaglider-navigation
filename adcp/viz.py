@@ -280,21 +280,8 @@ def current_depth_plot(
     sinking_depths = depths[(depths < deepest) & (depths > 0)]
     rising = currs[(depths > deepest) & (depths < deepest * 2)]
     rising_depths = depths[(depths > deepest) & (depths < deepest * 2)]
-    ln0 = ax.plot(
-        sinking,
-        sinking_depths,
-        "--",
-        color="deeppink",
-        label="Descending-LBFGS",
-    )
-    ln1 = ax.plot(
-        rising,
-        2 * deepest - rising_depths,
-        "--",
-        color="chartreuse",
-        label="Ascending-LBFGS",
-    )
-    lines = [ln0, ln1]
+
+    lines = []
 
     # ADCP traces
     if adcp:
@@ -326,6 +313,23 @@ def current_depth_plot(
                 color="purple",
             )
             lines.append(ln_)
+
+    ln0 = ax.plot(
+        sinking,
+        sinking_depths,
+        "--",
+        color="deeppink",
+        label="Descending-LBFGS",
+    )
+    ln1 = ax.plot(
+        rising,
+        2 * deepest - rising_depths,
+        "--",
+        color="chartreuse",
+        label="Ascending-LBFGS",
+    )
+    lines.append(ln0)
+    lines.append(ln1)
 
     # Add in true simulated profiles, if available
     if x_true is not None:
