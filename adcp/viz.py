@@ -6,6 +6,7 @@ Created on Mon Feb  3 18:44:43 2020
 """
 from matplotlib import pyplot as plt
 import numpy as np
+import scipy
 
 from adcp import dataprep as dp
 from adcp import matbuilder as mb
@@ -216,6 +217,7 @@ def current_depth_plot(
     x_sol=None,
     mdat=None,
     adcp=False,
+    prob=None,
 ):
     """Produce a current by depth plot, showing the current during
     descending and ascending measurements.  Various other options.
@@ -231,7 +233,8 @@ def current_depth_plot(
         x_sol (numpy.array): backsolve solution for state vector
         mdat (dict): Moored ADCP measurements.  See
             dataprep.load_mooring()
-        adat (bool): Whether to include ADCP measurement data or not
+        adcp (bool): Whether to include ADCP measurement data or not
+        prob (GliderProblem): A problem set that bundles adat, ddat, and more
     """
 
     if direction.lower() == "both":
@@ -246,6 +249,7 @@ def current_depth_plot(
             x_sol=x_sol,
             mdat=mdat,
             adcp=adcp,
+            prob=prob,
         )
         plt.subplot(1, 2, 2)
         ax2 = current_depth_plot(
@@ -257,6 +261,7 @@ def current_depth_plot(
             x_sol=x_sol,
             mdat=mdat,
             adcp=adcp,
+            prob=prob,
         )
         return ax1, ax2
     ax = plt.gca()
@@ -295,38 +300,33 @@ def current_depth_plot(
     if adcp:
         if direction.lower() in {"north", "south"}:
             zadcp = mb.get_zadcp(adat, "north") / mb.t_scale
+            V = prob.NV
         elif direction.lower() in {"east", "west"}:
             zadcp = mb.get_zadcp(adat, "east") / mb.t_scale
-        _, B_adcp = mb.adcp_select(times, depths, ddat, adat)
-        sinking_a = zadcp[(B_adcp @ depths < deepest) & (B_adcp @ depths > 0)]
-        sinking_depths_a = depths[
-            np.array(B_adcp.sum(axis=0)).squeeze().astype(bool)
-            & (depths < deepest)
-            & (depths > 0)
-        ]
-        rising_a = zadcp[
-            (B_adcp @ depths > deepest) & (B_adcp @ depths < deepest * 2)
-        ]
-        rising_depths_a = depths[
-            np.array(B_adcp.sum(axis=0)).squeeze().astype(bool)
-            & (depths > deepest)
-            & (depths < deepest * 2)
-        ]
-        lna0 = ax.plot(
-            sinking_a,
-            sinking_depths_a,
-            ":",
-            color="gold",
-            label="Descending-ADCP",
+            V = prob.EV
+        A_adcp, B_adcp = mb.adcp_select(times, depths, ddat, adat)
+        t_inds_with_adcp_obs = np.argwhere(
+            np.asarray(A_adcp.sum(axis=0)).squeeze()
         )
-        lna1 = ax.plot(
-            rising_a,
-            2 * deepest - rising_depths_a,
-            ":",
-            color="purple",
-            label="Ascending-ADCP",
-        )
-        lines = [*lines, lna0, lna1]
+        A_adcp = scipy.sparse.csc_matrix(A_adcp)
+        shifted_adcp_trace = A_adcp @ prob.Vs @ V @ solx + zadcp
+        # what about ADCP traces above the water surface (<0 or >deepest)
+        for i in t_inds_with_adcp_obs:
+            rows_in_trace = np.argwhere(A_adcp[:, i])[:, 0]
+            adcp_vals = shifted_adcp_trace[rows_in_trace]
+            depth_ind_in_trace = np.argwhere(B_adcp[rows_in_trace, :])[:, 1]
+            depth_vals = depths[depth_ind_in_trace]
+            depth_vals[depth_vals > deepest] = (
+                2 * deepest - depth_vals[depth_vals > deepest]
+            )
+            ln_ = ax.plot(
+                adcp_vals,
+                depth_vals,
+                "--",
+                color="purple",
+            )
+            lines.append(ln_)
+
     # Add in true simulated profiles, if available
     if x_true is not None:
         if direction.lower() in {"north", "south"}:
