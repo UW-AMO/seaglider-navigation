@@ -4,20 +4,16 @@ Created on Sun Apr  5 11:04:36 2020
 
 @author: 600301
 """
-import math
 from itertools import product, repeat
-from typing import Tuple
-import random
 
 import numpy as np
 from matplotlib import colors
-from matplotlib import pyplot as plt
 
 from adcp import dataprep as dp
 from adcp import simulation as sim
 from adcp import matbuilder as mb
 from adcp import optimization as op
-from adcp import viz
+from adcp.psearch import check_condition, plot_bundle, show_errmap
 
 # %% ...or simulate new data
 rho_t = 1e-2
@@ -132,68 +128,13 @@ for ((i, rv), (j, rc)) in product(enumerate(rho_vs), enumerate(rho_cs)):
     # print(f"\tCurrent error: {current_error}\n")
 
 
-# %%
-def show_errmap(index: int = 0, rho_vs: list = [], rho_cs: list = []) -> None:
-    fig = plt.figure()
-    ax = fig.gca()  # add_axes([.05,.05,.85,.9])
-    im = ax.imshow(errmap[index, :, :], norm=colors.LogNorm())
-    if index == 0:
-        ax.set_title("Position Error")
-    else:
-        ax.set_title("Current Error")
-    ax.set_yticks(range(len(rho_vs)))
-    ax.set_xticks(range(len(rho_cs)))
-    ylabels = np.round(np.log(rho_vs) / math.log(10)).astype(int)
-    xlabels = np.round(np.log(rho_cs) / math.log(10)).astype(int)
-    ax.set_yticklabels(ylabels)
-    ax.set_xticklabels(xlabels)
-    ax.set_ylabel("rho_v (log scale)")
-    ax.set_xlabel("rho_c (log scale)")
-    cax = fig.add_axes([0.95, 0.15, 0.05, 0.7])
-    ax.invert_yaxis()
-    fig.colorbar(im, cax=cax)
-    # plt.close()
-    # return fig
-
-
-show_errmap(0, rho_vs, rho_cs)
-show_errmap(1, rho_vs, rho_cs)
+show_errmap(errmap, 0, rho_vs, rho_cs, norm=colors.LogNorm(vmin=1e7, vmax=2e9))
+show_errmap(errmap, 1, rho_vs, rho_cs, norm=colors.LogNorm(vmin=1e0, vmax=1e3))
 # %%
 i1, j1 = np.unravel_index(errmap[0, :, :].argmin(), (len(rho_vs), len(rho_cs)))
 nav_x = paths[i1][j1]
 i2, j2 = np.unravel_index(errmap[1, :, :].argmin(), (len(rho_vs), len(rho_cs)))
 curr_x = paths[i2][j2]
-
-
-def plot_bundle(sol_x):
-    viz.vehicle_speed_plot(
-        sol_x, ddat, times, depths, direction="both", x_true=x, ttw=False
-    )
-    viz.inferred_ttw_error_plot(sol_x, adat, ddat, direction="both", x_true=x)
-    viz.current_depth_plot(
-        sol_x, adat, ddat, direction="both", x_true=x, prob=prob, adcp=True
-    )
-    viz.inferred_adcp_error_plot(sol_x, adat, ddat, direction="both", x_true=x)
-    viz.vehicle_posit_plot(
-        sol_x, ddat, times, depths, x_true=x, dead_reckon=True
-    )
-
-
-def check_condition(prob: op.GliderProblem) -> Tuple:
-    """Checks condition on matrices for glider problem"""
-    m = len(prob.times)
-    n = len(prob.depths)
-    kalman_mat = op.gen_kalman_mat(prob)
-    A, _ = op.solve_mats(prob)
-
-    r100 = np.array(random.sample(range(0, 4 * m + 2 * n), 100))
-    r1000 = np.array(random.sample(range(0, 4 * m + 2 * n), 1000))
-    c1 = np.linalg.cond(kalman_mat.todense()[r100[:, None], r100])
-    c2 = np.linalg.cond(A.todense()[r100[:, None], r100])
-    c3 = np.linalg.cond(kalman_mat.todense()[r1000[:, None], r1000])
-    c4 = np.linalg.cond(A.todense()[r1000[:, None], r1000])
-
-    return c1, c2, c3, c4
 
 
 print(f"Best Navigational Solution: rho_v={rho_vs[i1]}, rho_c={rho_cs[j1]}")
@@ -226,10 +167,10 @@ try:
 except ValueError:
     print("small matrices")
 
-plot_bundle(nav_x)
+plot_bundle(nav_x, prob, times, depths, x)
 if (i1 != i2) or (j1 != j2):
     print(f"Best Current Solution: rho_v={rho_vs[i2]}, rho_c={rho_cs[j2]}")
-    plot_bundle(curr_x)
+    plot_bundle(curr_x, prob, times, depths, x)
     prob = op.GliderProblem(
         ddat,
         adat,
@@ -251,4 +192,3 @@ if (i1 != i2) or (j1 != j2):
 
 else:
     print("... and it's also the best current solution")
-# %%
