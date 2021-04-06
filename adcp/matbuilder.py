@@ -782,7 +782,9 @@ def nc_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
     return scipy.sparse.eye(n_rows, n_cols, diag)
 
 
-def legacy_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
+def legacy_select(
+    m, n, vehicle_order=2, current_order=2, vehicle_vel="otg", prob=None
+):
     """Creates a selection matrix for choosing indexes of X
     that align with the original modeling variable (smoothing order=2,
     vehicle_vel="otg").
@@ -793,6 +795,7 @@ def legacy_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
         vehicle_order (int) : order of vehicle smoothing in matrix Q
         current_order (int) : order of current smoothing in matrix Q
         vehicle_vel (str) : if "otg", then current skips modeling 1st order
+        prob (GliderProblem) : The problem that is redundant with all that info
     """
 
     EC = ec_select(m, n, vehicle_order, current_order, vehicle_vel)
@@ -808,12 +811,28 @@ def legacy_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
     if vehicle_vel == "otg":
         vehicle_c_mat = scipy.sparse.csr_matrix((2 * m, current_order * n))
     else:
+        vehicle_depths = dp._depth_interpolator(prob.times, prob.ddat).loc[
+            prob.times, "depth"
+        ]
+        vehicle_depths = vehicle_depths.to_numpy().flatten()
+        d_list = list(prob.depths)
+        idxdepth = [d_list.index(d) for d in vehicle_depths]
+
         vehicle_c_block = scipy.sparse.diags(
             np.ones(2), current_order - 2, (2, current_order)
         )
-        vehicle_c_mat = scipy.sparse.block_diag(
-            list(repeat(vehicle_c_block, m))
-        )
+        idxmin = [-1] + idxdepth[:-1]
+        blocks = []
+        for i, (l, r) in enumerate(zip(idxmin, idxdepth)):
+            block = scipy.sparse.csr_matrix((2 * m, current_order * (r - l)))
+            block[
+                2 * i : 2 * (i + 1), (r - l - 1) * current_order :
+            ] = vehicle_c_block
+            blocks.append(block)
+        vehicle_c_mat = scipy.sparse.hstack(blocks)
+        w = vehicle_c_mat.shape[1]
+        blank_mat = scipy.sparse.csr_matrix((2 * m, current_order * n - w))
+        vehicle_c_mat = scipy.sparse.hstack((vehicle_c_mat, blank_mat))
 
     vehicle_mat_e = scipy.sparse.hstack(
         (
@@ -837,3 +856,6 @@ def legacy_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
     return scipy.sparse.vstack(
         (vehicle_mat_e, vehicle_mat_n, current_mat_e, current_mat_n)
     )
+
+
+# %%

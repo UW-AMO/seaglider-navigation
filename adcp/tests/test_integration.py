@@ -84,18 +84,27 @@ def standard_sim(
     # %%  Solve problem
     x_sol = op.backsolve(prob)
 
-    Xs = prob.Xs
-    EV = prob.EV
-    NV = prob.NV
-    EC = prob.EC
-    NC = prob.NC
+    legacy = mb.legacy_select(
+        prob.m,
+        prob.n,
+        prob.vehicle_order,
+        prob.current_order,
+        prob.vehicle_vel,
+        prob=prob,
+    )
+    leg_Xs = mb.x_select(len(prob.times), 2)
+    leg_NV = mb.nv_select(len(prob.times), len(prob.depths), 2, 2, "otg")
+    leg_EV = mb.ev_select(len(prob.times), len(prob.depths), 2, 2, "otg")
+    leg_NC = mb.nc_select(len(prob.times), len(prob.depths), 2, 2, "otg")
+    leg_EC = mb.ec_select(len(prob.times), len(prob.depths), 2, 2, "otg")
 
-    err = x_sol - x
+    err = legacy @ x_sol - x
     path_error = (
-        np.linalg.norm(Xs @ NV @ err) ** 2 + np.linalg.norm(Xs @ EV @ err) ** 2
+        np.linalg.norm(leg_Xs @ leg_NV @ err) ** 2
+        + np.linalg.norm(leg_Xs @ leg_EV @ err) ** 2
     )
     current_error = (
-        np.linalg.norm(EC @ err) ** 2 + np.linalg.norm(NC @ err) ** 2
+        np.linalg.norm(leg_EC @ err) ** 2 + np.linalg.norm(leg_NC @ err) ** 2
     )
     return {
         "path_error": path_error,

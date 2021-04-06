@@ -99,6 +99,7 @@ for ((i, rv), (j, rc)) in product(enumerate(rho_vs), enumerate(rho_cs)):
         prob.vehicle_order,
         prob.current_order,
         prob.vehicle_vel,
+        prob=prob,
     )
     Xs = prob.Xs
     EV = prob.EV
@@ -107,18 +108,25 @@ for ((i, rv), (j, rc)) in product(enumerate(rho_vs), enumerate(rho_cs)):
     NC = prob.NC
     CV = prob.CV
 
-    x_sol = legacy @ x_sol
+    x_leg = legacy @ x_sol
 
-    err = x_sol - x
+    leg_Xs = mb.x_select(len(prob.times), 2)
+    leg_NV = mb.nv_select(len(prob.times), len(prob.depths), 2, 2, "otg")
+    leg_EV = mb.ev_select(len(prob.times), len(prob.depths), 2, 2, "otg")
+    leg_NC = mb.nc_select(len(prob.times), len(prob.depths), 2, 2, "otg")
+    leg_EC = mb.ec_select(len(prob.times), len(prob.depths), 2, 2, "otg")
+
+    err = x_leg - x
     path_error = (
-        np.linalg.norm(Xs @ NV @ err) ** 2 + np.linalg.norm(Xs @ EV @ err) ** 2
+        np.linalg.norm(leg_Xs @ leg_NV @ err) ** 2
+        + np.linalg.norm(leg_Xs @ leg_EV @ err) ** 2
     )
     current_error = (
-        np.linalg.norm(EC @ err) ** 2 + np.linalg.norm(NC @ err) ** 2
+        np.linalg.norm(leg_EC @ err) ** 2 + np.linalg.norm(leg_NC @ err) ** 2
     )
     errmap[0, i, j] = path_error
     errmap[1, i, j] = current_error
-    paths[i][j] = x_sol
+    paths[i][j] = x_leg
     # print(f"Scenario: rho_v = {rv} and rho_c = {rc}")
     # print(f"\tPath error: {path_error}")
     # print(f"\tCurrent error: {current_error}\n")
@@ -162,7 +170,9 @@ def plot_bundle(sol_x):
         sol_x, ddat, times, depths, direction="both", x_true=x, ttw=False
     )
     viz.inferred_ttw_error_plot(sol_x, adat, ddat, direction="both", x_true=x)
-    viz.current_depth_plot(sol_x, adat, ddat, direction="both", x_true=x)
+    viz.current_depth_plot(
+        sol_x, adat, ddat, direction="both", x_true=x, prob=prob, adcp=True
+    )
     viz.inferred_adcp_error_plot(sol_x, adat, ddat, direction="both", x_true=x)
     viz.vehicle_posit_plot(
         sol_x, ddat, times, depths, x_true=x, dead_reckon=True
@@ -207,12 +217,14 @@ prob = op.GliderProblem(
     rho_a=rho_a,
     rho_r=rho_r,
 )
-c1, c2, c3, c4 = check_condition(prob)
-print("100x100 sample of kalman matrix has condition number ", c1)
-print("100x100 sample of backsolve matrix has condition number ", c2)
-print("1000x1000 sample of kalman matrix has condition number ", c3)
-print("1000x1000 sample of backsolve matrix has condition number ", c4)
-
+try:
+    c1, c2, c3, c4 = check_condition(prob)
+    print("100x100 sample of kalman matrix has condition number ", c1)
+    print("100x100 sample of backsolve matrix has condition number ", c2)
+    print("1000x1000 sample of kalman matrix has condition number ", c3)
+    print("1000x1000 sample of backsolve matrix has condition number ", c4)
+except ValueError:
+    print("small matrices")
 
 plot_bundle(nav_x)
 if (i1 != i2) or (j1 != j2):
@@ -228,11 +240,14 @@ if (i1 != i2) or (j1 != j2):
         rho_a=rho_a,
         rho_r=rho_r,
     )
-    c1, c2, c3, c4 = check_condition(prob)
-    print("100x100 sample of kalman matrix has condition number ", c1)
-    print("100x100 sample of backsolve matrix has condition number ", c2)
-    print("1000x1000 sample of kalman matrix has condition number ", c3)
-    print("1000x1000 sample of backsolve matrix has condition number ", c4)
+    try:
+        c1, c2, c3, c4 = check_condition(prob)
+        print("100x100 sample of kalman matrix has condition number ", c1)
+        print("100x100 sample of backsolve matrix has condition number ", c2)
+        print("1000x1000 sample of kalman matrix has condition number ", c3)
+        print("1000x1000 sample of backsolve matrix has condition number ", c4)
+    except ValueError:
+        print("small matrices")
 
 else:
     print("... and it's also the best current solution")
