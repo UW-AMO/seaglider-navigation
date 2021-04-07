@@ -59,11 +59,11 @@ def inferred_adcp_error_plot(
     adcp_depths = depths[adcp_order]
     sinking_inds = [(adcp_depths < deepest) & (adcp_depths > 0)]
     rising_inds = [(adcp_depths < deepest * 2) & (adcp_depths > deepest)]
-    sinking_meas = zadcp[sinking_inds]
-    sinking_depths = adcp_depths[sinking_inds]
+    sinking_meas = zadcp[tuple(sinking_inds)]
+    sinking_depths = adcp_depths[tuple(sinking_inds)]
 
-    rising_meas = zadcp[rising_inds]
-    rising_depths = adcp_depths[rising_inds]
+    rising_meas = zadcp[tuple(rising_inds)]
+    rising_depths = adcp_depths[tuple(rising_inds)]
     ln0 = ax.plot(
         sinking_meas,
         sinking_depths,
@@ -81,8 +81,8 @@ def inferred_adcp_error_plot(
     lines = [ln0, ln1]
 
     adcp_lbfgs = (B @ XC - A @ Vs @ XV) @ solx
-    sinking_lbfgs = adcp_lbfgs[sinking_inds]
-    rising_lbfgs = adcp_lbfgs[rising_inds]
+    sinking_lbfgs = adcp_lbfgs[tuple(sinking_inds)]
+    rising_lbfgs = adcp_lbfgs[tuple(rising_inds)]
     ln2 = ax.plot(
         sinking_lbfgs,
         sinking_depths,
@@ -102,8 +102,8 @@ def inferred_adcp_error_plot(
 
     if x_true is not None:
         adcp_true = (B @ XC - A @ Vs @ XV) @ x_true
-        sinking_true = adcp_true[sinking_inds]
-        rising_true = adcp_true[rising_inds]
+        sinking_true = adcp_true[tuple(sinking_inds)]
+        rising_true = adcp_true[tuple(rising_inds)]
         ln4 = ax.plot(
             sinking_true,
             sinking_depths,
@@ -122,8 +122,8 @@ def inferred_adcp_error_plot(
 
     if x_sol is not None:
         adcp_back = (B @ XC - A @ Vs @ XV) @ x_sol
-        sinking_back = adcp_back[sinking_inds]
-        rising_back = adcp_back[rising_inds]
+        sinking_back = adcp_back[tuple(sinking_inds)]
+        rising_back = adcp_back[tuple(rising_inds)]
         ln6 = ax.plot(
             sinking_back,
             sinking_depths,
