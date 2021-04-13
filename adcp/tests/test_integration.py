@@ -27,6 +27,8 @@ def standard_sim(
     vehicle_vel="otg",
     current_order=2,
     vehicle_order=2,
+    rho_v=1e-8,
+    rho_c=1e-8,
 ):
     rho_t = 1e-3
     rho_a = 1e-3
