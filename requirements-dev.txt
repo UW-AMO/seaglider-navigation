@@ -6,3 +6,4 @@ sphinx
 pre-commit 
 asv
 ipykernel
+GitPython
