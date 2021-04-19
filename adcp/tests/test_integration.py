@@ -68,8 +68,8 @@ def standard_sim(
     )
 
     prob = op.GliderProblem(
-        ddat,
-        adat,
+        ddat=ddat,
+        adat=adat,
         rho_v=rho_v,
         rho_c=rho_c,
         rho_g=rho_g,

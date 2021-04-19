@@ -15,6 +15,8 @@ on top of an easterly current vector from 0 to 2*max depth which is
 in turn stacked on top of a similar northerly current vector.
 """
 import random
+import copy
+
 import numpy as np
 import scipy.sparse
 from scipy.optimize import minimize
@@ -25,6 +27,8 @@ from adcp import dataprep as dp
 
 class GliderProblem:
     defaults = {
+        "ddat": None,
+        "adat": None,
         "rho_v": 1,
         "rho_c": 1,
         "rho_t": 1,
@@ -38,22 +42,27 @@ class GliderProblem:
         "vehicle_vel": "otg",
     }
 
-    def __init__(self, ddat, adat, **kwargs):
-        self.ddat = ddat
-        self.adat = adat
-        self.times = dp.timepoints(adat, ddat)
-        self.depths = dp.depthpoints(adat, ddat)
-        for k, v in self.defaults.items():
-            if k in kwargs:
-                setattr(self, k, kwargs[k])
-            else:
+    def __init__(self, copyobj=None, **kwargs):
+
+        if copyobj is not None:
+            self.__dict__ = copy.copy(copyobj.__dict__)
+        else:
+            self.__dict__ = copy.copy(self.defaults)
+        for k, v in kwargs.items():
+            try:
+                self.defaults[k]
                 setattr(self, k, v)
-        for k in kwargs:
-            if k not in self.__dict__:
-                print(self.__dict__)
+            except KeyError:
                 raise AttributeError(
                     f"{k} not a argument for Problem" " constructor"
                 )
+
+        if self.ddat is not None and self.adat is not None:
+            self.__precompute()
+
+    def __precompute(self):
+        self.times = dp.timepoints(self.adat, self.ddat)
+        self.depths = dp.depthpoints(self.adat, self.ddat)
         if self.vehicle_vel == "ttw":
             self.depth_rates = dp.depth_rates(
                 self.times, self.depths, self.ddat

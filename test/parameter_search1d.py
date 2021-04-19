@@ -71,8 +71,8 @@ for i, (v_factor, c_factor) in enumerate(zip(v_factors, c_factors)):
     rc = c_factor * rho_c
     rv = v_factor * rho_v
     prob = op.GliderProblem(
-        ddat,
-        adat,
+        ddat=ddat,
+        adat=adat,
         rho_v=rv,
         rho_c=rc,
         rho_g=rho_g,

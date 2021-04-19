@@ -34,8 +34,8 @@ rho_a = 1e-1
 rho_r = 0
 
 prob = op.GliderProblem(
-    ddat,
-    adat,
+    ddat=ddat,
+    adat=adat,
     rho_v=rho_v,
     rho_c=rho_c,
     rho_g=rho_g,
@@ -44,8 +44,8 @@ prob = op.GliderProblem(
     rho_r=rho_r,
 )
 prob2 = op.GliderProblem(
-    ddat2,
-    adat,
+    ddat=ddat2,
+    adat=adat,
     rho_v=rho_v,
     rho_c=rho_c,
     rho_g=rho_g,

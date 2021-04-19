@@ -61,12 +61,10 @@ print(
 errmap = np.zeros((2, len(rho_vs), len(rho_cs)))
 paths = list(repeat(list(repeat(None, len(rho_cs))), len(rho_vs)))
 
-# reduce to old-size x
-
 for ((i, rv), (j, rc)) in product(enumerate(rho_vs), enumerate(rho_cs)):
     prob = op.GliderProblem(
-        ddat,
-        adat,
+        ddat=ddat,
+        adat=adat,
         rho_v=rv,
         rho_c=rc,
         rho_g=rho_g,
@@ -149,8 +147,8 @@ Creates path error: {errmap[0, i1, j1]}
 and current error: {errmap[1, i1, j1]}"""
 )
 prob = op.GliderProblem(
-    ddat,
-    adat,
+    ddat=ddat,
+    adat=adat,
     rho_v=rho_vs[i2],
     rho_c=rho_cs[j2],
     rho_g=rho_g,
@@ -172,8 +170,8 @@ if (i1 != i2) or (j1 != j2):
     print(f"Best Current Solution: rho_v={rho_vs[i2]}, rho_c={rho_cs[j2]}")
     plot_bundle(curr_x, prob, times, depths, x)
     prob = op.GliderProblem(
-        ddat,
-        adat,
+        ddat=ddat,
+        adat=adat,
         rho_v=rho_vs[i2],
         rho_c=rho_cs[j2],
         rho_g=rho_g,
