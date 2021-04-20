@@ -76,9 +76,7 @@ class ParameterSearch2D(Experiment):
             current_order=current_order,
             vehicle_order=vehicle_order,
         )
-        self.sp = sim.SimParams(
-            copyobj=self.sp,
-        )
+        self.sp.measure_points = {**self.sp.measure_points, "gps": gps_points}
         self.rho_vs = rho_vs
         self.rho_cs = rho_cs
         self.errmap = np.zeros((2, len(rho_vs), len(rho_cs)))

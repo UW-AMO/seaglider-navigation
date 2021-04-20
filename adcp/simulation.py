@@ -340,8 +340,8 @@ def select_times(depth_df, sim_params):
         raise ValueError("need at least 3 timepoints to assign")
     if sim_params.measure_points["gps"] == "first":
         gps_times = timepoints[0:1]
-    if sim_params.measure_points["gps"] == "multi-first":
-        gps_times = np.array((timepoints[0], timepoints[20]))
+    elif sim_params.measure_points["gps"] == "multi-first":
+        gps_times = pd.Index((timepoints[0], timepoints[20]))
     elif sim_params.measure_points["gps"] == "last":
         gps_times = timepoints[-2:-1]
     elif sim_params.measure_points["gps"] == "endpoints":
