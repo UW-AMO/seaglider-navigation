@@ -77,7 +77,7 @@ class ParameterSearch2D(Experiment):
         self.sp = sim.SimParams(
             copyobj=self.sp,
         )
-        self.rho_vs = (rho_vs,)
+        self.rho_vs = rho_vs
         self.rho_cs = rho_cs
         self.errmap = np.zeros((2, len(rho_vs), len(rho_cs)))
         self.paths = list(repeat(list(repeat(None, len(rho_cs))), len(rho_vs)))
@@ -94,6 +94,7 @@ class ParameterSearch2D(Experiment):
         self.prob = op.GliderProblem(copyobj=self.prob, ddat=ddat, adat=adat)
 
     def run(self):
+        self.gen_data()
         for ((i, rv), (j, rc)) in product(
             enumerate(self.rho_vs), enumerate(self.rho_cs)
         ):
