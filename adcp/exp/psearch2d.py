@@ -114,7 +114,8 @@ class ParameterSearch2D(Experiment):
 
             x_leg = legacy @ x_sol
 
-            leg_Xs = mb.x_select(len(prob.times), 2)
+            leg_Xs = mb.x_select(prob.m, 2)
+            leg_Vs = mb.v_select(prob.m, 2)
             leg_NV = mb.nv_select(
                 len(prob.times), len(prob.depths), 2, 2, "otg"
             )
@@ -127,6 +128,12 @@ class ParameterSearch2D(Experiment):
             leg_EC = mb.ec_select(
                 len(prob.times), len(prob.depths), 2, 2, "otg"
             )
+            self.prob.EV = leg_EV
+            self.prob.NV = leg_NV
+            self.prob.EC = leg_EC
+            self.prob.NC = leg_NC
+            self.prob.Xs = leg_Xs
+            self.prob.Vs = leg_Vs
 
             err = x_leg - self.x
             path_error = (
