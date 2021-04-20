@@ -55,8 +55,10 @@ class ParameterSearch2D(Experiment):
         seed=3453,
         sp=default_sp,
         prob=default_prob,
+        variant="Basic",
     ):
         self.name = "2D Parameter Search"
+        self.variant = variant
         # unexpected parameters
         self.overrides = {}
         if sp != self.default_sp:

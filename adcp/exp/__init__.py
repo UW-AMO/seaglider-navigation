@@ -21,7 +21,7 @@ def run(ex: Experiment):
     print(f"Current repo hash: {repo.head.commit.hexsha}")
     utc_now = datetime.now(timezone.utc)
     print(
-        f"Running experiment {ex.name} at time: ",
+        f"Running experiment {ex.name} with variant {ex.variant} at time: ",
         utc_now.strftime("%Y-%m-%d %H:%M:%S %Z"),
     )
     ex.run()
