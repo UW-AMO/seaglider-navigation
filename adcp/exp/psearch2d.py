@@ -127,6 +127,11 @@ class ParameterSearch2D(Experiment):
             leg_EC = mb.ec_select(
                 len(prob.times), len(prob.depths), 2, 2, "otg"
             )
+            self.prob.EV = leg_EV
+            self.prob.NV = leg_NV
+            self.prob.EC = leg_EC
+            self.prob.NC = leg_NC
+            self.prob.Xs = leg_Xs
 
             err = x_leg - self.x
             path_error = (
