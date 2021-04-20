@@ -69,10 +69,10 @@ def check_condition(prob: op.GliderProblem) -> Tuple:
     A, _ = op.solve_mats(prob)
 
     r100 = np.array(random.sample(range(0, 4 * m + 2 * n), 100))
-    r1000 = np.array(random.sample(range(0, 4 * m + 2 * n), 1000))
+    r200 = np.array(random.sample(range(0, 4 * m + 2 * n), 200))
     c1 = np.linalg.cond(kalman_mat.todense()[r100[:, None], r100])
     c2 = np.linalg.cond(A.todense()[r100[:, None], r100])
-    c3 = np.linalg.cond(kalman_mat.todense()[r1000[:, None], r1000])
-    c4 = np.linalg.cond(A.todense()[r1000[:, None], r1000])
+    c3 = np.linalg.cond(kalman_mat.todense()[r200[:, None], r200])
+    c4 = np.linalg.cond(A.todense()[r200[:, None], r200])
 
     return c1, c2, c3, c4
