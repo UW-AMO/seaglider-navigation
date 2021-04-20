@@ -11,14 +11,16 @@ class Experiment:
         raise NotImplementedError
 
 
-def run(ex: Experiment):
-    if repo.is_dirty():
+def run(ex: Experiment, debug=False):
+    if not debug and repo.is_dirty():
         raise RuntimeError(
             "Git Repo is dirty.  For repeatable tests,"
             " clean the repo by committing or stashing all changes and "
             "untracked files."
         )
     print(f"Current repo hash: {repo.head.commit.hexsha}")
+    if debug:
+        print("WARNING: in debugging mode")
     utc_now = datetime.now(timezone.utc)
     print(
         f"Running experiment {ex.name} with variant {ex.variant} at time: ",
