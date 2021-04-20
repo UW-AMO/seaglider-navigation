@@ -5,6 +5,7 @@ Created on Thu Jan  2 13:00:31 2020
 @author: 600301
 """
 import random
+import copy
 
 import numpy as np
 import pandas as pd
@@ -41,7 +42,7 @@ class SimParams:
         },
     }
 
-    def __init__(self, **kwargs):
+    def __init__(self, copyobj=None, **kwargs):
         """Creates a SimParams object
 
         Parameters:
@@ -71,15 +72,17 @@ class SimParams:
                 'range' to describe how measurement points in time are
                 assigned to different measurement devices.
         """
-        for k, v in self.defaults.items():
-            if k in kwargs:
-                setattr(self, k, kwargs[k])
-            else:
+        if copyobj is not None:
+            self.__dict__ = copy.copy(copyobj.__dict__)
+        else:
+            self.__dict__ = copy.copy(self.defaults)
+        for k, v in kwargs.items():
+            try:
+                self.defaults[k]
                 setattr(self, k, v)
-        for k in kwargs:
-            if k not in self.__dict__:
+            except KeyError:
                 raise AttributeError(
-                    f"{k} not a argument for SimParams" " constructor"
+                    f"{k} not a argument for Problem" " constructor"
                 )
 
 
