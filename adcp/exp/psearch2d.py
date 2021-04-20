@@ -87,7 +87,7 @@ class ParameterSearch2D(Experiment):
         self.seed = seed
 
     def gen_data(self):
-        ddat, adat, x, curr_df, v_df = sim.simulate(self.sp, verbose=True)
+        ddat, adat, x, curr_df, v_df = sim.simulate(self.sp)
         self.ddat = ddat
         self.adat = adat
         self.x = x
