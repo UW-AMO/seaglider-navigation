@@ -8,7 +8,7 @@ def __main__():
     experiment = ParameterSearch2D(
         variant="No Time Scaling or preconditioning, first GPS only",
         t_scale=1,
-        coditioner=None,
+        conditioner=None,
         gps_points="first",
         rho_vs=np.logspace(-10, -1, 11),
         rho_cs=np.logspace(-10, -1, 11),
