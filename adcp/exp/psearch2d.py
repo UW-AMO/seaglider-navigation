@@ -201,6 +201,10 @@ class ParameterSearch2D(Experiment):
                 f"Best Current Solution: rho_v={self.rho_vs[i2]:.2E}, "
                 f"rho_c={self.rho_cs[j2]:.2E}"
             )
+            print(
+                f"Creates path error: {self.errmap[0, i2, j2]:.2E} and current"
+                f" error: {self.errmap[1, i2, j2]:.2E}"
+            )
             plot_bundle(
                 curr_x, self.prob, self.prob.times, self.prob.depths, self.x
             )
