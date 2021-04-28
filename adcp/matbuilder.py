@@ -821,13 +821,11 @@ def legacy_select(
         vehicle_c_block = scipy.sparse.diags(
             np.ones(2), current_order - 2, (2, current_order)
         )
-        idxmin = [-1] + idxdepth[:-1]
+        idx_depth_shift = [-1] + idxdepth[:-1]
         blocks = []
-        for i, (l, r) in enumerate(zip(idxmin, idxdepth)):
+        for i, (l, r) in enumerate(zip(idx_depth_shift, idxdepth)):
             block = scipy.sparse.csr_matrix((2 * m, current_order * (r - l)))
-            block[
-                2 * i : 2 * (i + 1), (r - l - 1) * current_order :
-            ] = vehicle_c_block
+            block[2 * i : 2 * (i + 1), -current_order:] = vehicle_c_block
             blocks.append(block)
         vehicle_c_mat = scipy.sparse.hstack(blocks)
         w = vehicle_c_mat.shape[1]
