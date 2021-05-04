@@ -93,14 +93,18 @@ class ParameterSearch2D(Experiment):
         self.v_df = v_df
         self.prob = op.GliderProblem(copyobj=self.prob, ddat=ddat, adat=adat)
 
-    def run(self):
+    def run(self, visuals=True):
         self.gen_data()
         for ((i, rv), (j, rc)) in product(
             enumerate(self.rho_vs), enumerate(self.rho_cs)
         ):
+            if (
+                i % (len(self.rho_vs) // 2) == 0
+                and j % (len(self.rho_cs) // 2) == 0
+            ):
+                print(i, "  ", j)
             prob = op.GliderProblem(copyobj=self.prob, rho_v=rv, rho_c=rc)
 
-            print(i, " ", j)
             x_sol = op.backsolve(prob)
 
             legacy = mb.legacy_select(
@@ -147,9 +151,28 @@ class ParameterSearch2D(Experiment):
             self.errmap[0, i, j] = path_error
             self.errmap[1, i, j] = current_error
             self.paths[i][j] = x_leg
-        self.display_output()
+        if visuals:
+            i1, j1, i2, j2 = self.best_parameters()
+            self.display_errmaps(i1, j1, i2, j2)
+            self.display_solutions(i1, j1, i2, j2)
+        return {
+            "errmap": self.errmap,
+            "paths": self.paths,
+            "x": self.x,
+            "curr_df": self.curr_df,
+            "v_df": self.v_df,
+        }
 
-    def display_output(self):
+    def best_parameters(self):
+        i2, j2 = np.unravel_index(
+            self.errmap[1, :, :].argmin(), (len(self.rho_vs), len(self.rho_cs))
+        )
+        i1, j1 = np.unravel_index(
+            self.errmap[0, :, :].argmin(), (len(self.rho_vs), len(self.rho_cs))
+        )
+        return i1, j1, i2, j2
+
+    def display_errmaps(self, i1, j1, i2, j2):
         show_errmap(
             self.errmap,
             0,
@@ -165,15 +188,6 @@ class ParameterSearch2D(Experiment):
             norm=colors.LogNorm(vmin=1e0, vmax=1e3),
         )
         # %%
-        i1, j1 = np.unravel_index(
-            self.errmap[0, :, :].argmin(), (len(self.rho_vs), len(self.rho_cs))
-        )
-        nav_x = self.paths[i1][j1]
-        i2, j2 = np.unravel_index(
-            self.errmap[1, :, :].argmin(), (len(self.rho_vs), len(self.rho_cs))
-        )
-        curr_x = self.paths[i2][j2]
-
         print(
             f"Best Nav Solution: rho_v={self.rho_vs[i1]:.2E},"
             f" rho_c={self.rho_cs[j1]:.2E}"
@@ -181,20 +195,6 @@ class ParameterSearch2D(Experiment):
         print(
             f"Creates path error: {self.errmap[0, i1, j1]:.2E} and current "
             f"error: {self.errmap[1, i1, j1]:.2E}"
-        )
-        prob = op.GliderProblem(
-            copyobj=self.prob,
-            rho_v=self.rho_vs[i2],
-            rho_c=self.rho_cs[j2],
-        )
-        try:
-            c1, c2, c3, c4 = check_condition(prob)
-            print_condition(c1, c2, c3, c4)
-        except ValueError:
-            print("small matrices")
-
-        plot_bundle(
-            nav_x, self.prob, self.prob.times, self.prob.depths, self.x
         )
         if (i1 != i2) or (j1 != j2):
             print(
@@ -205,20 +205,38 @@ class ParameterSearch2D(Experiment):
                 f"Creates path error: {self.errmap[0, i2, j2]:.2E} and current"
                 f" error: {self.errmap[1, i2, j2]:.2E}"
             )
-            plot_bundle(
-                curr_x, self.prob, self.prob.times, self.prob.depths, self.x
-            )
+
+    def display_solutions(self, i1, j1, i2, j2):
+        nav_x = self.paths[i1][j1]
+        prob = op.GliderProblem(
+            copyobj=self.prob,
+            rho_v=self.rho_vs[i1],
+            rho_c=self.rho_cs[j1],
+        )
+        try:
+            c1, c2, c3, c4 = check_condition(prob)
+            print_condition(c1, c2, c3, c4)
+        except ValueError:
+            print("small matrices")
+
+        plot_bundle(
+            nav_x, self.prob, self.prob.times, self.prob.depths, self.x
+        )
+        if i1 != i2 or j1 != j2:
+            curr_x = self.paths[i2][j2]
             prob = op.GliderProblem(
                 copyobj=self.prob,
                 rho_v=self.rho_vs[i2],
                 rho_c=self.rho_cs[j2],
+            )
+            plot_bundle(
+                curr_x, self.prob, self.prob.times, self.prob.depths, self.x
             )
             try:
                 c1, c2, c3, c4 = check_condition(prob)
                 print_condition(c1, c2, c3, c4)
             except ValueError:
                 print("small matrices")
-
         else:
             print("... and it's also the best current solution")
 
@@ -228,3 +246,25 @@ def print_condition(c1: int, c2: int, c3: int, c4: int):
     print(f"100x100 sample of A has condition {c2:.2E}")
     print(f"1000x1000 sample of kalman matrix has condition {c3:.2E}")
     print(f"1000x1000 sample of A has condition {c4:.2E}")
+
+
+class RigorousParameterSearch2D(ParameterSearch2D):
+    def __init__(self, sims=20, **kwargs):
+        self.sub_problem_kwargs = kwargs
+        self.sims = sims
+        super().__init__(**kwargs)
+
+    def run(self):
+        results = []
+        for n_sim in range(self.sims):
+            curr_search = ParameterSearch2D(**self.sub_problem_kwargs)
+            results.append(curr_search.run(visuals=False))
+            print("simulation ", n_sim)
+
+        self.errmap = np.zeros((2, len(self.rho_vs), len(self.rho_cs)))
+        for res in results:
+            self.errmap += res["errmap"] / self.sims
+
+        i1, j1, i2, j2 = self.best_parameters()
+        self.display_errmaps(i1, j1, i2, j2)
+        return self.errmap

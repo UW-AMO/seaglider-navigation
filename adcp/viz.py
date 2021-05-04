@@ -534,7 +534,7 @@ def vehicle_speed_plot(
 
 
 def current_plot(solx, x_sol, adat, times, depths, direction="north"):
-    """ Deprecated """
+    """Deprecated"""
     fig = plt.figure()
     m = len(times)
     n = len(depths)
