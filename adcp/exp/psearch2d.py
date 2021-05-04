@@ -114,7 +114,8 @@ class ParameterSearch2D(Experiment):
 
             x_leg = legacy @ x_sol
 
-            leg_Xs = mb.x_select(len(prob.times), 2)
+            leg_Xs = mb.x_select(prob.m, 2)
+            leg_Vs = mb.v_select(prob.m, 2)
             leg_NV = mb.nv_select(
                 len(prob.times), len(prob.depths), 2, 2, "otg"
             )
@@ -132,6 +133,7 @@ class ParameterSearch2D(Experiment):
             self.prob.EC = leg_EC
             self.prob.NC = leg_NC
             self.prob.Xs = leg_Xs
+            self.prob.Vs = leg_Vs
 
             err = x_leg - self.x
             path_error = (
@@ -173,12 +175,12 @@ class ParameterSearch2D(Experiment):
         curr_x = self.paths[i2][j2]
 
         print(
-            f"Best Nav Solution: rho_v={self.rho_vs[i1]},"
-            f" rho_c={self.rho_cs[j1]}"
+            f"Best Nav Solution: rho_v={self.rho_vs[i1]:.2E},"
+            f" rho_c={self.rho_cs[j1]:.2E}"
         )
         print(
-            f"Creates path error: {self.errmap[0, i1, j1]} and current "
-            f"error: {self.errmap[1, i1, j1]}"
+            f"Creates path error: {self.errmap[0, i1, j1]:.2E} and current "
+            f"error: {self.errmap[1, i1, j1]:.2E}"
         )
         prob = op.GliderProblem(
             copyobj=self.prob,
@@ -187,10 +189,7 @@ class ParameterSearch2D(Experiment):
         )
         try:
             c1, c2, c3, c4 = check_condition(prob)
-            print("100x100 sample of kalman matrix has condition", c1)
-            print("100x100 sample of A has condition", c2)
-            print("1000x1000 sample of kalman matrix has condition", c3)
-            print("1000x1000 sample of A has condition", c4)
+            print_condition(c1, c2, c3, c4)
         except ValueError:
             print("small matrices")
 
@@ -199,8 +198,12 @@ class ParameterSearch2D(Experiment):
         )
         if (i1 != i2) or (j1 != j2):
             print(
-                f"Best Current Solution: rho_v={self.rho_vs[i2]}, "
-                f"rho_c={self.rho_cs[j2]}"
+                f"Best Current Solution: rho_v={self.rho_vs[i2]:.2E}, "
+                f"rho_c={self.rho_cs[j2]:.2E}"
+            )
+            print(
+                f"Creates path error: {self.errmap[0, i2, j2]:.2E} and current"
+                f" error: {self.errmap[1, i2, j2]:.2E}"
             )
             plot_bundle(
                 curr_x, self.prob, self.prob.times, self.prob.depths, self.x
@@ -212,12 +215,16 @@ class ParameterSearch2D(Experiment):
             )
             try:
                 c1, c2, c3, c4 = check_condition(prob)
-                print("100x100 sample of kalman matrix has condition", c1)
-                print("100x100 sample of A has condition", c2)
-                print("1000x1000 sample of kalman matrix has condition", c3)
-                print("1000x1000 sample of A has condition", c4)
+                print_condition(c1, c2, c3, c4)
             except ValueError:
                 print("small matrices")
 
         else:
             print("... and it's also the best current solution")
+
+
+def print_condition(c1: int, c2: int, c3: int, c4: int):
+    print(f"100x100 sample of kalman matrix has condition {c1:.2E}")
+    print(f"100x100 sample of A has condition {c2:.2E}")
+    print(f"1000x1000 sample of kalman matrix has condition {c3:.2E}")
+    print(f"1000x1000 sample of A has condition {c4:.2E}")
