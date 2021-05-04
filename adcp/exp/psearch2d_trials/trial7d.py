@@ -6,11 +6,11 @@ from adcp.exp.psearch2d import RigorousParameterSearch2D
 
 def __main__():
     experiment = RigorousParameterSearch2D(
-        variant="No Time Scaling, multi-simulation",
+        variant="TTW Modeling, multi-simulation",
         sims=20,
-        t_scale=1,
-        rho_vs=np.logspace(-5, 6, 11),
-        rho_cs=np.logspace(-5, 6, 11),
+        vehicle_vel="ttw",
+        rho_vs=np.logspace(-10, -1, 11),
+        rho_cs=np.logspace(-10, -1, 11),
     )
     adcp.exp.run(experiment)
 
