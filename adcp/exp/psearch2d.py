@@ -12,7 +12,7 @@ from matplotlib import colors
 from adcp import simulation as sim
 from adcp import matbuilder as mb
 from adcp import optimization as op
-from adcp.exp import Experiment
+from adcp.exp import Experiment, exp_logger
 from adcp.exp.psearch import check_condition, plot_bundle, show_errmap
 
 
@@ -161,6 +161,7 @@ class ParameterSearch2D(Experiment):
             "x": self.x,
             "curr_df": self.curr_df,
             "v_df": self.v_df,
+            "metrics": self.errmap.min(axis=(0,1))
         }
 
     def best_parameters(self):
@@ -267,4 +268,4 @@ class RigorousParameterSearch2D(ParameterSearch2D):
 
         i1, j1, i2, j2 = self.best_parameters()
         self.display_errmaps(i1, j1, i2, j2)
-        return self.errmap
+        return {"output":self.errmap, "metrics": self.errmap.min(axis=(0,1))}
