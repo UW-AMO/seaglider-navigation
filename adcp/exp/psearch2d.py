@@ -161,7 +161,7 @@ class ParameterSearch2D(Experiment):
             "x": self.x,
             "curr_df": self.curr_df,
             "v_df": self.v_df,
-            "metrics": self.errmap.min(axis=(0,1))
+            "metrics": self.errmap.min(axis=(0, 1)),
         }
 
     def best_parameters(self):
@@ -268,4 +268,4 @@ class RigorousParameterSearch2D(ParameterSearch2D):
 
         i1, j1, i2, j2 = self.best_parameters()
         self.display_errmaps(i1, j1, i2, j2)
-        return {"output":self.errmap, "metrics": self.errmap.min(axis=(0,1))}
+        return {"output": self.errmap, "metrics": self.errmap.min(axis=(0, 1))}
