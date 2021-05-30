@@ -77,53 +77,64 @@ h4 = _h_gps(prob)
 delta = 1e-2
 _, _, eps, err = op.grad_test(x_native, delta, f, g)
 print(
-    f"Overall gradient test for vectors {eps:e} apart yeilds an error of {err:e}"
+    f"Overall gradient test for vectors {eps:e} apart yeilds an error of"
+    f" {err:e}"
 )
 _, _, eps, err = op.grad_test(x_native, delta, f1, g1)
 print(
-    f"Kalman gradient test for vectors {eps:e} apart yeilds an error of {err:e}"
+    f"Kalman gradient test for vectors {eps:e} apart yeilds an error of"
+    f" {err:e}"
 )
 _, _, eps, err = op.grad_test(x_native, delta, f2, g2)
 print(
-    f"TTW measurement gradient test for vectors {eps:e} apart yeilds an error of {err:e}"
+    f"TTW measurement gradient test for vectors {eps:e} apart yeilds an error"
+    f" of {err:e}"
 )
 _, _, eps, err = op.grad_test(x_native, delta, f3, g3)
 print(
-    f"ADCP measurement gradient test for vectors {eps:e} apart yeilds an error of {err:e}"
+    f"ADCP measurement gradient test for vectors {eps:e} apart yeilds an error"
+    f" of {err:e}"
 )
 _, _, eps, err = op.grad_test(x_native, delta, f4, g4)
 print(
-    f"GPS measurement gradient test for vectors {eps:e} apart yeilds an error of {err:e}"
+    f"GPS measurement gradient test for vectors {eps:e} apart yeilds an error"
+    f" of {err:e}"
 )
 # _, _, eps, err = op.grad_test(x_native, delta, f5, g5)
 # print(f"Range measurement gradient test for vectors {eps:e} apart yeilds an error of {err:e}")
 
 _, _, eps, err = op.complex_step_test(x_native, delta, f, g)
 print(
-    f"Overall complex step test for gradient of norm {eps:e} yeilds an error of {err:e}"
+    f"Overall complex step test for gradient of norm {eps:e} yeilds an error"
+    f" of {err:e}"
 )
 _, _, eps, err = op.complex_step_test(x_native, delta, f1, g1)
 print(
-    f"Kalman complex step test for gradient of norm {eps:e} yeilds an error of {err:e}"
+    f"Kalman complex step test for gradient of norm {eps:e} yeilds an error of"
+    f" {err:e}"
 )
 _, _, eps, err = op.complex_step_test(x_native, delta, f2, g2)
 print(
-    f"TTW measurement complex step test for gradient of norm {eps:e} yeilds an error of {err:e}"
+    f"TTW measurement complex step test for gradient of norm {eps:e} yeilds an"
+    f" error of {err:e}"
 )
 _, _, eps, err = op.complex_step_test(x_native, delta, f3, g3)
 print(
-    f"ADCP measurement complex step test for gradient of norm {eps:e} yeilds an error of {err:e}"
+    f"ADCP measurement complex step test for gradient of norm {eps:e} yeilds"
+    f" an error of {err:e}"
 )
 _, _, eps, err = op.complex_step_test(x_native, delta, f4, g4)
 print(
-    f"GPS measurement complex step test for gradient of norm {eps:e} yeilds an error of {err:e}"
+    f"GPS measurement complex step test for gradient of norm {eps:e} yeilds an"
+    f" error of {err:e}"
 )
 # _, _, eps, err = op.complex_step_test(x_native, delta, f5, g5)
 # print(f"Range measurement complex step test for gradient of norm {eps:e} yeilds an error of {err:e}")
 
 _, _, eps, err = op.hess_test(x_native, delta, g, h)
 print(
-    f"Overall hessian test for vectors {eps:e} apart yeilds an error of {err:e}"
+    f"Overall hessian test for vectors {eps:e} apart yeilds an error of"
+    f" {err:e}"
 )
 _, _, eps, err = op.hess_test(x_native, delta, g1, h1)
 print(
@@ -131,19 +142,23 @@ print(
 )
 _, _, eps, err = op.hess_test(x_native, delta, g2, h2)
 print(
-    f"TTW measurement hessian test for vectors {eps:e} apart yeilds an error of {err:e}"
+    f"TTW measurement hessian test for vectors {eps:e} apart yeilds an error"
+    f" of {err:e}"
 )
 _, _, eps, err = op.hess_test(x_native, delta, g3, h3)
 print(
-    f"ADCP measurement hessian test for vectors {eps:e} apart yeilds an error of {err:e}"
+    f"ADCP measurement hessian test for vectors {eps:e} apart yeilds an error"
+    f" of {err:e}"
 )
 _, _, eps, err = op.hess_test(x_native, delta, g4, h4)
 print(
-    f"GPS measurement hessian test for vectors {eps:e} apart yeilds an error of {err:e}"
+    f"GPS measurement hessian test for vectors {eps:e} apart yeilds an error"
+    f" of {err:e}"
 )
 _, _, eps, err = op.hess_test(x_native, delta, g4, h4)
 print(
-    f"GPS measurement hessian test for vectors {eps:e} apart yeilds an error of {err:e}"
+    f"GPS measurement hessian test for vectors {eps:e} apart yeilds an error"
+    f" of {err:e}"
 )
 # _, _, eps, err = op.hess_test(x_native, delta, g5, h5)
 # print(f"Range measurement hessian test for vectors {eps:e} apart yeilds an error of {err:e}")

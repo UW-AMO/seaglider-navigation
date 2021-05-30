@@ -166,8 +166,7 @@ if f_nav != f_curr:
         f" rho_c={rho_c*c_factors[f_curr]}"
     )
     print(
-        f"Path error: {errmap[0, f_curr]}\n"
-        f"Current error: {errmap[1, f_curr]}"
+        f"Path error: {errmap[0, f_curr]}\nCurrent error: {errmap[1, f_curr]}"
     )
     plot_bundle(curr_x)
 else:

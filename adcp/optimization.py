@@ -54,7 +54,7 @@ class GliderProblem:
                 setattr(self, k, v)
             except KeyError:
                 raise AttributeError(
-                    f"{k} not a argument for Problem" " constructor"
+                    f"{k} not a argument for Problem constructor"
                 )
 
         if self.ddat is not None and self.adat is not None:

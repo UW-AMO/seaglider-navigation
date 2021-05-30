@@ -5,11 +5,14 @@ from setuptools import setup
 setup(
     name="adcp-nav",
     version="untracked",
-    description="Package to calculate vehicle positioning and current "
-    "profiles of undersea vehicles equipped with acoustic "
-    "doppler current profiler using Kalman Filter.",
-    author="Jonathan Jonker, Jake Stevens-Haas, Sarah Webster, "
-    "Aleksandr Aravkin",
+    description=(
+        "Package to calculate vehicle positioning and current "
+        "profiles of undersea vehicles equipped with acoustic "
+        "doppler current profiler using Kalman Filter."
+    ),
+    author=(
+        "Jonathan Jonker, Jake Stevens-Haas, Sarah Webster, Aleksandr Aravkin"
+    ),
     author_email="jmsh@uw.com",
     license="None",
     packages=[

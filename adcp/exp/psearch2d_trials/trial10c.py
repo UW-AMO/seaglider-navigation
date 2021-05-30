@@ -6,8 +6,10 @@ from adcp.exp.psearch2d import ParameterSearch2D
 
 def __main__():
     experiment = ParameterSearch2D(
-        variant="TTW Modeling, current order=3, vehicle order=3, "
-        "multi-first GPS only",
+        variant=(
+            "TTW Modeling, current order=3, vehicle order=3, "
+            "multi-first GPS only"
+        ),
         vehicle_vel="ttw",
         current_order=3,
         vehicle_order=3,

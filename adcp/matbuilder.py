@@ -356,7 +356,7 @@ def depth_Qblocks(
         depth_rate = np.ones(len(delta_depths))
     elif order == 1:
         raise ValueError(
-            "If including depth_rate/modeling vttw, minimum " "order is 2."
+            "If including depth_rate/modeling vttw, minimum order is 2."
         )
     dds = reduce_condition(delta_depths, method=conditioner)
     cond = q_cond(dds, dim=1)
@@ -438,7 +438,7 @@ def depth_G(depths, order=2, depth_rate=None, conditioner=conditioner):
         depth_rate = np.ones(len(delta_depths))
     elif order == 1:
         raise ValueError(
-            "If including depth_rate/modeling vttw, minimum " "order is 2."
+            "If including depth_rate/modeling vttw, minimum order is 2."
         )
     dds = reduce_condition(delta_depths, method=conditioner)
 

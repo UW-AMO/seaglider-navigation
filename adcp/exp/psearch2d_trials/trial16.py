@@ -6,8 +6,10 @@ from adcp.exp.psearch2d import ParameterSearch2D
 
 def __main__():
     experiment = ParameterSearch2D(
-        variant="No Time Scaling, vehicle_vel=TTW, vehicle order=3, "
-        "current_order=3",
+        variant=(
+            "No Time Scaling, vehicle_vel=TTW, vehicle order=3, "
+            "current_order=3"
+        ),
         t_scale=1,
         vehicle_vel="ttw",
         vehicle_order=3,

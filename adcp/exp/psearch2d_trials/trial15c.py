@@ -6,8 +6,10 @@ from adcp.exp.psearch2d import ParameterSearch2D
 
 def __main__():
     experiment = ParameterSearch2D(
-        variant="No Time Scaling, vehicle_order=3, current_order=3, "
-        "no conditioner, multi-first GPS only",
+        variant=(
+            "No Time Scaling, vehicle_order=3, current_order=3, "
+            "no conditioner, multi-first GPS only"
+        ),
         t_scale=1,
         conditioner=None,
         current_order=3,
