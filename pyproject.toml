@@ -13,6 +13,6 @@ line-length = 79
 verbose = 1
 exclude = '''
 (
-  | adcp-env
+  adcp-env
 )
 '''
