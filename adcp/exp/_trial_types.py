@@ -1,28 +1,6 @@
 from pathlib import Path
-from sqlalchemy import (
-    create_engine,
-    inspection,
-    insert,
-    Table,
-    Column,
-    Integer,
-    Float,
-    String,
-    ForeignKey,
-    MetaData,
-)
 import pandas as pd
 
-trial_types = [
-    Column("id", Integer, primary_key=True),
-    Column("short_name", String),
-    Column("factors", String),
-]
-
-variant_types = [
-    Column("variant", Integer, primary_key=True),
-    Column("short_name", String),
-]
 
 trial_df = pd.DataFrame(
     [

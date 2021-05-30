@@ -12,7 +12,7 @@ from matplotlib import colors
 from adcp import simulation as sim
 from adcp import matbuilder as mb
 from adcp import optimization as op
-from adcp.exp import Experiment, exp_logger
+from adcp.exp import Experiment
 from adcp.exp.psearch import check_condition, plot_bundle, show_errmap
 
 
