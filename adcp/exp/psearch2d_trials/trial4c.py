@@ -8,15 +8,15 @@ from adcp.exp.psearch2d import ParameterSearch2D
 
 def __main__():
     experiment = ParameterSearch2D
-    prob_params = dict(
-        t_scale=1,
-        conditioner=None,
-        rho_vs=np.logspace(-10, -1, 11),
-        rho_cs=np.logspace(-10, -1, 11),
-    )
-    sim_params = dict(
-        gps_points="multi-first",
-    )
+    prob_params = {
+        "t_scale": 1,
+        "conditioner": None,
+        "rho_vs": np.logspace(-10, 0, 11),
+        "rho_cs": np.logspace(-10, 0, 11),
+    }
+    sim_params = {
+        "gps_points": "first",
+    }
     adcp.exp.run(
         experiment,
         prob_params=prob_params,
