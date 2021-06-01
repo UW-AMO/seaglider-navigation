@@ -308,5 +308,5 @@ def _save_notebook(nb, filename, trials_folder):
 
 
 def _parse_results(result_string):
-    match = re.search(r"'metrics': (.*)}", result_string)
+    match = re.search(r"'metrics': (.*)}", result_string, re.DOTALL)
     return list(eval(match.group(1)))
