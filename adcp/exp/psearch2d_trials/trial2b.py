@@ -14,7 +14,7 @@ def __main__():
         "rho_cs": np.logspace(-10, 0, 11),
     }
     sim_params = {
-        "gps_pointsfirst",
+        "gps_points": "first",
     }
     adcp.exp.run(
         experiment,

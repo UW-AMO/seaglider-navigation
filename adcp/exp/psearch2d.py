@@ -98,11 +98,6 @@ class ParameterSearch2D(Experiment):
         for ((i, rv), (j, rc)) in product(
             enumerate(self.rho_vs), enumerate(self.rho_cs)
         ):
-            if (
-                i % (len(self.rho_vs) // 2) == 0
-                and j % (len(self.rho_cs) // 2) == 0
-            ):
-                print(i, "  ", j)
             prob = op.GliderProblem(copyobj=self.prob, rho_v=rv, rho_c=rc)
 
             x_sol = op.backsolve(prob)
@@ -260,7 +255,6 @@ class RigorousParameterSearch2D(ParameterSearch2D):
         for n_sim in range(self.sims):
             curr_search = ParameterSearch2D(**self.sub_problem_kwargs)
             results.append(curr_search.run(visuals=False))
-            print("simulation ", n_sim)
 
         self.errmap = np.zeros((2, len(self.rho_vs), len(self.rho_cs)))
         for res in results:
