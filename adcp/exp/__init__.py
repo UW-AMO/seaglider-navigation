@@ -309,7 +309,7 @@ def _run_in_notebook_if_possible(
     nb["cells"] = [setup_cell, run_cell, final_cell]
 
     kernel_name = _create_kernel()
-    ep = ExecutePreprocessor(timeout=3600, kernel=kernel_name)
+    ep = ExecutePreprocessor(timeout=-1, kernel=kernel_name)
     try:
         ep.preprocess(nb, {"metadata": {"path": trials_folder}})
     except nbclient.client.CellExecutionError:
