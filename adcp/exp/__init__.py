@@ -6,6 +6,8 @@ import git
 from time import process_time
 import warnings
 from collections import OrderedDict
+import sys
+import re
 
 import pandas as pd
 from sqlalchemy import (
@@ -20,7 +22,10 @@ from sqlalchemy import (
     String,
     MetaData,
 )
-
+from numpy import array  # noqa - used in an eval() in _parse_results()
+import nbformat
+from nbconvert.preprocessors import ExecutePreprocessor
+import nbclient
 
 REPO = git.Repo(Path(__file__).parent.parent.parent)
 TRIALS_COLUMNS = [
@@ -189,6 +194,7 @@ def run(
         prob_params=prob_params,
         id_table=id_table,
     )
+    new_filename = f"trial{trial}_{variant}_{iteration}.ipynb"
 
     utc_now = datetime.now(timezone.utc)
     cpu_now = process_time()
@@ -212,25 +218,32 @@ def run(
     exp_logger.info(log_msg)
 
     if isinstance(ex, type):
-        results = ex(**sim_params, **prob_params).run()
+        nb, metrics = _run_in_notebook_if_possible(
+            ex, sim_params, prob_params, trials_folder
+        )
     else:
         warnings.warn(
             "Passing an experiment object is deprecated.  Pass an experiment"
             " class, with sim_params, and prob_params separately"
         )
-        results = ex.run()
+        nb = None
+        metrics = ex.run()["metrics"]
 
     utc_now = datetime.now(timezone.utc)
     exp_logger.info(
         "Finished experiment at time: "
         + utc_now.strftime("%Y-%m-%d %H:%M:%S %Z")
-        + f".  Results: {results['metrics']}"
+        + f".  Results: {metrics}"
     )
     cpu_time = process_time() - cpu_now
 
-    # Save save results in trial database
     if not debug:
-        new_filename = f"trial{trial}_{variant}_{iteration}.ipynb"
+        if isinstance(ex, type):
+            _save_notebook(nb, new_filename, trials_folder)
+        else:
+            warnings.warn(
+                "Logging trial and mock filename, but no file created"
+            )
         exp_logger.info(
             "trial entry"
             + f"--{trial}"
@@ -238,6 +251,62 @@ def run(
             + f"--{iteration}"
             + f"--{commit}"
             + f"--{cpu_time}"
-            + f'--{results["metrics"]}'
+            + f"--{metrics}"
             + f"--{new_filename}--"
         )
+
+
+def _run_in_notebook_if_possible(
+    ex: type, sim_params, prob_params, trials_folder
+):
+    mod_name = ex.__module__
+    code = (
+        "import importlib\n"
+        "from numpy import array\n"
+        f"experiment_module = importlib.import_module('{mod_name}')\n"
+        f"experiment_class = experiment_module.{ex.__name__}\n"
+        f"sim_params = {sim_params}\n"
+        f"prob_params = {prob_params}\n"
+        "ex = experiment_class(**sim_params, **prob_params)\n"
+        "print('Imported ' + experiment_class.__name__ +"
+        "' from ' + experiment_module.__name__)"
+    )
+
+    nb = nbformat.v4.new_notebook()
+    setup_cell = nbformat.v4.new_code_cell(source=code)
+    run_cell = nbformat.v4.new_code_cell(source="results = ex.run()")
+    final_cell = nbformat.v4.new_code_cell(source="print(repr(results))")
+    nb["cells"] = [setup_cell, run_cell, final_cell]
+
+    kernel_name = _create_kernel()
+    ep = ExecutePreprocessor(timeout=3600, kernel=kernel_name)
+    try:
+        ep.preprocess(nb, {"metadata": {"path": trials_folder}})
+    except nbclient.client.CellExecutionError:
+        pass
+    try:
+        result_string = nb["cells"][2]["outputs"][0]["text"][:-1]
+        metrics = _parse_results(result_string)
+    except (IndexError, KeyError):
+        metrics = None
+    return nb, metrics
+
+
+def _create_kernel():
+    from ipykernel import kernelapp as app
+
+    kernel_name = (
+        sys.executable.replace("/", ".").replace("\\", ".").replace(":", ".")
+    )
+    app.launch_new_instance(argv=["install", "--user", "--name", kernel_name])
+    return kernel_name
+
+
+def _save_notebook(nb, filename, trials_folder):
+    with open(str(trials_folder / filename), "w", encoding="utf-8") as f:
+        nbformat.write(nb, f)
+
+
+def _parse_results(result_string):
+    match = re.search(r"'metrics': (.*)}", result_string)
+    return list(eval(match.group(1)))

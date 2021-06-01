@@ -11,11 +11,11 @@ def __main__():
         "t_scale": 1,
         "vehicle_order": 3,
         "current_order": 3,
-        "rho_vs": np.logspace(-10, -1, 2),
-        "rho_cs": np.logspace(-10, -1, 2),
+        "rho_vs": np.logspace(-10, -1, 11),
+        "rho_cs": np.logspace(-10, -1, 11),
     }
     sim_params = {
-        "sims": 1,
+        "sims": 20,
     }
     experiment = RigorousParameterSearch2D
     adcp.exp.run(
