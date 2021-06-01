@@ -20,8 +20,6 @@ def __main__():
         trials_folder=Path(__file__).absolute().parent,
     )
 
-    adcp.exp.run(experiment)
-
 
 if __name__ == "__main__":
     __main__()
