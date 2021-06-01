@@ -96,8 +96,9 @@ def _init_logger(trial_log, table_name):
     exp_logger = logging.Logger("experiments")
     exp_logger.setLevel(20)
     exp_logger.addHandler(logging.StreamHandler())
-    db_h = DBHandler(trial_log, table_name, TRIALS_COLUMNS)
-    exp_logger.addHandler(db_h)
+    if len(exp_logger.handlers) < 2:  # A weird error requieres this
+        db_h = DBHandler(trial_log, table_name, TRIALS_COLUMNS)
+        exp_logger.addHandler(db_h)
     return exp_logger, db_h.log_table
 
 
@@ -256,6 +257,7 @@ def run(
             + f"--{metrics}"
             + f"--{new_filename}--"
         )
+    return None
 
 
 def _run_in_notebook_if_possible(
