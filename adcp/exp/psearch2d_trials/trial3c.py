@@ -10,8 +10,8 @@ def __main__():
     experiment = ParameterSearch2D
     prob_params = dict(
         conditioner=None,
-        rho_vs=np.logspace(-10, -1, 11),
-        rho_cs=np.logspace(-10, -1, 11),
+        rho_vs=np.logspace(-10, 0, 11),
+        rho_cs=np.logspace(-10, 0, 11),
     )
     sim_params = dict(
         gps_points="multi-first",

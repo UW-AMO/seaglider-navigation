@@ -161,7 +161,7 @@ class ParameterSearch2D(Experiment):
             "x": self.x,
             "curr_df": self.curr_df,
             "v_df": self.v_df,
-            "metrics": self.errmap.min(axis=(0, 1)),
+            "metrics": self.errmap.min(axis=(1, 2)),
         }
 
     def best_parameters(self):

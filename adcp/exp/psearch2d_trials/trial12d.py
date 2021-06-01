@@ -11,8 +11,8 @@ def __main__():
         "t_scale": 1,
         "vehicle_order": 3,
         "current_order": 3,
-        "rho_vs": np.logspace(-10, -1, 11),
-        "rho_cs": np.logspace(-10, -1, 11),
+        "rho_vs": np.logspace(-10, 0, 11),
+        "rho_cs": np.logspace(-10, 0, 11),
     }
     sim_params = {
         "sims": 20,
@@ -23,6 +23,7 @@ def __main__():
         prob_params=prob_params,
         sim_params=sim_params,
         trials_folder=Path(__file__).absolute().parent,
+        debug=True,
     )
 
 

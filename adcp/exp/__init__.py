@@ -143,7 +143,9 @@ def _id_variant_iteration(
         ind_equal = df.loc[:, lookup_col] == str(params)
         if ind_equal.sum() == 0:
             new_val = 1 if df.empty else df[index].max() + 1
-            stmt = insert(tb, values={index: new_val, lookup_col: str(params)})
+            stmt = insert(
+                tb, values={index: int(new_val), lookup_col: str(params)}
+            )
             eng.execute(stmt)
             return new_val, True
         else:

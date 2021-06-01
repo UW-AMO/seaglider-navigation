@@ -9,8 +9,8 @@ from adcp.exp.psearch2d import ParameterSearch2D
 def __main__():
     experiment = ParameterSearch2D
     prob_params = {
-        "rho_vs": np.logspace(-10, -1, 11),
-        "rho_cs": np.logspace(-10, -1, 11),
+        "rho_vs": np.logspace(-10, 0, 11),
+        "rho_cs": np.logspace(-10, 0, 11),
     }
     sim_params = {}
     adcp.exp.run(
