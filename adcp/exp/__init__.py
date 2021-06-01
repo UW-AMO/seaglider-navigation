@@ -1,16 +1,17 @@
-from math import isnan
 from pathlib import Path
 from typing import List
 from datetime import datetime, timezone
 import logging
 import git
 from time import process_time
-from jsonschema.validators import create
+import warnings
+from collections import OrderedDict
 
 import pandas as pd
 from sqlalchemy import (
     create_engine,
     inspection,
+    select,
     insert,
     Table,
     Column,
@@ -20,16 +21,9 @@ from sqlalchemy import (
     MetaData,
 )
 
-from adcp.exp._trial_types import trial_df, variant_df
 
-trial_db = Path(__file__).resolve().parent / "trials.db"
-eng = create_engine("sqlite:///" + str(trial_db))
-trial_df.to_sql("trial_types", eng, if_exists="replace")
-variant_df.to_sql("variant_types", eng, if_exists="replace")
-
-
-repo = git.Repo(Path(__file__).parent.parent.parent)
-trials_columns = [
+REPO = git.Repo(Path(__file__).parent.parent.parent)
+TRIALS_COLUMNS = [
     Column("id", Integer, primary_key=True),
     Column("variant", Integer, primary_key=True),
     Column("iteration", Integer, primary_key=True),
@@ -38,6 +32,17 @@ trials_columns = [
     Column("results", String, nullable=False),
     Column("filename", String, nullable=False),
     Column("overflow", String),
+]
+TRIAL_TYPES = [
+    Column("id", Integer, primary_key=True),
+    Column("short_name", String, unique=True),
+    Column("prob_params", String, unique=True),
+]
+
+VARIANT_TYPES = [
+    Column("variant", Integer, primary_key=True),
+    Column("short_name", String, unique=True),
+    Column("sim_params", String, unique=True),
 ]
 
 
@@ -57,10 +62,12 @@ class DBHandler(logging.Handler):
 
         md = MetaData()
         self.log_table = Table(table_name, md, *cols)
+        url = "sqlite:///" + str(self.db)
+        self.eng = create_engine(url)
+        with self.eng.connect() as conn:
+            if not inspection.inspect(conn).has_table(table_name):
+                md.create_all(conn)
 
-        self.eng = create_engine("sqlite:///" + str(self.db))
-        if not inspection.inspect(self.eng).has_table(table_name):
-            md.create_all(self.eng)
         super().__init__()
         self.addFilter(lambda rec: self.separator in rec.getMessage())
 
@@ -68,17 +75,10 @@ class DBHandler(logging.Handler):
         vals = self.parse_record(record.getMessage())
         ins = insert(self.log_table, vals)
         with self.eng.connect() as conn:
-            result = conn.execute(ins)
+            conn.execute(ins)
 
     def parse_record(self, msg: str) -> List[str]:
         return msg.split(self.separator)[1:]
-
-
-exp_logger = logging.Logger("experiments")
-exp_logger.setLevel(20)
-db_h = DBHandler("trials.db", "trials", trials_columns)
-exp_logger.addHandler(db_h)
-exp_logger.addHandler(logging.StreamHandler())
 
 
 class Experiment:
@@ -86,26 +86,139 @@ class Experiment:
         raise NotImplementedError
 
 
-def run(ex: Experiment, debug=False, trial=1, variant=1, trials_folder=None):
-    if not debug and repo.is_dirty():
+def _init_logger(trial_log, table_name):
+    """Create a Trials logger with a database handler"""
+    exp_logger = logging.Logger("experiments")
+    exp_logger.setLevel(20)
+    exp_logger.addHandler(logging.StreamHandler())
+    db_h = DBHandler(trial_log, table_name, TRIALS_COLUMNS)
+    exp_logger.addHandler(db_h)
+    return exp_logger, db_h.log_table
+
+
+def _init_id_variant_tables(trial_log):
+    eng = create_engine("sqlite:///" + str(trial_log))
+    md = MetaData()
+    id_table = Table("trial_types", md, *TRIAL_TYPES)
+    var_table = Table("variant_types", md, *VARIANT_TYPES)
+    inspector = inspection.inspect(eng)
+    if not inspector.has_table("trial_types") and not inspector.has_table(
+        "variant_types"
+    ):
+        md.create_all(eng)
+    return id_table, var_table
+
+
+def _id_variant_iteration(
+    trial_log, trials_table, *, var_table, sim_params, id_table, prob_params
+):
+    """Identify, from the db_log, which trial id and variant the current
+    problem matches, then give the iteration.  If no matches are found,
+    increment id or variant appropriately.
+
+    Args:
+        trial_log (path-like): location of the trial log database
+        trials_table (sqlalchemy.Table): the main record of each
+            trial/variant
+        var_table (sqlalchemy.Table): the lookup table for simulation
+            variants
+        sim_params (dict): parameters used in simulated experimental
+            data
+        id_table (sqlalchemy.Table): the lookup table for trial ids
+        prob_params (dict): Parameters used to create the problem/solver
+            in the experiment
+    """
+    eng = create_engine("sqlite:///" + str(trial_log))
+    sim_params = dict(sim_params)
+    prob_params = dict(prob_params)
+
+    def lookup_or_add_params(tb, cols, params, index, lookup_col):
+        params = OrderedDict({k: v for k, v in sorted(dict(params).items())})
+        df = pd.read_sql(select(tb), eng)
+        ind_equal = df.loc[:, lookup_col] == str(params)
+        if ind_equal.sum() == 0:
+            new_val = 1 if df.empty else df[index].max() + 1
+            stmt = insert(tb, values={index: new_val, lookup_col: str(params)})
+            eng.execute(stmt)
+            return new_val, True
+        else:
+            return df.loc[ind_equal, index].iloc[0], False
+
+    trial_id, new_id = lookup_or_add_params(
+        id_table, TRIAL_TYPES, prob_params, "id", "prob_params"
+    )
+    variant, new_var = lookup_or_add_params(
+        var_table, VARIANT_TYPES, sim_params, "variant", "sim_params"
+    )
+    if new_var or new_id:
+        iteration = 1
+    else:
+        stmt = select(trials_table).where(
+            (trials_table.c.id == int(trial_id))
+            & (trials_table.c.variant == int(variant))
+        )
+        df = pd.read_sql(stmt, eng)
+        iteration = df["iteration"].max() + 1
+
+    return trial_id, variant, iteration
+
+
+def run(
+    ex: Experiment,
+    debug=False,
+    *,
+    logfile="trials.db",
+    prob_params=None,
+    sim_params=None,
+    trials_folder=Path(__file__).absolute().parent / "trials",
+):
+    if not debug and REPO.is_dirty():
         raise RuntimeError(
             "Git Repo is dirty.  For repeatable tests,"
             " clean the repo by committing or stashing all changes and "
             "untracked files."
         )
+    trial_db = Path(trials_folder).absolute() / logfile
+    exp_logger, trials_table = _init_logger(trial_db, "trials")
+    id_table, var_table = _init_id_variant_tables(trial_db)
+    trial, variant, iteration = _id_variant_iteration(
+        trial_db,
+        trials_table,
+        sim_params=sim_params,
+        var_table=var_table,
+        prob_params=prob_params,
+        id_table=id_table,
+    )
+
     utc_now = datetime.now(timezone.utc)
     cpu_now = process_time()
-    commit = repo.head.commit.hexsha
-    log_msg = (
-        f"Running experiment {ex.name} with variant {ex.variant} at time: "
-        + utc_now.strftime("%Y-%m-%d %H:%M:%S %Z")
-        + f".  Current repo hash: {commit}"
-    )
+    commit = REPO.head.commit.hexsha
+    if isinstance(ex, type):
+        log_msg = (
+            f"Running experiment {ex.__name__}, trial {trial}, simulation type"
+            f" {variant} at time: "
+            + utc_now.strftime("%Y-%m-%d %H:%M:%S %Z")
+            + f".  Current repo hash: {commit}"
+        )
+    else:
+        log_msg = (
+            f"Running experiment {ex.name}, trial {trial}, simulation type"
+            f" {variant} at time: "
+            + utc_now.strftime("%Y-%m-%d %H:%M:%S %Z")
+            + f".  Current repo hash: {commit}"
+        )
     if debug:
         log_msg += ".  In debugging mode."
     exp_logger.info(log_msg)
 
-    results = ex.run()
+    if isinstance(ex, type):
+        results = ex(**sim_params, **prob_params).run()
+    else:
+        warnings.warn(
+            "Passing an experiment object is deprecated.  Pass an experiment"
+            " class, with sim_params, and prob_params separately"
+        )
+        results = ex.run()
 
     utc_now = datetime.now(timezone.utc)
     exp_logger.info(
@@ -116,22 +229,15 @@ def run(ex: Experiment, debug=False, trial=1, variant=1, trials_folder=None):
     cpu_time = process_time() - cpu_now
 
     # Save save results in trial database
-    with db_h.eng.connect() as conn:
-        trials_df = pd.read_sql("SELECT * FROM trials", conn)
-    matching_rows = (trials_df["id"] == trial) & (
-        trials_df["variant"] == variant
-    )
-    next_iteration = trials_df.loc[matching_rows, "iteration"].max() + 1
-    if isnan(next_iteration):
-        next_iteration = 1
-    new_filename = f"trial{trial}_{variant}_{next_iteration}.ipynb"
-    exp_logger.info(
-        "trial entry"
-        + f"--{trial}"
-        + f"--{variant}"
-        + f"--{next_iteration}"
-        + f"--{commit}"
-        + f"--{cpu_time}"
-        + f'--{results["metrics"]}'
-        + f"--{new_filename}--"
-    )
+    if not debug:
+        new_filename = f"trial{trial}_{variant}_{iteration}.ipynb"
+        exp_logger.info(
+            "trial entry"
+            + f"--{trial}"
+            + f"--{variant}"
+            + f"--{iteration}"
+            + f"--{commit}"
+            + f"--{cpu_time}"
+            + f'--{results["metrics"]}'
+            + f"--{new_filename}--"
+        )

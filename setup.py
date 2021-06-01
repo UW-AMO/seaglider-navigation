@@ -29,7 +29,6 @@ setup(
         "matplotlib(>=3.0)",
         "h5py(>=2.0)",
         "sqlalchemy",
-        "jsonschema",
     ],
     zip_safe=False,
     python_requires="~=3.6",
