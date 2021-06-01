@@ -15,6 +15,7 @@ from sqlalchemy import (
     inspection,
     select,
     insert,
+    update,
     Table,
     Column,
     Integer,
@@ -34,9 +35,8 @@ TRIALS_COLUMNS = [
     Column("iteration", Integer, primary_key=True),
     Column("commit", String, nullable=False),
     Column("cpu_time", Float),
-    Column("results", String, nullable=False),
+    Column("results", String),
     Column("filename", String, nullable=False),
-    Column("overflow", String),
 ]
 TRIAL_TYPES = [
     Column("id", Integer, primary_key=True),
@@ -78,12 +78,26 @@ class DBHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord):
         vals = self.parse_record(record.getMessage())
-        ins = insert(self.log_table, vals)
+        if "insert" in vals[0]:
+            stmt = insert(self.log_table)
+            for i, col in enumerate(self.log_table.columns):
+                if vals[i + 1]:
+                    stmt = stmt.values({col: vals[i + 1]})
+        elif "update" in vals[0]:
+            stmt = update(self.log_table)
+            for i, col in enumerate(self.log_table.columns):
+                if col.primary_key:
+                    stmt = stmt.where(col == vals[i + 1])
+                else:
+                    if vals[i + 1]:
+                        stmt = stmt.values({col: vals[i + 1]})
+        else:
+            raise ValueError("Cannot parse db message")
         with self.eng.connect() as conn:
-            conn.execute(ins)
+            conn.execute(stmt)
 
     def parse_record(self, msg: str) -> List[str]:
-        return msg.split(self.separator)[1:]
+        return msg.split(self.separator)
 
 
 class Experiment:
@@ -166,7 +180,13 @@ def _id_variant_iteration(
             & (trials_table.c.variant == int(variant))
         )
         df = pd.read_sql(stmt, eng)
-        iteration = df["iteration"].max() + 1
+        if df.empty:
+            # an interruption must have occured in a previous trial
+            # after trial_id and variant were created, but before
+            # actual results were logged
+            iteration = 1
+        else:
+            iteration = df["iteration"].max() + 1
 
     return trial_id, variant, iteration
 
@@ -198,10 +218,19 @@ def run(
         id_table=id_table,
     )
     new_filename = f"trial{trial}_{variant}_{iteration}.ipynb"
-
+    commit = REPO.head.commit.hexsha
+    exp_logger.info(
+        "trial entry: insert"
+        + f"--{trial}"
+        + f"--{variant}"
+        + f"--{iteration}"
+        + f"--{commit}"
+        + "--"
+        + "--"
+        + f"--{new_filename}"
+    )
     utc_now = datetime.now(timezone.utc)
     cpu_now = process_time()
-    commit = REPO.head.commit.hexsha
     if isinstance(ex, type):
         log_msg = (
             f"Running experiment {ex.__name__}, trial {trial}, simulation type"
@@ -240,23 +269,20 @@ def run(
     )
     cpu_time = process_time() - cpu_now
 
-    if not debug:
-        if isinstance(ex, type):
-            _save_notebook(nb, new_filename, trials_folder)
-        else:
-            warnings.warn(
-                "Logging trial and mock filename, but no file created"
-            )
-        exp_logger.info(
-            "trial entry"
-            + f"--{trial}"
-            + f"--{variant}"
-            + f"--{iteration}"
-            + f"--{commit}"
-            + f"--{cpu_time}"
-            + f"--{metrics}"
-            + f"--{new_filename}--"
-        )
+    if isinstance(ex, type):
+        _save_notebook(nb, new_filename, trials_folder)
+    else:
+        warnings.warn("Logging trial and mock filename, but no file created")
+    exp_logger.info(
+        "trial entry: update"
+        + f"--{trial}"
+        + f"--{variant}"
+        + f"--{iteration}"
+        + f"--{commit}"
+        + f"--{cpu_time}"
+        + f"--{metrics}"
+        + f"--{new_filename}"
+    )
     return None
 
 
