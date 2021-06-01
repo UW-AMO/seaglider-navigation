@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 
 import adcp.exp
@@ -5,15 +7,22 @@ from adcp.exp.psearch2d import RigorousParameterSearch2D
 
 
 def __main__():
-    experiment = RigorousParameterSearch2D(
-        variant="No Time Scaling, multi-first GPS only, multi-simulation",
-        sims=20,
-        t_scale=1,
-        gps_points="multi-first",
-        rho_vs=np.logspace(-5, 6, 11),
-        rho_cs=np.logspace(-5, 6, 11),
+    experiment = RigorousParameterSearch2D
+    prob_params = {
+        "t_scale": 1,
+        "rho_vs": np.logspace(-10, 0, 11),
+        "rho_cs": np.logspace(-10, 0, 11),
+    }
+    sim_params = {
+        "gps_points": "multi-first",
+        "sims": 20,
+    }
+    adcp.exp.run(
+        experiment,
+        prob_params=prob_params,
+        sim_params=sim_params,
+        trials_folder=Path(__file__).absolute().parent,
     )
-    adcp.exp.run(experiment)
 
 
 if __name__ == "__main__":
