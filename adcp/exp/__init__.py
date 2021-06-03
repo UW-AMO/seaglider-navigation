@@ -38,7 +38,7 @@ TRIALS_COLUMNS = [
     Column("commit", String, nullable=False),
     Column("cpu_time", Float),
     Column("results", String),
-    Column("filename", String, nullable=False),
+    Column("filename", String),
 ]
 TRIAL_TYPES = [
     Column("id", Integer, primary_key=True),
@@ -254,7 +254,7 @@ def run(
         + f"--{commit}"
         + "--"
         + "--"
-        + "--"
+        + "--None"
     )
     utc_now = datetime.now(timezone.utc)
     cpu_now = process_time()
