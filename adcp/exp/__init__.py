@@ -26,6 +26,8 @@ from sqlalchemy import (
 from numpy import array  # noqa - used in an eval() in _parse_results()
 import nbformat
 from nbconvert.preprocessors import ExecutePreprocessor
+from nbconvert.exporters import HTMLExporter
+from nbconvert.writers import FilesWriter
 import nbclient
 
 REPO = git.Repo(Path(__file__).parent.parent.parent)
@@ -130,7 +132,13 @@ def _init_id_variant_tables(trial_log):
 
 
 def _id_variant_iteration(
-    trial_log, trials_table, *, var_table, sim_params, id_table, prob_params
+    trial_log,
+    trials_table,
+    *,
+    var_table,
+    sim_params,
+    id_table,
+    prob_params,
 ):
     """Identify, from the db_log, which trial id and variant the current
     problem matches, then give the iteration.  If no matches are found,
@@ -199,7 +207,20 @@ def run(
     prob_params=None,
     sim_params=None,
     trials_folder=Path(__file__).absolute().parent / "trials",
+    output_extension: str = "html",
 ):
+    """Run the selected experiment.
+
+    Arguments:
+        ex: The experiment class to run
+        debug (bool): Whether to run in debugging mode or not.
+        logfile (str): the database log for trial results
+        prob_params: The parameters ex uses to solve the problem
+        sim_params: The parameters ex uses to generate a problem
+        trials_folder (path-like): The folder to store both output and
+            logfile.
+        output_extension: what output type to produce using nbconvert.
+    """
     if not debug and REPO.is_dirty():
         raise RuntimeError(
             "Git Repo is dirty.  For repeatable tests,"
@@ -217,7 +238,13 @@ def run(
         prob_params=prob_params,
         id_table=id_table,
     )
-    new_filename = f"trial{trial}_{variant}_{iteration}.ipynb"
+    new_filename = f"trial{trial}_{variant}_{iteration}"
+    if output_extension is None:
+        new_filename = None
+    elif output_extension == "html":
+        new_filename += ".html"
+    elif output_extension == "ipynb":
+        new_filename += ".ipynb"
     commit = REPO.head.commit.hexsha
     exp_logger.info(
         "trial entry: insert"
@@ -227,7 +254,7 @@ def run(
         + f"--{commit}"
         + "--"
         + "--"
-        + f"--{new_filename}"
+        + "--"
     )
     utc_now = datetime.now(timezone.utc)
     cpu_now = process_time()
@@ -269,8 +296,8 @@ def run(
     )
     cpu_time = process_time() - cpu_now
 
-    if isinstance(ex, type):
-        _save_notebook(nb, new_filename, trials_folder)
+    if isinstance(ex, type) and new_filename is not None:
+        _save_notebook(nb, new_filename, trials_folder, output_extension)
     else:
         warnings.warn("Logging trial and mock filename, but no file created")
     exp_logger.info(
@@ -332,9 +359,19 @@ def _create_kernel():
     return kernel_name
 
 
-def _save_notebook(nb, filename, trials_folder):
-    with open(str(trials_folder / filename), "w", encoding="utf-8") as f:
-        nbformat.write(nb, f)
+def _save_notebook(nb, filename, trials_folder, extension):
+    if extension == "html":
+        html_exporter = HTMLExporter({"template_file": "lab"})
+        (body, resources) = html_exporter.from_notebook_node(nb)
+        html_name = filename[:-6] + ".html"
+        file_writer = FilesWriter()
+        file_writer.build_directory = str(trials_folder)
+        file_writer.write(body, resources, notebook_name=html_name)
+    elif extension == "ipynb":
+        with open(str(trials_folder / filename), "w", encoding="utf-8") as f:
+            nbformat.write(nb, f)
+    else:
+        raise ValueError
 
 
 def _parse_results(result_string):

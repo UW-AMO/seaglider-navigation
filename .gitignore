@@ -1,6 +1,7 @@
 todo.txt
 commit-msg
 .asv/
+nohup.out
 
 # virtual environment
 adcp-env/
