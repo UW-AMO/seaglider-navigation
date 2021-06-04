@@ -262,4 +262,4 @@ class RigorousParameterSearch2D(ParameterSearch2D):
 
         i1, j1, i2, j2 = self.best_parameters()
         self.display_errmaps(i1, j1, i2, j2)
-        return {"output": self.errmap, "metrics": self.errmap.min(axis=(0, 1))}
+        return {"output": self.errmap, "metrics": self.errmap.min(axis=(1, 2))}
