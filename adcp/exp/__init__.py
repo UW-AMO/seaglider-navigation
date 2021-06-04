@@ -363,7 +363,7 @@ def _save_notebook(nb, filename, trials_folder, extension):
     if extension == "html":
         html_exporter = HTMLExporter({"template_file": "lab"})
         (body, resources) = html_exporter.from_notebook_node(nb)
-        html_name = filename[:-6] + ".html"
+        html_name = filename[:-6]
         file_writer = FilesWriter()
         file_writer.build_directory = str(trials_folder)
         file_writer.write(body, resources, notebook_name=html_name)
