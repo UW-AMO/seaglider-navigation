@@ -362,25 +362,25 @@ def select_times(depth_df, sim_params):
             "Can only sample 100% of timepoints,"
             "check sim_params.measure_points"
         )
-    unallocated_times = set(timepoints) - set(gps_times)
+    unallocated_times = sorted(set(timepoints) - set(gps_times))
     num_ttw_times = int(n_timepoints * sim_params.measure_points["ttw"])
     ttw_times = pd.to_datetime(
         sorted(random.sample(unallocated_times, num_ttw_times))
     )
 
-    unallocated_times -= set(ttw_times)
+    unallocated_times = sorted(set(unallocated_times) - set(ttw_times))
     num_range_times = int(n_timepoints * sim_params.measure_points["range"])
     range_times = pd.to_datetime(
         sorted(random.sample(unallocated_times, num_range_times))
     )
 
-    unallocated_times -= set(range_times)
+    unallocated_times = sorted(set(unallocated_times) - set(range_times))
     if isinstance(sim_params.measure_points["gps"], float):
         num_gps_times = int(n_timepoints * sim_params.measure_points["gps"])
         gps_times = pd.to_datetime(
             sorted(random.sample(unallocated_times, num_gps_times))
         )
-        unallocated_times -= set(gps_times)
+        unallocated_times = sorted(set(unallocated_times) - set(gps_times))
 
     adcp_times = pd.to_datetime(sorted(unallocated_times))
 
