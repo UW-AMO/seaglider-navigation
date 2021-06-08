@@ -12,8 +12,8 @@ from matplotlib import colors
 from adcp import simulation as sim
 from adcp import matbuilder as mb
 from adcp import optimization as op
+from adcp import viz
 from adcp.exp import Experiment
-from adcp.exp.psearch import check_condition, plot_bundle, show_errmap
 
 
 class ParameterSearch2D(Experiment):
@@ -169,14 +169,14 @@ class ParameterSearch2D(Experiment):
         return i1, j1, i2, j2
 
     def display_errmaps(self, i1, j1, i2, j2):
-        show_errmap(
+        viz.show_errmap(
             self.errmap,
             0,
             self.rho_vs,
             self.rho_cs,
             norm=colors.LogNorm(vmin=1e7, vmax=2e9),
         )
-        show_errmap(
+        viz.show_errmap(
             self.errmap,
             1,
             self.rho_vs,
@@ -210,12 +210,12 @@ class ParameterSearch2D(Experiment):
             rho_c=self.rho_cs[j1],
         )
         try:
-            c1, c2, c3, c4 = check_condition(prob)
-            print_condition(c1, c2, c3, c4)
+            c1, c2, c3, c4 = viz.check_condition(prob)
+            viz.print_condition(c1, c2, c3, c4)
         except ValueError:
             print("small matrices")
 
-        plot_bundle(
+        viz.plot_bundle(
             nav_x, self.prob, self.prob.times, self.prob.depths, self.x
         )
         if i1 != i2 or j1 != j2:
@@ -225,23 +225,16 @@ class ParameterSearch2D(Experiment):
                 rho_v=self.rho_vs[i2],
                 rho_c=self.rho_cs[j2],
             )
-            plot_bundle(
+            viz.plot_bundle(
                 curr_x, self.prob, self.prob.times, self.prob.depths, self.x
             )
             try:
-                c1, c2, c3, c4 = check_condition(prob)
-                print_condition(c1, c2, c3, c4)
+                c1, c2, c3, c4 = viz.check_condition(prob)
+                viz.print_condition(c1, c2, c3, c4)
             except ValueError:
                 print("small matrices")
         else:
             print("... and it's also the best current solution")
-
-
-def print_condition(c1: int, c2: int, c3: int, c4: int):
-    print(f"100x100 sample of kalman matrix has condition {c1:.2E}")
-    print(f"100x100 sample of A has condition {c2:.2E}")
-    print(f"1000x1000 sample of kalman matrix has condition {c3:.2E}")
-    print(f"1000x1000 sample of A has condition {c4:.2E}")
 
 
 class RigorousParameterSearch2D(ParameterSearch2D):

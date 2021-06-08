@@ -139,11 +139,8 @@ def main():
     print("Navigation position error:", perror)
     print("Current error:", cerror)
     plot_bundle(x_plot, x_true, prob)
-    c1, c2, c3, c4 = check_condition(prob)
-    print("100x100 sample of kalman matrix has condition number ", c1)
-    print("100x100 sample of backsolve matrix has condition number ", c2)
-    print("1000x1000 sample of kalman matrix has condition number ", c3)
-    print("1000x1000 sample of backsolve matrix has condition number ", c4)
+    c1, c2, c3, c4 = viz.check_condition(prob)
+    viz.print_condition(c1, c2, c3, c4)
 
 
 def plot_bundle(sol_x, x_true, prob):
