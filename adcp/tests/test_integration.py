@@ -156,9 +156,7 @@ def plot_bundle(sol_x, x_true, prob):
         x_true=x_true,
         ttw=False,
     )
-    viz.inferred_ttw_error_plot(
-        sol_x, prob.adat, prob.ddat, direction="both", x_true=x_true
-    )
+    viz.inferred_ttw_error_plot(sol_x, prob, direction="both", x_true=x_true)
     viz.current_depth_plot(
         sol_x, prob.adat, prob.ddat, direction="both", x_true=x_true
     )

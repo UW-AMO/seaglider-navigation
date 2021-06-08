@@ -145,18 +145,18 @@ def inferred_adcp_error_plot(
 
 
 def inferred_ttw_error_plot(
-    solx, adat, ddat, direction="north", x_true=None, x_sol=None
+    solx, prob, direction="north", x_true=None, x_sol=None
 ):
 
     if direction.lower() == "both":
         plt.figure(figsize=[12, 6])
         plt.subplot(1, 2, 1)
         ax1 = inferred_ttw_error_plot(
-            solx, adat, ddat, direction="north", x_true=x_true, x_sol=x_sol
+            solx, prob, direction="north", x_true=x_true, x_sol=x_sol
         )
         plt.subplot(1, 2, 2)
         ax2 = inferred_ttw_error_plot(
-            solx, adat, ddat, direction="east", x_true=x_true, x_sol=x_sol
+            solx, prob, direction="east", x_true=x_true, x_sol=x_sol
         )
         return ax1, ax2
 
@@ -164,26 +164,26 @@ def inferred_ttw_error_plot(
     ax.set_title(direction.title() + " TTW velocities")
     ax.set_xlabel("Time")
     ax.set_ylabel("meters/second")
-    times = dp.timepoints(adat, ddat)
-    depths = dp.depthpoints(adat, ddat)
+    times = dp.timepoints(prob.adat, prob.ddat)
+    depths = dp.depthpoints(prob.adat, prob.ddat)
     m = len(times)
     n = len(depths)
     Vs = mb.v_select(m)
     if direction.lower() in {"north", "south"}:
-        zttw = mb.get_zttw(ddat, "north")
+        zttw = mb.get_zttw(prob.ddat, "north", t_scale=1)
         XV = mb.nv_select(m, n)
         XC = mb.nc_select(m, n)
     elif direction.lower() in {"east", "west"}:
-        zttw = mb.get_zttw(ddat, "east")
+        zttw = mb.get_zttw(prob.ddat, "east", t_scale=1)
         XV = mb.ev_select(m, n)
         XC = mb.ec_select(m, n)
     else:
         raise ValueError
 
-    A, B = mb.uv_select(times, depths, ddat)
+    A, B = mb.uv_select(times, depths, prob.ddat)
 
     ln0 = ax.plot(
-        zttw.index, zttw.values / 1e3, ":", color=cmap(3), label="TTW measured"
+        zttw.index, zttw.values, ":", color=cmap(3), label="TTW measured"
     )
 
     ttw_lbfgs = (A @ Vs @ XV - B @ XC) @ solx

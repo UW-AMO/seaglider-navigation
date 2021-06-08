@@ -41,9 +41,7 @@ def plot_bundle(sol_x, prob, times, depths, x):
     viz.vehicle_speed_plot(
         sol_x, prob.ddat, times, depths, direction="both", x_true=x, ttw=False
     )
-    viz.inferred_ttw_error_plot(
-        sol_x, prob.adat, prob.ddat, direction="both", x_true=x
-    )
+    viz.inferred_ttw_error_plot(sol_x, prob, direction="both", x_true=x)
     viz.current_depth_plot(
         sol_x,
         prob.adat,
