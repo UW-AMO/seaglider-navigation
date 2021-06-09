@@ -151,18 +151,18 @@ def inferred_adcp_error_plot(
 
 
 def inferred_ttw_error_plot(
-    solx, prob, direction="north", x_true=None, x_sol=None
+    solx, adat, ddat, direction="north", x_true=None, x_sol=None
 ):
 
     if direction.lower() == "both":
         plt.figure(figsize=[12, 6])
         plt.subplot(1, 2, 1)
         ax1 = inferred_ttw_error_plot(
-            solx, prob, direction="north", x_true=x_true, x_sol=x_sol
+            solx, adat, ddat, direction="north", x_true=x_true, x_sol=x_sol
         )
         plt.subplot(1, 2, 2)
         ax2 = inferred_ttw_error_plot(
-            solx, prob, direction="east", x_true=x_true, x_sol=x_sol
+            solx, adat, ddat, direction="east", x_true=x_true, x_sol=x_sol
         )
         return ax1, ax2
 
@@ -170,23 +170,23 @@ def inferred_ttw_error_plot(
     ax.set_title(direction.title() + " TTW velocities")
     ax.set_xlabel("Time")
     ax.set_ylabel("meters/second")
-    times = dp.timepoints(prob.adat, prob.ddat)
-    depths = dp.depthpoints(prob.adat, prob.ddat)
+    times = dp.timepoints(adat, ddat)
+    depths = dp.depthpoints(adat, ddat)
     m = len(times)
     n = len(depths)
     Vs = mb.v_select(m)
     if direction.lower() in {"north", "south"}:
-        zttw = mb.get_zttw(prob.ddat, "north", t_scale=1)
+        zttw = mb.get_zttw(ddat, "north", t_scale=1)
         XV = mb.nv_select(m, n)
         XC = mb.nc_select(m, n)
     elif direction.lower() in {"east", "west"}:
-        zttw = mb.get_zttw(prob.ddat, "east", t_scale=1)
+        zttw = mb.get_zttw(ddat, "east", t_scale=1)
         XV = mb.ev_select(m, n)
         XC = mb.ec_select(m, n)
     else:
         raise ValueError
 
-    A, B = mb.uv_select(times, depths, prob.ddat)
+    A, B = mb.uv_select(times, depths, ddat)
 
     ln0 = ax.plot(
         zttw.index, zttw.values, ":", color=cmap(3), label="TTW measured"
@@ -293,16 +293,17 @@ def current_depth_plot(
     if adcp:
         if direction.lower() in {"north", "south"}:
             zadcp = mb.get_zadcp(adat, "north") / mb.t_scale
-            V = prob.NV
+            V = mb.nv_select(m, n)
         elif direction.lower() in {"east", "west"}:
             zadcp = mb.get_zadcp(adat, "east") / mb.t_scale
-            V = prob.EV
+            V = mb.ev_select(m, n)
         A_adcp, B_adcp = mb.adcp_select(times, depths, ddat, adat)
         t_inds_with_adcp_obs = np.argwhere(
             np.asarray(A_adcp.sum(axis=0)).squeeze()
         )
+        Vs = mb.v_select(m)
         A_adcp = scipy.sparse.csc_matrix(A_adcp)
-        shifted_adcp_trace = A_adcp @ prob.Vs @ V @ solx + zadcp
+        shifted_adcp_trace = A_adcp @ Vs @ V @ solx + zadcp
         # what about ADCP traces above the water surface (<0 or >deepest)
         for i in t_inds_with_adcp_obs:
             rows_in_trace = np.argwhere(A_adcp[:, i])[:, 0]
@@ -656,14 +657,15 @@ def plot_bundle(sol_x, prob, times, depths, x):
     vehicle_speed_plot(
         sol_x, prob.ddat, times, depths, direction="both", x_true=x, ttw=False
     )
-    inferred_ttw_error_plot(sol_x, prob, direction="both", x_true=x)
+    inferred_ttw_error_plot(
+        sol_x, prob.adat, prob.ddat, direction="both", x_true=x
+    )
     current_depth_plot(
         sol_x,
         prob.adat,
         prob.ddat,
         direction="both",
         x_true=x,
-        prob=prob,
         adcp=True,
     )
     inferred_adcp_error_plot(
