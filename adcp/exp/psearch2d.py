@@ -114,27 +114,6 @@ class ParameterSearch2D(Experiment):
 
             x_leg = legacy @ x_sol
 
-            leg_Xs = mb.x_select(prob.m, 2)
-            leg_Vs = mb.v_select(prob.m, 2)
-            leg_NV = mb.nv_select(
-                len(prob.times), len(prob.depths), 2, 2, "otg"
-            )
-            leg_EV = mb.ev_select(
-                len(prob.times), len(prob.depths), 2, 2, "otg"
-            )
-            leg_NC = mb.nc_select(
-                len(prob.times), len(prob.depths), 2, 2, "otg"
-            )
-            leg_EC = mb.ec_select(
-                len(prob.times), len(prob.depths), 2, 2, "otg"
-            )
-            self.prob.EV = leg_EV
-            self.prob.NV = leg_NV
-            self.prob.EC = leg_EC
-            self.prob.NC = leg_NC
-            self.prob.Xs = leg_Xs
-            self.prob.Vs = leg_Vs
-
             err = x_leg - self.x
             path_error = (
                 np.linalg.norm(legacy_size_prob.Xs @ legacy_size_prob.NV @ err)
@@ -212,7 +191,7 @@ class ParameterSearch2D(Experiment):
             )
 
     def display_solutions(self, i, j):
-        nav_x = self.paths[i][j]
+        best_x = self.paths[i][j]
         prob = op.GliderProblem(
             copyobj=self.prob,
             rho_v=self.rho_vs[i],
@@ -225,7 +204,7 @@ class ParameterSearch2D(Experiment):
             print("small matrices")
 
         viz.plot_bundle(
-            nav_x,
+            best_x,
             self.prob.adat,
             self.prob.ddat,
             self.prob.times,
