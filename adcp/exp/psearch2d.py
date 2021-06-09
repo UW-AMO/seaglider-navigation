@@ -95,6 +95,7 @@ class ParameterSearch2D(Experiment):
 
     def run(self, visuals=True):
         self.gen_data()
+        legacy_size_prob = self.prob.legacy_size_prob()
         for ((i, rv), (j, rc)) in product(
             enumerate(self.rho_vs), enumerate(self.rho_cs)
         ):
@@ -136,12 +137,16 @@ class ParameterSearch2D(Experiment):
 
             err = x_leg - self.x
             path_error = (
-                np.linalg.norm(leg_Xs @ leg_NV @ err) ** 2
-                + np.linalg.norm(leg_Xs @ leg_EV @ err) ** 2
+                np.linalg.norm(legacy_size_prob.Xs @ legacy_size_prob.NV @ err)
+                ** 2
+                + np.linalg.norm(
+                    legacy_size_prob.Xs @ legacy_size_prob.NV @ err
+                )
+                ** 2
             )
             current_error = (
-                np.linalg.norm(leg_EC @ err) ** 2
-                + np.linalg.norm(leg_NC @ err) ** 2
+                np.linalg.norm(legacy_size_prob.EC @ err) ** 2
+                + np.linalg.norm(legacy_size_prob.NC @ err) ** 2
             )
             self.errmap[0, i, j] = path_error
             self.errmap[1, i, j] = current_error
@@ -149,7 +154,11 @@ class ParameterSearch2D(Experiment):
         if visuals:
             i1, j1, i2, j2 = self.best_parameters()
             self.display_errmaps(i1, j1, i2, j2)
-            self.display_solutions(i1, j1, i2, j2)
+            self.display_solutions(i1, j1)
+            if i1 != i2 or j1 != j2:
+                self.display_solutions(i2, j2)
+            else:
+                print("... and it's also the best current solution")
         return {
             "errmap": self.errmap,
             "paths": self.paths,
@@ -202,12 +211,12 @@ class ParameterSearch2D(Experiment):
                 f" error: {self.errmap[1, i2, j2]:.2E}"
             )
 
-    def display_solutions(self, i1, j1, i2, j2):
-        nav_x = self.paths[i1][j1]
+    def display_solutions(self, i, j):
+        nav_x = self.paths[i][j]
         prob = op.GliderProblem(
             copyobj=self.prob,
-            rho_v=self.rho_vs[i1],
-            rho_c=self.rho_cs[j1],
+            rho_v=self.rho_vs[i],
+            rho_c=self.rho_cs[j],
         )
         try:
             c1, c2, c3, c4 = viz.check_condition(prob)
@@ -223,23 +232,6 @@ class ParameterSearch2D(Experiment):
             self.prob.depths,
             self.x,
         )
-        if i1 != i2 or j1 != j2:
-            curr_x = self.paths[i2][j2]
-            prob = op.GliderProblem(
-                copyobj=self.prob,
-                rho_v=self.rho_vs[i2],
-                rho_c=self.rho_cs[j2],
-            )
-            viz.plot_bundle(
-                curr_x, self.prob, self.prob.times, self.prob.depths, self.x
-            )
-            try:
-                c1, c2, c3, c4 = viz.check_condition(prob)
-                viz.print_condition(c1, c2, c3, c4)
-            except ValueError:
-                print("small matrices")
-        else:
-            print("... and it's also the best current solution")
 
 
 class RigorousParameterSearch2D(ParameterSearch2D):
