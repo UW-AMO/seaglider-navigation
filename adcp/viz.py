@@ -653,27 +653,21 @@ def vehicle_posit_plot(
     return ax
 
 
-def plot_bundle(sol_x, prob, times, depths, x):
+def plot_bundle(sol_x, adat, ddat, times, depths, x):
     vehicle_speed_plot(
-        sol_x, prob.ddat, times, depths, direction="both", x_true=x, ttw=False
+        sol_x, ddat, times, depths, direction="both", x_true=x, ttw=False
     )
-    inferred_ttw_error_plot(
-        sol_x, prob.adat, prob.ddat, direction="both", x_true=x
-    )
+    inferred_ttw_error_plot(sol_x, adat, ddat, direction="both", x_true=x)
     current_depth_plot(
         sol_x,
-        prob.adat,
-        prob.ddat,
+        adat,
+        ddat,
         direction="both",
         x_true=x,
         adcp=True,
     )
-    inferred_adcp_error_plot(
-        sol_x, prob.adat, prob.ddat, direction="both", x_true=x
-    )
-    vehicle_posit_plot(
-        sol_x, prob.ddat, times, depths, x_true=x, dead_reckon=True
-    )
+    inferred_adcp_error_plot(sol_x, adat, ddat, direction="both", x_true=x)
+    vehicle_posit_plot(sol_x, ddat, times, depths, x_true=x, dead_reckon=True)
 
 
 def show_errmap(

@@ -216,7 +216,12 @@ class ParameterSearch2D(Experiment):
             print("small matrices")
 
         viz.plot_bundle(
-            nav_x, self.prob, self.prob.times, self.prob.depths, self.x
+            nav_x,
+            self.prob.adat,
+            self.prob.ddat,
+            self.prob.times,
+            self.prob.depths,
+            self.x,
         )
         if i1 != i2 or j1 != j2:
             curr_x = self.paths[i2][j2]

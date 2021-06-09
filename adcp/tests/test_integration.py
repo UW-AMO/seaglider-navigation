@@ -134,7 +134,8 @@ def main():
     plot_bundle(x_plot, x_true, legacy_size_prob)
     viz.plot_bundle(
         x_plot,
-        legacy_size_prob,
+        legacy_size_prob.adat,
+        legacy_size_prob.ddat,
         legacy_size_prob.times,
         legacy_size_prob.depths,
         x_true,
