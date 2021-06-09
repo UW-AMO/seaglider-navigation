@@ -30,9 +30,9 @@ def standard_sim(
     rho_v=1e-8,
     rho_c=1e-8,
 ):
-    rho_t = 1e-3
-    rho_a = 1e-3
-    rho_g = 1e-1
+    rho_t = 1e-2
+    rho_a = 1e-2
+    rho_g = 1e-0
 
     sim_rho_v = 0
     sim_rho_c = 0
@@ -51,12 +51,6 @@ def standard_sim(
     )
     ddat, adat, x, curr_df, v_df = sim.simulate(sp, verbose=True)
 
-    # %% No Range
-    rho_v = rho_v
-    rho_c = rho_v
-    rho_g = rho_g
-    rho_t = rho_t
-    rho_a = rho_a
     rho_r = 0
     print(
         f"""Solution method covariances:
