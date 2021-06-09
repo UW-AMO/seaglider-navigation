@@ -4,7 +4,7 @@ Created on Sun Apr  5 11:04:36 2020
 
 @author: 600301
 """
-from itertools import product, repeat
+from itertools import product
 
 import numpy as np
 from matplotlib import colors
@@ -80,7 +80,7 @@ class ParameterSearch2D(Experiment):
         self.rho_vs = rho_vs
         self.rho_cs = rho_cs
         self.errmap = np.zeros((2, len(rho_vs), len(rho_cs)))
-        self.paths = list(repeat(list(repeat(None, len(rho_cs))), len(rho_vs)))
+        self.paths = []
         self.output = None
         self.seed = seed
 
@@ -129,7 +129,7 @@ class ParameterSearch2D(Experiment):
             )
             self.errmap[0, i, j] = path_error
             self.errmap[1, i, j] = current_error
-            self.paths[i][j] = x_leg
+            self.paths.append(x_leg)
         if visuals:
             i1, j1, i2, j2 = self.best_parameters()
             self.display_errmaps(i1, j1, i2, j2)
@@ -191,7 +191,7 @@ class ParameterSearch2D(Experiment):
             )
 
     def display_solutions(self, i, j):
-        best_x = self.paths[i][j]
+        best_x = self.paths[i * len(self.rho_vs) + j]
         prob = op.GliderProblem(
             copyobj=self.prob,
             rho_v=self.rho_vs[i],
