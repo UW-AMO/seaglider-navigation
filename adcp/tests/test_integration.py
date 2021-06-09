@@ -94,19 +94,16 @@ def standard_sim(
         prob.vehicle_vel,
         prob=prob,
     )
-    leg_Xs = mb.x_select(len(prob.times), 2)
-    leg_NV = mb.nv_select(len(prob.times), len(prob.depths), 2, 2, "otg")
-    leg_EV = mb.ev_select(len(prob.times), len(prob.depths), 2, 2, "otg")
-    leg_NC = mb.nc_select(len(prob.times), len(prob.depths), 2, 2, "otg")
-    leg_EC = mb.ec_select(len(prob.times), len(prob.depths), 2, 2, "otg")
+    legacy_size_prob = prob.legacy_size_prob()
 
     err = legacy @ x_sol - x
     path_error = (
-        np.linalg.norm(leg_Xs @ leg_NV @ err) ** 2
-        + np.linalg.norm(leg_Xs @ leg_EV @ err) ** 2
+        np.linalg.norm(legacy_size_prob.Xs @ legacy_size_prob.NV @ err) ** 2
+        + np.linalg.norm(legacy_size_prob.Xs @ legacy_size_prob.NV @ err) ** 2
     )
     current_error = (
-        np.linalg.norm(leg_EC @ err) ** 2 + np.linalg.norm(leg_NC @ err) ** 2
+        np.linalg.norm(legacy_size_prob.EC @ err) ** 2
+        + np.linalg.norm(legacy_size_prob.NC @ err) ** 2
     )
     return {
         "path_error": path_error,
@@ -129,8 +126,10 @@ def main():
         prob.vehicle_order,
         prob.current_order,
         prob.vehicle_vel,
+        prob=prob,
     )
 
+    legacy_size_prob = prob.legacy_size_prob()
     x_plot = legacy @ res_dict["x_sol"]
     x_true = legacy @ res_dict["x_true"]
     perror = res_dict["path_error"]
@@ -138,7 +137,14 @@ def main():
 
     print("Navigation position error:", perror)
     print("Current error:", cerror)
-    plot_bundle(x_plot, x_true, prob)
+    plot_bundle(x_plot, x_true, legacy_size_prob)
+    viz.plot_bundle(
+        x_plot,
+        legacy_size_prob,
+        legacy_size_prob.times,
+        legacy_size_prob.depths,
+        x_true,
+    )
     c1, c2, c3, c4 = viz.check_condition(prob)
     viz.print_condition(c1, c2, c3, c4)
 

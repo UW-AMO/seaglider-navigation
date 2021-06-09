@@ -93,7 +93,7 @@ def adcp_select(times, depths, ddat, adat, vehicle_vel="otg"):
     )
 
     depth_df = dp._depth_interpolator(times, ddat)
-    turnaround = depth_df.ascending.idxmax()
+    turnaround = depth_df.ascending.idxmax()  # first true index
     deepest = depth_df.loc[turnaround, "depth"]
     rising_times = pd.to_datetime(adat["time"]) > turnaround
     adcp_depths = adat["Z"].copy()

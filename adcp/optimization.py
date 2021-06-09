@@ -106,6 +106,11 @@ class GliderProblem:
             self.vehicle_vel,
         )
 
+    def legacy_size_prob(self):
+        return GliderProblem(
+            self, vehicle_order=2, current_order=2, vehicle_vel="otg"
+        )
+
 
 # %%
 def init_x(prob):
