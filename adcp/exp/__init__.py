@@ -31,26 +31,34 @@ from nbconvert.writers import FilesWriter
 import nbclient
 
 REPO = git.Repo(Path(__file__).parent.parent.parent)
-TRIALS_COLUMNS = [
-    Column("id", Integer, primary_key=True),
-    Column("variant", Integer, primary_key=True),
-    Column("iteration", Integer, primary_key=True),
-    Column("commit", String, nullable=False),
-    Column("cpu_time", Float),
-    Column("results", String),
-    Column("filename", String),
-]
-TRIAL_TYPES = [
-    Column("id", Integer, primary_key=True),
-    Column("short_name", String, unique=True),
-    Column("prob_params", String, unique=True),
-]
 
-VARIANT_TYPES = [
-    Column("variant", Integer, primary_key=True),
-    Column("short_name", String, unique=True),
-    Column("sim_params", String, unique=True),
-]
+
+def trials_columns():
+    return [
+        Column("id", Integer, primary_key=True),
+        Column("variant", Integer, primary_key=True),
+        Column("iteration", Integer, primary_key=True),
+        Column("commit", String, nullable=False),
+        Column("cpu_time", Float),
+        Column("results", String),
+        Column("filename", String),
+    ]
+
+
+def trial_types():
+    return [
+        Column("id", Integer, primary_key=True),
+        Column("short_name", String, unique=True),
+        Column("prob_params", String, unique=True),
+    ]
+
+
+def variant_types():
+    return [
+        Column("variant", Integer, primary_key=True),
+        Column("short_name", String, unique=True),
+        Column("sim_params", String, unique=True),
+    ]
 
 
 class DBHandler(logging.Handler):
@@ -113,7 +121,7 @@ def _init_logger(trial_log, table_name):
     exp_logger.setLevel(20)
     exp_logger.addHandler(logging.StreamHandler())
     if len(exp_logger.handlers) < 2:  # A weird error requieres this
-        db_h = DBHandler(trial_log, table_name, TRIALS_COLUMNS)
+        db_h = DBHandler(trial_log, table_name, trials_columns())
         exp_logger.addHandler(db_h)
     return exp_logger, db_h.log_table
 
@@ -121,8 +129,8 @@ def _init_logger(trial_log, table_name):
 def _init_id_variant_tables(trial_log):
     eng = create_engine("sqlite:///" + str(trial_log))
     md = MetaData()
-    id_table = Table("trial_types", md, *TRIAL_TYPES)
-    var_table = Table("variant_types", md, *VARIANT_TYPES)
+    id_table = Table("trial_types", md, *trial_types())
+    var_table = Table("variant_types", md, *variant_types())
     inspector = inspection.inspect(eng)
     if not inspector.has_table("trial_types") and not inspector.has_table(
         "variant_types"
@@ -175,10 +183,10 @@ def _id_variant_iteration(
             return df.loc[ind_equal, index].iloc[0], False
 
     trial_id, new_id = lookup_or_add_params(
-        id_table, TRIAL_TYPES, prob_params, "id", "prob_params"
+        id_table, trial_types(), prob_params, "id", "prob_params"
     )
     variant, new_var = lookup_or_add_params(
-        var_table, VARIANT_TYPES, sim_params, "variant", "sim_params"
+        var_table, variant_types(), sim_params, "variant", "sim_params"
     )
     if new_var or new_id:
         iteration = 1
