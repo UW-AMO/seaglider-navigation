@@ -4,9 +4,6 @@ Created on Sun Apr  5 11:04:36 2020
 
 @author: 600301
 """
-from typing import Tuple
-import random
-
 import numpy as np
 
 from adcp import simulation as sim
@@ -131,7 +128,6 @@ def main():
 
     print("Navigation position error:", perror)
     print("Current error:", cerror)
-    plot_bundle(x_plot, x_true, legacy_size_prob)
     viz.plot_bundle(
         x_plot,
         legacy_size_prob.adat,
@@ -142,50 +138,6 @@ def main():
     )
     c1, c2, c3, c4 = viz.check_condition(prob)
     viz.print_condition(c1, c2, c3, c4)
-
-
-def plot_bundle(sol_x, x_true, prob):
-    viz.vehicle_speed_plot(
-        sol_x,
-        prob.ddat,
-        prob.times,
-        prob.depths,
-        direction="both",
-        x_true=x_true,
-        ttw=False,
-    )
-    viz.inferred_ttw_error_plot(sol_x, prob, direction="both", x_true=x_true)
-    viz.current_depth_plot(
-        sol_x, prob.adat, prob.ddat, direction="both", x_true=x_true
-    )
-    viz.inferred_adcp_error_plot(
-        sol_x, prob.adat, prob.ddat, direction="both", x_true=x_true
-    )
-    viz.vehicle_posit_plot(
-        sol_x,
-        prob.ddat,
-        prob.times,
-        prob.depths,
-        x_true=x_true,
-        dead_reckon=True,
-    )
-
-
-def check_condition(prob: op.GliderProblem) -> Tuple:
-    """Checks condition on matrices for glider problem"""
-    m = len(prob.times)
-    n = len(prob.depths)
-    kalman_mat = op.gen_kalman_mat(prob)
-    A, _ = op.solve_mats(prob)
-
-    r100 = np.array(random.sample(range(0, 4 * m + 2 * n), 100))
-    r1000 = np.array(random.sample(range(0, 4 * m + 2 * n), 1000))
-    c1 = np.linalg.cond(kalman_mat.todense()[r100[:, None], r100])
-    c2 = np.linalg.cond(A.todense()[r100[:, None], r100])
-    c3 = np.linalg.cond(kalman_mat.todense()[r1000[:, None], r1000])
-    c4 = np.linalg.cond(A.todense()[r1000[:, None], r1000])
-
-    return c1, c2, c3, c4
 
 
 if __name__ == "__main__":
