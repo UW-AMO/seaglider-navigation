@@ -339,13 +339,20 @@ def solve_mats(prob, verbose=False):
     return A, b
 
 
-def gen_kalman_mat(prob):
+def gen_kalman_mat(prob: GliderProblem, root: bool = False):
     """Create the combined kalman process covariance matrix for the vehicle
-    and current.  Specifically, it is 1/2 the symmetrized inverse covariance
+    and current.  Specifically, it is the symmetrized inverse covariance
     matrix for the problem.
 
+    Also allows the root
+
     Parameters:
-        prob (GliderProblem) : the glider problem to consider
+        prob : the glider problem to consider
+        root : Whether to return the Kalman process matrix Q (false) or
+            a transpose root M such that M.T @ M = Q.  Note that this is
+            not intended to be a (upper/lower) triangular root, but does
+            require two cholesky factorizations, which takes longer than
+            providing Q
     """
     Gv = mb.vehicle_G(
         prob.times, prob.vehicle_order, prob.conditioner, prob.t_scale
@@ -382,15 +389,28 @@ def gen_kalman_mat(prob):
     NV = prob.NV
     EC = prob.EC
     NC = prob.NC
-    kalman_mat = (
-        EV.T @ Gv.T @ Qvinv @ Gv @ EV
-        + NV.T @ Gv.T @ Qvinv @ Gv @ NV
-        + EC.T @ Gc.T @ Qcinv @ Gc @ EC
-        + NC.T @ Gc.T @ Qcinv @ Gc @ NC
-    )
-    kalman_mat = (kalman_mat + kalman_mat.T) / 2
+    if root:
+        Mv = np.linalg.cholesky(Qvinv.todense()).T
+        Mc = np.linalg.cholesky(Qcinv.todense()).T
+        M = scipy.sparse.vstack(
+            (
+                Mv @ Gv @ EV,
+                Mv @ Gv @ NV,
+                Mc @ Gc @ EC,
+                Mc @ Gc @ NC,
+            )
+        )
+        return M
+    else:
+        kalman_mat = (
+            EV.T @ Gv.T @ Qvinv @ Gv @ EV
+            + NV.T @ Gv.T @ Qvinv @ Gv @ NV
+            + EC.T @ Gc.T @ Qcinv @ Gc @ EC
+            + NC.T @ Gc.T @ Qcinv @ Gc @ NC
+        )
+        kalman_mat = (kalman_mat + kalman_mat.T) / 2
 
-    return kalman_mat
+        return kalman_mat
 
 
 # %%
