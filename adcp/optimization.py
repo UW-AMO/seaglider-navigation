@@ -303,7 +303,7 @@ def solve_mats(prob, verbose=False):
         n_gps_select += B_gps @ CX @ NC
 
     A = (
-        2 * kalman_mat
+        kalman_mat
         + 1 / (prob.rho_t) * n_ttw_select.T @ n_ttw_select
         + 1 / (prob.rho_t) * e_ttw_select.T @ e_ttw_select
         + 1 / (prob.rho_a) * n_adcp_select.T @ n_adcp_select
@@ -383,14 +383,10 @@ def gen_kalman_mat(prob):
     EC = prob.EC
     NC = prob.NC
     kalman_mat = (
-        1
-        / 2
-        * (
-            EV.T @ Gv.T @ Qvinv @ Gv @ EV
-            + NV.T @ Gv.T @ Qvinv @ Gv @ NV
-            + EC.T @ Gc.T @ Qcinv @ Gc @ EC
-            + NC.T @ Gc.T @ Qcinv @ Gc @ NC
-        )
+        EV.T @ Gv.T @ Qvinv @ Gv @ EV
+        + NV.T @ Gv.T @ Qvinv @ Gv @ NV
+        + EC.T @ Gc.T @ Qcinv @ Gc @ EC
+        + NC.T @ Gc.T @ Qcinv @ Gc @ NC
     )
     kalman_mat = (kalman_mat + kalman_mat.T) / 2
 
@@ -402,7 +398,7 @@ def _f_kalman(prob):
     kalman_mat = gen_kalman_mat(prob)
 
     def f_eval(X):
-        kalman_error = X.T @ kalman_mat @ X
+        kalman_error = 1 / 2 * X.T @ kalman_mat @ X
         return kalman_error
 
     return f_eval
@@ -551,7 +547,7 @@ def _g_kalman(prob):
     kalman_mat = gen_kalman_mat(prob)
 
     def g_eval(X):
-        kalman_error = 2 * kalman_mat @ X
+        kalman_error = kalman_mat @ X
         return kalman_error
 
     return g_eval
@@ -714,7 +710,7 @@ def _h_kalman(prob):
     kalman_mat = gen_kalman_mat(prob)
 
     def h_eval(X):
-        return 2 * kalman_mat
+        return kalman_mat
 
     return h_eval
 
