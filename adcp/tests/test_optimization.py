@@ -12,7 +12,6 @@ class TestRescaling:
         assert prob is not None
 
 
-@pytest.mark.skip
 def test_kalman_factor(standard_prob):
     km1 = op.gen_kalman_mat(standard_prob, root=False)
     M = op.gen_kalman_mat(standard_prob, root=True)
