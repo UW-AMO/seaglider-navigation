@@ -18,6 +18,7 @@ import random
 import copy
 
 import numpy as np
+from numpy import sqrt
 import scipy.sparse
 from scipy.optimize import minimize
 
@@ -248,14 +249,101 @@ def time_rescale(x, t_s, prob):
     return vel_reshaper.T @ velocity_scaler @ x
 
 
+def basic_A_b(prob):
+    """Creates the matrix A and vector b for a problem, where prob
+    represents a math problem equivalent to min loss(Ax-b).  Note that
+    the A and b produced by the solve_mats() function is equivalent to
+    A^TA and the A^Tb  in this formulation.
+    """
+    m = len(prob.times)
+    n = len(prob.depths)
+    zttw_e = mb.get_zttw(prob.ddat, "east", prob.t_scale)
+    zttw_n = mb.get_zttw(prob.ddat, "north", prob.t_scale)
+    A_ttw, B_ttw = mb.uv_select(
+        prob.times, prob.depths, prob.ddat, prob.adat, prob.vehicle_vel
+    )
+
+    zadcp_e = mb.get_zadcp(prob.adat, "east", prob.t_scale)
+    zadcp_n = mb.get_zadcp(prob.adat, "north", prob.t_scale)
+    A_adcp, B_adcp = mb.adcp_select(
+        prob.times, prob.depths, prob.ddat, prob.adat, prob.vehicle_vel
+    )
+
+    zgps_e = mb.get_zgps(prob.ddat, "east")
+    zgps_n = mb.get_zgps(prob.ddat, "north")
+    A_gps, B_gps = mb.gps_select(
+        prob.times, prob.depths, prob.ddat, prob.adat, prob.vehicle_vel
+    )
+
+    Vs = prob.Vs
+    Xs = prob.Xs
+    CV = prob.CV
+    CX = prob.CX
+    EV = prob.EV
+    NV = prob.NV
+    EC = prob.EC
+    NC = prob.NC
+
+    M = gen_kalman_mat(prob, root=True)
+
+    e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ CV @ EC
+    n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ CV @ NC
+    e_adcp_select = (
+        B_adcp @ CV @ EC - A_adcp @ Vs @ EV
+    )  # down doppler is positive
+    n_adcp_select = (
+        B_adcp @ CV @ NC - A_adcp @ Vs @ NV
+    )  # down doppler is positive
+    e_gps_select = A_gps @ Xs @ EV
+    n_gps_select = A_gps @ Xs @ NV
+    if B_gps is not None:
+        e_gps_select += B_gps @ CX @ EC
+        n_gps_select += B_gps @ CX @ NC
+
+    A = scipy.sparse.vstack(
+        (
+            M,
+            1 / sqrt(prob.rho_t) * n_ttw_select,
+            1 / sqrt(prob.rho_t) * e_ttw_select,
+            1 / sqrt(prob.rho_t) * n_adcp_select,
+            1 / sqrt(prob.rho_a) * e_adcp_select,
+            1 / sqrt(prob.rho_g) * n_gps_select,
+            1 / sqrt(prob.rho_g) * e_gps_select,
+        )
+    )
+    current_order = (
+        prob.current_order
+        if prob.vehicle_vel == "ttw"
+        else prob.current_order - 1
+    )
+    b = np.vstack(
+        (
+            np.zeros(
+                (
+                    2
+                    * ((m - 1) * prob.vehicle_order + (n - 1) * current_order),
+                    1,
+                )
+            ),
+            1 / sqrt(prob.rho_t) * zttw_n.values.reshape((-1, 1)),
+            1 / sqrt(prob.rho_t) * zttw_e.values.reshape((-1, 1)),
+            1 / sqrt(prob.rho_a) * zadcp_n.reshape((-1, 1)),
+            1 / sqrt(prob.rho_a) * zadcp_e.reshape((-1, 1)),
+            1 / sqrt(prob.rho_g) * zgps_n.reshape((-1, 1)),
+            1 / sqrt(prob.rho_g) * zgps_e.reshape((-1, 1)),
+        )
+    )
+    return A, b
+
+
 def solve_mats(prob, verbose=False):
-    """Create A, b for which Ax=b solves linear least squares problem
+    """Create AtA, Atb for which AtAx=Atb solves linear least squares problem
 
     Parameters:
         prob (GliderProblem)
 
     Returns:
-        tuple of numpy arrays, (A,b)
+        tuple of numpy arrays, (AtA,Atb)
     """
     m = len(prob.times)
     n = len(prob.depths)
