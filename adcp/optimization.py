@@ -16,6 +16,7 @@ in turn stacked on top of a similar northerly current vector.
 """
 import random
 import copy
+from functools import cached_property
 
 import numpy as np
 from numpy import sqrt
@@ -106,6 +107,22 @@ class GliderProblem:
             self.current_order,
             self.vehicle_vel,
         )
+        AtA, Atb = solve_mats(self)
+        self.AtA = AtA
+        self.Atb = Atb
+
+    @cached_property
+    def estimator_error(self):
+        return scipy.linalg.inv(self.AtA.todense())
+
+    @cached_property
+    def solver_matrix(self):
+        self.A, _ = basic_A_b(self)
+        return self.estimator_error @ self.A.T
+
+    @cached_property
+    def importance_matrix(self):
+        return self.A @ self.solver_matrix
 
     def legacy_size_prob(self):
         return GliderProblem(
@@ -180,8 +197,7 @@ def backsolve(prob):
         tuple of solution vector, NV, EV, NC, EC, Xs, and Vs selector
         matrices.
     """
-    A, b = solve_mats(prob)
-    x = scipy.sparse.linalg.spsolve(A, b)
+    x = scipy.sparse.linalg.spsolve(prob.AtA, prob.Atb)
     x = time_rescale(x, prob.t_scale, prob)
     return x
 

@@ -1,6 +1,11 @@
+import sys
+import time
+
 from adcp import viz, matbuilder as mb
 from adcp.tests.test_integration import standard_sim
 
+a = time.time()
+a_cpu = time.process_time()
 results = standard_sim(
     t_scale=1,
     current_order=3,
@@ -30,3 +35,7 @@ viz.plot_bundle(
     results["prob"].depths,
     x_true,
 )
+b = time.time()
+b_cpu = time.process_time()
+
+print(sys.getsizeof(prob.AtA))
