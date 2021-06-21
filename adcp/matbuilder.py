@@ -22,6 +22,23 @@ control condition number of problem.
 conditioner = "tanh"
 
 
+def vehicle_select(times, depths, ddat):
+    """Creates the matrix that will select the appropriate current values
+    for depths where the vehicle is present.  It is the matrix equivalent
+    of dp._depth_interpolator()
+    """
+    vehicle_depths = dp._depth_interpolator(times, ddat)["depth"]
+    idxdepth = np.array(
+        [np.argwhere(depths == d) for d in vehicle_depths]
+    ).flatten()
+    mat_shape = (len(times), len(depths))
+    B = scipy.sparse.csr_matrix(
+        (np.ones(len(idxdepth)), (range(len(idxdepth)), idxdepth)),
+        shape=mat_shape,
+    )
+    return B
+
+
 # %% Vector item selection
 def uv_select(times, depths, ddat, adat=None, vehicle_vel="otg"):
     """Creates the matrices that will select the appropriate V_otg

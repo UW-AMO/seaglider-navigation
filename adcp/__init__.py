@@ -51,6 +51,14 @@ class StateVectorShape:
         self.n = len(data.depths)
 
     @lru_cache(maxsize=1)
+    def vehicle_depth_mat(self):
+        return mb.vehicle_select(
+            self.data.times,
+            self.data.depths,
+            self.data.ddat,
+        )
+
+    @lru_cache(maxsize=1)
     def __uv_sel_mats(self):
         return mb.uv_select(
             self.data.times,
