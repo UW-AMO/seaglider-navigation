@@ -261,7 +261,7 @@ def _depth_interpolator(times, ddat):
     depth_df.loc[ascending, "ascending"] = True
     depth_df.loc[ascending, "depth"] = reflected
 
-    return depth_df
+    return depth_df.sort_index()
 
 
 def timepoints(adat, ddat):
