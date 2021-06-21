@@ -7,8 +7,6 @@ Created on Thu Dec 12 00:45:24 2019
 # built-in library
 from pathlib import Path
 import datetime as dt
-from functools import cached_property
-from dataclasses import dataclass
 
 # 3rd party libraries
 import h5py
@@ -18,28 +16,6 @@ import numpy as np
 import pandas as pd
 
 data_dir = Path(__file__).parent.parent / "data"
-
-
-@dataclass
-class ProblemData:
-    ddat: dict
-    adat: dict
-
-    @cached_property
-    def depths(self):
-        return depthpoints(self.adat, self.ddat)
-
-    @cached_property
-    def times(self):
-        return timepoints(self.adat, self.ddat)
-
-    @cached_property
-    def dr(self):
-        return depth_rates(self.times, self.depths, self.ddat)
-
-    @cached_property
-    def interpolator(self) -> pd.DataFrame:
-        return _depth_interpolator(self.times, self.ddat)
 
 
 def load_mooring(filename):
