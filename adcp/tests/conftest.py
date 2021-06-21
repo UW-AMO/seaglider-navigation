@@ -2,11 +2,15 @@ import pytest
 from adcp import simulation as sim, optimization as op
 
 
-@pytest.fixture
+@pytest.fixture(name="standard_sim")
+def standard_sim_fixture():
+    yield standard_sim()
+
+
 def standard_sim():
     sp = sim.SimParams()
     ddat, adat, x, _, _ = sim.simulate(sp)
-    yield ddat, adat, x
+    return ddat, adat, x
 
 
 @pytest.fixture
