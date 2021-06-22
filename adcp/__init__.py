@@ -6,6 +6,7 @@ import pandas as pd
 
 from adcp import dataprep as dp
 from adcp import matbuilder as mb
+from adcp import optimization as op
 
 
 @dataclass(frozen=True)
@@ -251,7 +252,34 @@ class Weights:
 class GliderProblem:
     data: ProblemData
     config: ProblemConfig
+    weights: Weights
 
     @cached_property
     def shape(self):
         return StateVectorShape(self.data, self.config)
+
+    def __getattr__(self, name):
+        try:
+            return getattr(self.shape, name)
+        except AttributeError:
+            try:
+                return getattr(self.config, name)
+            except AttributeError:
+                try:
+                    return getattr(self.weights, name)
+                except AttributeError:
+                    return getattr(self.data, name)
+
+    @cached_property
+    def __A_b(self):
+        return op.basic_A_b(self)
+
+    @cached_property
+    def A(self):
+        A, _ = self.__A_b
+        return A
+
+    @cached_property
+    def b(self):
+        _, b = self.__A_b
+        return b
