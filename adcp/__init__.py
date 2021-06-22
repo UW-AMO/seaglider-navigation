@@ -32,11 +32,11 @@ class ProblemData:
 
 @dataclass(frozen=True)
 class ProblemConfig:
-    t_scale: int
-    conditioner: O[str]
-    vehicle_vel: str
-    current_order: int
-    vehicle_order: int
+    t_scale: int = 1
+    conditioner: O[str] = "tanh"
+    vehicle_vel: str = "otg"
+    current_order: int = 2
+    vehicle_order: int = 2
 
 
 @dataclass(frozen=True)
