@@ -253,7 +253,7 @@ def reduce_condition(deltas, method=None, minmax_ratio=0.2):
     elif method.lower() == "sux":
         return np.ones(deltas)
     else:
-        raise Exception("reduce_condition received bad method parameter")
+        raise ValueError("reduce_condition received bad method parameter")
 
 
 def vehicle_Qblocks(
