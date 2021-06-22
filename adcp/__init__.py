@@ -1,4 +1,4 @@
-from functools import cached_property, lru_cache
+from functools import cached_property
 from dataclasses import dataclass
 from typing import Optional as O  # noqa: E741
 
@@ -44,13 +44,10 @@ class StateVectorShape:
     data: ProblemData
     config: ProblemConfig
 
-    def __init__(self, data, config):
-        self.data = data
-        self.config = config
-        self.m = len(data.times)
-        self.n = len(data.depths)
+    m = cached_property(lambda self: len(self.data.times))
+    n = cached_property(lambda self: len(self.data.depths))
 
-    @lru_cache(maxsize=1)
+    @cached_property
     def vehicle_depth_mat(self):
         return mb.vehicle_select(
             self.data.times,
@@ -58,7 +55,7 @@ class StateVectorShape:
             self.data.ddat,
         )
 
-    @lru_cache(maxsize=1)
+    @cached_property
     def __uv_sel_mats(self):
         return mb.uv_select(
             self.data.times,
@@ -78,7 +75,7 @@ class StateVectorShape:
         _, B = self.__uv_sel_mats
         return B
 
-    @lru_cache(maxsize=1)
+    @cached_property
     def __adcp_sel_mats(self):
         return mb.adcp_select(
             self.data.times,
@@ -98,7 +95,7 @@ class StateVectorShape:
         _, B = self.__adcp_sel_mats
         return B
 
-    @lru_cache(maxsize=1)
+    @cached_property
     def __gps_sel_mats(self):
         return mb.gps_select(
             self.data.times,
@@ -117,6 +114,26 @@ class StateVectorShape:
     def B_gps(self):
         _, B = self.__gps_sel_mats
         return B
+
+    @cached_property
+    def N(self):
+        return mb.n_select(
+            self.m,
+            self.n,
+            self.config.vehicle_order,
+            self.config.current_order,
+            self.config.vehicle_vel,
+        )
+
+    @cached_property
+    def E(self):
+        return mb.e_select(
+            self.m,
+            self.n,
+            self.config.vehicle_order,
+            self.config.current_order,
+            self.config.vehicle_vel,
+        )
 
     @cached_property
     def EV(self):
