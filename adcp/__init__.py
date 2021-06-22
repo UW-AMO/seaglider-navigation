@@ -238,6 +238,15 @@ class StateVectorShape:
             return partial_G
 
 
+@dataclass
+class Weights:
+    rho_v: float
+    rho_c: float
+    rho_t: float
+    rho_a: float
+    rho_r: float = 0
+
+
 @dataclass(frozen=True)
 class GliderProblem:
     data: ProblemData
