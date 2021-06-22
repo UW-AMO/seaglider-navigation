@@ -9,7 +9,7 @@ from adcp import matbuilder as mb
 from adcp import optimization as op
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class ProblemData:
     ddat: dict
     adat: dict
@@ -23,7 +23,7 @@ class ProblemData:
         return dp.timepoints(self.adat, self.ddat)
 
     @cached_property
-    def dr(self):
+    def depth_rates(self):
         return dp.depth_rates(self.times, self.depths, self.ddat)
 
     @cached_property
@@ -248,31 +248,26 @@ class Weights:
     rho_r: float = 0
 
 
-@dataclass(frozen=True)
+@dataclass(repr=False)
 class GliderProblem:
     data: ProblemData
     config: ProblemConfig
     weights: Weights
 
-    @cached_property
-    def shape(self):
-        return StateVectorShape(self.data, self.config)
+    def __init__(self, data, config, weights):
+        self.data = data
+        self.config = config
+        self.weights = weights
+        self.shape = StateVectorShape(data, config)
 
-    def __getattr__(self, name):
-        try:
-            return getattr(self.shape, name)
-        except AttributeError:
-            try:
-                return getattr(self.config, name)
-            except AttributeError:
-                try:
-                    return getattr(self.weights, name)
-                except AttributeError:
-                    return getattr(self.data, name)
+    # @cached_property
+    # def shape(self):
+    #     return StateVectorShape(self.data, self.config)
 
     @cached_property
     def __A_b(self):
         return op.basic_A_b(self)
+        # return 1, 1
 
     @cached_property
     def A(self):
@@ -283,3 +278,22 @@ class GliderProblem:
     def b(self):
         _, b = self.__A_b
         return b
+
+    def __getattribute__(self, name: str):
+        print(f"Looking for {name} in {self}")
+        return super().__getattribute__(name)
+
+    def __getattr__(self, name):
+        print(f"__getattribute__({self}, {name}) failed")
+        # try:
+        for k, v in self.__dict__.items():
+            print(f"Looking in {k} for {name}")
+            try:
+                val = getattr(v, name)
+                print(f"found {name} in {v}")
+                return val
+            except AttributeError as err:
+                print(err)
+        raise AttributeError(
+            f"Neither {self} nor it's fields have a {name} attribute"
+        )
