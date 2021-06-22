@@ -70,12 +70,12 @@ def uv_select(times, depths, ddat, adat=None, vehicle_vel="otg"):
     d_list = list(depths)
     idxdepth = [d_list.index(d) for d in uv_depths]
     mat_shape = (len(idxdepth), len(depths))
-    if vehicle_vel == "otg":
+    if vehicle_vel[:3] == "otg":
         B = scipy.sparse.coo_matrix(
             (np.ones(len(idxdepth)), (range(len(idxdepth)), idxdepth)),
             shape=mat_shape,
         )
-    else:
+    elif vehicle_vel == "ttw":
         B = scipy.sparse.coo_matrix(mat_shape)
     return A, B
 
@@ -622,7 +622,7 @@ def ca_select(n, order=3, vehicle_vel="otg"):
 
     if order < 3:
         return None
-    if vehicle_vel == "otg":
+    if vehicle_vel[:3] == "otg":
         order = order - 1
         cols = range(order - 2, order * n, order)
     elif vehicle_vel == "ttw":
@@ -647,7 +647,7 @@ def cv_select(n, order=2, vehicle_vel="otg"):
             -water velocity or over-the-ground
     """
 
-    if vehicle_vel == "otg":
+    if vehicle_vel[:3] == "otg":
         order = order - 1
         cols = range(order - 1, order * n, order)
     elif vehicle_vel == "ttw":
@@ -672,7 +672,7 @@ def cx_select(n, order=2, vehicle_vel="otg"):
             -water velocity or over-the-ground
     """
 
-    if vehicle_vel == "otg":
+    if vehicle_vel[:3] == "otg":
         return None
         # Current X position not modeled when vehicle velocity is measured over ground. # noqa
     elif vehicle_vel == "ttw":
@@ -697,7 +697,7 @@ def e_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
         vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
-    current_order -= vehicle_vel == "otg"
+    current_order -= vehicle_vel[:3] == "otg"
     EV = ev_select(m, n, vehicle_order, current_order)
     EC = ec_select(m, n, vehicle_order, current_order)
     return scipy.sparse.vstack((EV, EC))
@@ -715,7 +715,7 @@ def n_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
         vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
-    current_order -= vehicle_vel == "otg"
+    current_order -= vehicle_vel[:3] == "otg"
     NV = nv_select(m, n, vehicle_order, current_order)
     NC = nc_select(m, n, vehicle_order, current_order)
     return scipy.sparse.vstack((NV, NC))
@@ -733,7 +733,7 @@ def ev_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
         vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
-    current_order -= vehicle_vel == "otg"
+    current_order -= vehicle_vel[:3] == "otg"
     n_rows = vehicle_order * m
     n_cols = size_of_x(m, n, vehicle_order, current_order)
     return scipy.sparse.eye(n_rows, n_cols)
@@ -751,7 +751,7 @@ def nv_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
         vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
-    current_order -= vehicle_vel == "otg"
+    current_order -= vehicle_vel[:3] == "otg"
     n_rows = vehicle_order * m
     n_cols = size_of_x(m, n, vehicle_order, current_order)
     diag = vehicle_order * m
@@ -771,7 +771,7 @@ def ec_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
         vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
-    current_order -= vehicle_vel == "otg"
+    current_order -= vehicle_vel[:3] == "otg"
     n_rows = current_order * n
     n_cols = size_of_x(m, n, vehicle_order, current_order)
     diag = 2 * vehicle_order * m
@@ -791,7 +791,7 @@ def nc_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
         vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
-    current_order -= vehicle_vel == "otg"
+    current_order -= vehicle_vel[:3] == "otg"
     n_rows = current_order * n
     n_cols = size_of_x(m, n, vehicle_order, current_order)
     diag = 2 * vehicle_order * m + current_order * n
@@ -819,13 +819,13 @@ def legacy_select(
     NC = nc_select(m, n, vehicle_order, current_order, vehicle_vel)
     CV = cv_select(n, current_order, vehicle_vel)
 
-    current_order -= vehicle_vel == "otg"
+    current_order -= vehicle_vel[:3] == "otg"
     vehicle_block = scipy.sparse.diags(
         np.ones(2), vehicle_order - 2, (2, vehicle_order)
     )
     vehicle_mat = scipy.sparse.block_diag(list(repeat(vehicle_block, m)))
 
-    if vehicle_vel == "otg":
+    if vehicle_vel[:3] == "otg":
         vehicle_c_mat = scipy.sparse.csr_matrix((2 * m, current_order * n))
     else:
         vehicle_depths = dp._depth_interpolator(prob.times, prob.ddat).loc[
