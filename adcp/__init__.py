@@ -245,6 +245,7 @@ class Weights:
     rho_c: float
     rho_t: float
     rho_a: float
+    rho_g: float
     rho_r: float = 0
 
 
