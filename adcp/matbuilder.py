@@ -363,12 +363,13 @@ def depth_Qblocks(
     depth_rate=None,
     conditioner=conditioner,
     t_scale=t_scale,
+    vehicle_vel="otg",
 ):
     """Create the diagonal blocks of the kalman matrix for smoothing
     current"""
 
     delta_depths = depths[1:] - depths[:-1]
-    if depth_rate is None:
+    if vehicle_vel[:3] == "otg":
         order -= 1
         depth_rate = np.ones(len(delta_depths))
     elif order == 1:
@@ -423,11 +424,20 @@ def depth_Qinv(
     depth_rate=None,
     conditioner=conditioner,
     t_scale=t_scale,
+    vehicle_vel="otg",
 ):
     """Creates the precision matrix for smoothing the currint with depth
     covariance rho.
     """
-    Qs = depth_Qblocks(depths, rho, order, depth_rate, conditioner, t_scale)
+    Qs = depth_Qblocks(
+        depths,
+        rho,
+        order,
+        depth_rate,
+        conditioner,
+        t_scale,
+        vehicle_vel="otg",
+    )
     Qinvs = [np.linalg.inv(Q) for Q in Qs]
     return scipy.sparse.block_diag(Qinvs)
 
@@ -439,18 +449,33 @@ def depth_Q(
     depth_rate=None,
     conditioner=conditioner,
     t_scale=t_scale,
+    vehicle_vel="otg",
 ):
     """Creates the covariance matrix for smoothing the current with depth
     covariance rho.
     """
-    Qs = depth_Qblocks(depths, rho, order, depth_rate, conditioner, t_scale)
+    Qs = depth_Qblocks(
+        depths,
+        rho,
+        order,
+        depth_rate,
+        conditioner,
+        t_scale,
+        vehicle_vel="otg",
+    )
     return scipy.sparse.block_diag(Qs, dtype=float)
 
 
-def depth_G(depths, order=2, depth_rate=None, conditioner=conditioner):
+def depth_G(
+    depths,
+    order=2,
+    depth_rate=None,
+    conditioner=conditioner,
+    vehicle_vel="otg",
+):
     """Creates the update matrix for smoothing the current"""
     delta_depths = depths[1:] - depths[:-1]
-    if depth_rate is None:
+    if vehicle_vel[:3] == "otg":
         order -= 1
         depth_rate = np.ones(len(delta_depths))
     elif order == 1:

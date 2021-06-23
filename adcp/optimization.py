@@ -446,7 +446,11 @@ def gen_kalman_mat(prob: GliderProblem, root: bool = False):
         prob.times, prob.vehicle_order, prob.conditioner, prob.t_scale
     )
     Gc = mb.depth_G(
-        prob.depths, prob.current_order, prob.depth_rates, prob.conditioner
+        prob.depths,
+        prob.current_order,
+        prob.depth_rates,
+        prob.conditioner,
+        prob.vehicle_vel,
     )
     if prob.rho_v != 0:
         Qvinv = mb.vehicle_Qinv(
@@ -468,6 +472,7 @@ def gen_kalman_mat(prob: GliderProblem, root: bool = False):
             prob.depth_rates,
             prob.conditioner,
             prob.t_scale,
+            prob.vehicle_vel,
         )
     else:
         Qcinv = scipy.sparse.csr_matrix(
