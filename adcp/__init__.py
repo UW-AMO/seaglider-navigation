@@ -191,19 +191,19 @@ class StateVectorShape:
     @cached_property
     def CA(self):
         return mb.ca_select(
-            self.m, self.config.current_order, self.config.vehicle_vel
+            self.n, self.config.current_order, self.config.vehicle_vel
         )
 
     @cached_property
     def CV(self):
         return mb.cv_select(
-            self.m, self.config.current_order, self.config.vehicle_vel
+            self.n, self.config.current_order, self.config.vehicle_vel
         )
 
     @cached_property
     def CX(self):
         return mb.cx_select(
-            self.m, self.config.current_order, self.config.vehicle_vel
+            self.n, self.config.current_order, self.config.vehicle_vel
         )
 
     def vehicle_Q(self):
