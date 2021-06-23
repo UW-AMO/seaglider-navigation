@@ -268,7 +268,6 @@ class GliderProblem:
     @cached_property
     def __A_b(self):
         return op.basic_A_b(self)
-        # return 1, 1
 
     @cached_property
     def A(self):
@@ -279,6 +278,40 @@ class GliderProblem:
     def b(self):
         _, b = self.__A_b
         return b
+
+    @cached_property
+    def __AtA_Atb(self):
+        return op.solve_mats(self)
+
+    @cached_property
+    def AtA(self):
+        AtA, _ = self.__AtA_Atb
+        return AtA
+
+    @cached_property
+    def Atb(self):
+        _, Atb = self.__AtA_Atb
+        return Atb
+
+    @cached_property
+    def kalman_mat(self):
+        return op.gen_kalman_mat(self, root=False)
+
+    @cached_property
+    def kalman_root(self):
+        return op.gen_kalman_mat(self, root=True)
+
+    @cached_property
+    def f(self):
+        return op.f(self)
+
+    @cached_property
+    def g(self):
+        return op.g(self)
+
+    @cached_property
+    def h(self):
+        return op.h(self)
 
     def __getattribute__(self, name: str):
         print(f"Looking for {name} in {self}")
