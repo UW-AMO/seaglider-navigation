@@ -320,8 +320,8 @@ class GliderProblem:
     def __getattr__(self, name):
         print(f"__getattribute__({self}, {name}) failed")
         # try:
-        for k, v in self.__dict__.items():
-            print(f"Looking in {k} for {name}")
+        for v in [self.data, self.config, self.weights, self.shape]:
+            # print(f"Looking in {k} for {name}")
             try:
                 val = getattr(v, name)
                 print(f"found {name} in {v}")
