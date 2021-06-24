@@ -5,7 +5,8 @@ requires = ["setuptools", "wheel"]
 source = ["adcp"]
 omit = [
     "*/__init__.py",
-    "*/tests/*"
+    "*/tests/*",
+    "adcp/exp/psearch2d_trials/*"
 ]
 
 [tool.black]
