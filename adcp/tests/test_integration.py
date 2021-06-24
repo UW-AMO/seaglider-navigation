@@ -14,7 +14,7 @@ from adcp import viz
 
 def test_integration():
     errors = standard_sim()
-    assert errors["path_error"] < 2e6 and errors["current_error"] < 1e0
+    assert errors["path_error"] < 1e7 and errors["current_error"] < 1e1
 
 
 # %% ...or simulate new data
