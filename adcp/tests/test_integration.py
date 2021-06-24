@@ -12,7 +12,7 @@ from adcp import optimization as op
 from adcp import viz
 
 
-def test_integration():
+def test_default_integration():
     errors = standard_sim()
     assert errors["path_error"] < 1e7 and errors["current_error"] < 1e1
 
