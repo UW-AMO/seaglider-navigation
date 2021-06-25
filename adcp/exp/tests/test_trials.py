@@ -1,3 +1,5 @@
+import random
+import numpy as np
 import pytest
 from adcp.exp.psearch2d import ParameterSearch2D
 from adcp.exp.psearch2d_trials import (
@@ -21,6 +23,10 @@ def test_default_integration_trial2a():
     global x
     x = run["x"]
 
+    assert np.random.get_state()[0] == "MT19937"
+    assert np.random.get_state()[1][0] == 3115277058
+    assert random.getstate()[0] == 3
+    assert random.getstate()[1][0] == 727647865
     assert 5176938 < results[0] < 5176939
     assert 3.6809045 < results[1] < 3.6809046
 
@@ -37,6 +43,10 @@ def test_default_integration_trial2c():
     global y
     y = run["x"]
 
+    assert np.random.get_state()[0] == "MT19937"
+    assert np.random.get_state()[1][0] == 3115277058
+    assert random.getstate()[0] == 3
+    assert random.getstate()[1][0] == 727647865
     assert 2143393 < results[0] < 2143394
     assert 15.602947 < results[1] < 15.602948
 
@@ -52,6 +62,10 @@ def test_default_integration_trial12():
     global x
     assert all(x == run["x"])
 
+    assert np.random.get_state()[0] == "MT19937"
+    assert np.random.get_state()[1][0] == 3115277058
+    assert random.getstate()[0] == 3
+    assert random.getstate()[1][0] == 727647865
     assert 2053767 < results[0] < 2053768
     assert 4.1859312 < results[1] < 4.1859313
 
@@ -67,6 +81,10 @@ def test_default_integration_trial12c():
     global y
     assert all(y == run["x"])
 
+    assert np.random.get_state()[0] == "MT19937"
+    assert np.random.get_state()[1][0] == 3115277058
+    assert random.getstate()[0] == 3
+    assert random.getstate()[1][0] == 727647865
     assert 4113853 < results[0] < 4113854
     assert 16.947697 < results[1] < 16.947698
 
@@ -79,6 +97,10 @@ def test_default_integration_trial16():
     )
     results = experiment.run(visuals=False)["metrics"]
 
+    assert np.random.get_state()[0] == "MT19937"
+    assert np.random.get_state()[1][0] == 3115277058
+    assert random.getstate()[0] == 3
+    assert random.getstate()[1][0] == 727647865
     assert 2052558 < results[0] < 2052559
     assert 4.00 < results[1] < 4.01
 
@@ -91,5 +113,9 @@ def test_default_integration_trial16c():
     )
     results = experiment.run(visuals=False)["metrics"]
 
+    assert np.random.get_state()[0] == "MT19937"
+    assert np.random.get_state()[1][0] == 3115277058
+    assert random.getstate()[0] == 3
+    assert random.getstate()[1][0] == 727647865
     assert 25834296 < results[0] < 25834297
     assert 136 < results[1] < 137
