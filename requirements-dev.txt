@@ -8,6 +8,7 @@ ipykernel
 nbclient
 nbconvert
 nbformat
+numpy==1.20.3
 pre-commit 
 pytest
 sphinx 

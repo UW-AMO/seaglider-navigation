@@ -28,8 +28,6 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt
           python setup.py install
-          pip show numpy
-          pip install numpy==1.20.3
           pre-commit install
       - name: precommit
         run: |
