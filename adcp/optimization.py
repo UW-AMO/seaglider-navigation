@@ -181,6 +181,8 @@ def backsolve(prob):
         matrices.
     """
     A, b = solve_mats(prob)
+    print("A: ", A.mean())
+    print("b: ", b.mean())
     x = scipy.sparse.linalg.spsolve(A, b)
     x = time_rescale(x, prob.t_scale, prob)
     return x
