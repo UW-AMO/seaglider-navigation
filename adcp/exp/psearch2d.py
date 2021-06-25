@@ -101,7 +101,9 @@ class ParameterSearch2D(Experiment):
         ):
             prob = op.GliderProblem(copyobj=self.prob, rho_v=rv, rho_c=rc)
 
+            print("\n x: ", self.x.mean())
             x_sol = op.backsolve(prob)
+            print("x_sol: ", x_sol.mean())
             if np.isnan(x_sol.max()):  # too ill conditioned, couldn't solve
                 self.errmap[:, i, j] = [np.inf, np.inf]
                 self.paths.append(None)

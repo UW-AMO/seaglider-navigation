@@ -34,7 +34,7 @@ jobs:
           pre-commit run
       - name: Test with pytest
         run: |
-          python -m coverage run -m pytest -m "slow or not slow" -v
+          python -m coverage run -m pytest -m "slow or not slow" -v --capture=tee-sys
       - name: Coverage report
         run: |
           python -m coverage report
