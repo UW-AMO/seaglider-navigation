@@ -17,6 +17,7 @@ def test_default_integration_trial2a():
         **trial2.sim_params,
     )
     results = experiment.run(visuals=False)["metrics"]
+    print("deleteme")
 
     assert 5176938 < results[0] < 5176939
     assert 3.6809045 < results[1] < 3.6809046
