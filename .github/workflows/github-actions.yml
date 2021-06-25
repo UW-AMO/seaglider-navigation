@@ -36,7 +36,7 @@ jobs:
           pre-commit run
       - name: Test with pytest
         run: |
-          python -m coverage run -m pytest -m "slow or not slow"
+          python -m coverage run -m pytest -m "slow or not slow" -v
       - name: Coverage report
         run: |
           python -m coverage report
