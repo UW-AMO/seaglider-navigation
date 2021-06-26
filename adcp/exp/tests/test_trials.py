@@ -72,6 +72,8 @@ def test_default_integration_trial12c():
     global y
     assert all(y == run["x"])
 
+    z = 1
+    z += 1
     global_assert()
     assert 4113853 < results[0] < 4113854
     assert 16.947697 < results[1] < 16.947698
