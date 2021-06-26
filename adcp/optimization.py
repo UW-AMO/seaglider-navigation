@@ -184,6 +184,7 @@ def backsolve(prob):
     print("A: ", A.mean())
     print("b: ", b.mean())
     x = scipy.sparse.linalg.spsolve(A, b)
+    print("unscaled x: ", x.mean())
     x = time_rescale(x, prob.t_scale, prob)
     return x
 
