@@ -11,4 +11,5 @@ nbformat
 numpy==1.20.3
 pre-commit 
 pytest
+scipy==1.6.3
 sphinx 
