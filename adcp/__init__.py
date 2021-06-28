@@ -331,3 +331,10 @@ class GliderProblem:
         raise AttributeError(
             f"Neither {self} nor it's fields have a {name} attribute"
         )
+
+    def legacy_size_prob(self):
+        new_config = ProblemConfig(
+            vehicle_order=2, current_order=2, vehicle_vel="otg"
+        )
+        new_problem = GliderProblem(self.data, new_config, self.weights)
+        return new_problem
