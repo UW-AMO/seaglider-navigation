@@ -2,13 +2,13 @@ import pytest
 import numpy as np
 
 import adcp.optimization as op
-from adcp.optimization import GliderProblem
+import adcp
 
 
 @pytest.mark.skip("Not yet implemented")
 class TestRescaling:
     def test_time_rescale_order_v2c2otg(self):
-        prob = GliderProblem()
+        prob = adcp.GliderProblem()
         assert prob is not None
 
 

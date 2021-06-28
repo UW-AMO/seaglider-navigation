@@ -1,5 +1,6 @@
 import pytest
-from adcp import simulation as sim, optimization as op
+from adcp import simulation as sim
+import adcp
 
 
 @pytest.fixture(name="standard_sim")
@@ -16,4 +17,7 @@ def standard_sim():
 @pytest.fixture
 def standard_prob(standard_sim):
     ddat, adat, _ = standard_sim
-    yield op.GliderProblem(ddat=ddat, adat=adat)
+    data = adcp.ProblemData(ddat, adat)
+    yield adcp.GliderProblem(
+        data, adcp.ProblemConfig(), adcp.Weights(1, 1, 1, 1, 1)
+    )

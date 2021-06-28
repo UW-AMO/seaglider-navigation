@@ -10,6 +10,7 @@ from adcp import simulation as sim
 from adcp import matbuilder as mb
 from adcp import optimization as op
 from adcp import viz
+import adcp
 
 
 def test_integration():
@@ -57,22 +58,12 @@ def standard_sim(
       TTW measurement: {rho_t}
       ADCP meawsurement: {rho_a}"""
     )
-
-    prob = op.GliderProblem(
-        ddat=ddat,
-        adat=adat,
-        rho_v=rho_v,
-        rho_c=rho_c,
-        rho_g=rho_g,
-        rho_t=rho_t,
-        rho_a=rho_a,
-        rho_r=rho_r,
-        t_scale=t_scale,
-        conditioner=conditioner,
-        vehicle_vel=vehicle_vel,
-        current_order=current_order,
-        vehicle_order=vehicle_order,
+    data = adcp.ProblemData(ddat, adat)
+    config = adcp.ProblemConfig(
+        t_scale, conditioner, vehicle_vel, current_order, vehicle_order
     )
+    weights = adcp.Weights(rho_v, rho_c, rho_t, rho_a, rho_g, rho_r)
+    prob = adcp.GliderProblem(data, config, weights)
 
     # %%  Solve problem
     x_sol = op.backsolve(prob)
@@ -85,7 +76,7 @@ def standard_sim(
         prob.vehicle_vel,
         prob=prob,
     )
-    legacy_size_prob = prob.legacy_size_prob()
+    legacy_size_prob = adcp.create_legacy_shape_problem(prob)
 
     err = legacy @ x_sol - x
     path_error = (

@@ -1,6 +1,7 @@
 from functools import cached_property
 from dataclasses import dataclass
 from typing import Optional as O  # noqa: E741
+import warnings
 
 import pandas as pd
 
@@ -313,21 +314,18 @@ class GliderProblem:
     def h(self):
         return op.h(self)
 
-    def __getattribute__(self, name: str):
-        print(f"Looking for {name} in {self}")
-        return super().__getattribute__(name)
-
     def __getattr__(self, name):
-        print(f"__getattribute__({self}, {name}) failed")
-        # try:
         for v in [self.data, self.config, self.weights, self.shape]:
-            # print(f"Looking in {k} for {name}")
             try:
                 val = getattr(v, name)
-                print(f"found {name} in {v}")
+                warnings.warn(
+                    f"Found {name} in {v.__class__} when accessing"
+                    f" GliderProblem.{name}.  Call {v.__class__}.name in the"
+                    " future"
+                )
                 return val
-            except AttributeError as err:
-                print(err)
+            except AttributeError:
+                pass
         raise AttributeError(
             f"Neither {self} nor it's fields have a {name} attribute"
         )
@@ -338,3 +336,17 @@ class GliderProblem:
         )
         new_problem = GliderProblem(self.data, new_config, self.weights)
         return new_problem
+
+
+def create_legacy_shape(shape: StateVectorShape) -> StateVectorShape:
+    new_config = ProblemConfig(
+        vehicle_order=2, current_order=2, vehicle_vel="otg"
+    )
+    return StateVectorShape(shape.data, new_config)
+
+
+def create_legacy_shape_problem(prob: GliderProblem) -> GliderProblem:
+    new_config = ProblemConfig(
+        vehicle_order=2, current_order=2, vehicle_vel="otg"
+    )
+    return GliderProblem(prob.data, new_config, prob.weights)

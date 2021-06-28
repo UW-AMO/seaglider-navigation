@@ -15,7 +15,6 @@ on top of an easterly current vector from 0 to 2*max depth which is
 in turn stacked on top of a similar northerly current vector.
 """
 import random
-import copy
 
 import numpy as np
 from numpy import sqrt
@@ -23,97 +22,8 @@ import scipy.sparse
 from scipy.optimize import minimize
 
 from adcp import matbuilder as mb
-from adcp import dataprep as dp
 
 
-class GliderProblem:
-    defaults = {
-        "ddat": None,
-        "adat": None,
-        "rho_v": 1,
-        "rho_c": 1,
-        "rho_t": 1,
-        "rho_a": 1,
-        "rho_g": 1,
-        "rho_r": 0,
-        "t_scale": 1e3,
-        "conditioner": "tanh",
-        "vehicle_order": 2,
-        "current_order": 2,
-        "vehicle_vel": "otg",
-    }
-
-    def __init__(self, copyobj=None, **kwargs):
-
-        if copyobj is not None:
-            self.__dict__ = copy.copy(copyobj.__dict__)
-        else:
-            self.__dict__ = copy.copy(self.defaults)
-        for k, v in kwargs.items():
-            try:
-                self.defaults[k]
-                setattr(self, k, v)
-            except KeyError:
-                raise AttributeError(
-                    f"{k} not a argument for Problem constructor"
-                )
-
-        if self.ddat is not None and self.adat is not None:
-            self.__precompute()
-
-    def __precompute(self):
-        self.times = dp.timepoints(self.adat, self.ddat)
-        self.depths = dp.depthpoints(self.adat, self.ddat)
-        if self.vehicle_vel == "ttw":
-            self.depth_rates = dp.depth_rates(
-                self.times, self.depths, self.ddat
-            )
-        else:
-            self.depth_rates = None
-        self.m = len(self.times)
-        self.n = len(self.depths)
-        self.As = mb.a_select(self.m, self.vehicle_order)
-        self.Vs = mb.v_select(self.m, self.vehicle_order)
-        self.Xs = mb.x_select(self.m, self.vehicle_order)
-        self.CA = mb.ca_select(self.n, self.current_order, self.vehicle_vel)
-        self.CV = mb.cv_select(self.n, self.current_order, self.vehicle_vel)
-        self.CX = mb.cx_select(self.n, self.current_order, self.vehicle_vel)
-        self.EV = mb.ev_select(
-            self.m,
-            self.n,
-            self.vehicle_order,
-            self.current_order,
-            self.vehicle_vel,
-        )
-        self.NV = mb.nv_select(
-            self.m,
-            self.n,
-            self.vehicle_order,
-            self.current_order,
-            self.vehicle_vel,
-        )
-        self.EC = mb.ec_select(
-            self.m,
-            self.n,
-            self.vehicle_order,
-            self.current_order,
-            self.vehicle_vel,
-        )
-        self.NC = mb.nc_select(
-            self.m,
-            self.n,
-            self.vehicle_order,
-            self.current_order,
-            self.vehicle_vel,
-        )
-
-    def legacy_size_prob(self):
-        return GliderProblem(
-            self, vehicle_order=2, current_order=2, vehicle_vel="otg"
-        )
-
-
-# %%
 def init_x(prob):
     ev0, nv0 = initial_kinematics(
         prob.times,
@@ -427,7 +337,7 @@ def solve_mats(prob, verbose=False):
     return A, b
 
 
-def gen_kalman_mat(prob: GliderProblem, root: bool = False):
+def gen_kalman_mat(prob, root: bool = False):
     """Create the combined kalman process covariance matrix for the vehicle
     and current.  Specifically, it is the symmetrized inverse covariance
     matrix for the problem.
