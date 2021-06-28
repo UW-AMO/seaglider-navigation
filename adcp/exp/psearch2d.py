@@ -103,7 +103,10 @@ class ParameterSearch2D(Experiment):
             prob = adcp.GliderProblem(self.data, self.config, weights)
 
             x_sol = op.backsolve(prob)
-
+            if np.isnan(x_sol.max()):  # too ill conditioned, couldn't solve
+                self.errmap[:, i, j] = [np.inf, np.inf]
+                self.paths.append(None)
+                continue
             legacy = mb.legacy_select(
                 prob.m,
                 prob.n,
