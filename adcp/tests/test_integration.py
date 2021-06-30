@@ -69,23 +69,24 @@ def standard_sim(
     x_sol = op.backsolve(prob)
 
     legacy = mb.legacy_select(
-        prob.m,
-        prob.n,
-        prob.vehicle_order,
-        prob.current_order,
-        prob.vehicle_vel,
+        prob.shape.m,
+        prob.shape.n,
+        prob.config.vehicle_order,
+        prob.config.current_order,
+        prob.config.vehicle_vel,
         prob=prob,
     )
-    legacy_size_prob = adcp.create_legacy_shape_problem(prob)
+    legacy_size_shape = adcp.create_legacy_shape(prob.shape)
 
     err = legacy @ x_sol - x
     path_error = (
-        np.linalg.norm(legacy_size_prob.Xs @ legacy_size_prob.NV @ err) ** 2
-        + np.linalg.norm(legacy_size_prob.Xs @ legacy_size_prob.NV @ err) ** 2
+        np.linalg.norm(legacy_size_shape.Xs @ legacy_size_shape.NV @ err) ** 2
+        + np.linalg.norm(legacy_size_shape.Xs @ legacy_size_shape.NV @ err)
+        ** 2
     )
     current_error = (
-        np.linalg.norm(legacy_size_prob.EC @ err) ** 2
-        + np.linalg.norm(legacy_size_prob.NC @ err) ** 2
+        np.linalg.norm(legacy_size_shape.EC @ err) ** 2
+        + np.linalg.norm(legacy_size_shape.NC @ err) ** 2
     )
     return {
         "path_error": path_error,
