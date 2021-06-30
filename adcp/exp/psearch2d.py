@@ -108,14 +108,13 @@ class ParameterSearch2D(Experiment):
                 self.paths.append(None)
                 continue
             legacy = mb.legacy_select(
-                prob.m,
-                prob.n,
-                prob.vehicle_order,
-                prob.current_order,
-                prob.vehicle_vel,
+                prob.shape.m,
+                prob.shape.n,
+                prob.config.vehicle_order,
+                prob.config.current_order,
+                prob.config.vehicle_vel,
                 prob=prob,
             )
-
             x_leg = legacy @ x_sol
 
             err = x_leg - self.x
