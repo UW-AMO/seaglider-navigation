@@ -92,11 +92,11 @@ def backsolve(prob):
     """
     A, b = solve_mats(prob)
     x = scipy.sparse.linalg.spsolve(A, b)
-    x = time_rescale(x, prob.t_scale, prob)
+    x = time_rescale(x, prob.config.t_scale, prob.shape)
     return x
 
 
-def time_rescale(x, t_s, prob):
+def time_rescale(x, t_s, shape):
     """Rescales the velocity measurements in a solution vector to undo
     scaling factor t_s
 
@@ -107,16 +107,16 @@ def time_rescale(x, t_s, prob):
         prob (GliderProblem) : A glider problem
     """
 
-    As = prob.As
-    Vs = prob.Vs
-    Xs = prob.Xs
-    CA = prob.CA
-    CV = prob.CV
-    CX = prob.CX
-    EV = prob.EV
-    NV = prob.NV
-    EC = prob.EC
-    NC = prob.NC
+    As = shape.As
+    Vs = shape.Vs
+    Xs = shape.Xs
+    CA = shape.CA
+    CV = shape.CV
+    CX = shape.CX
+    EV = shape.EV
+    NV = shape.NV
+    EC = shape.EC
+    NC = shape.NC
 
     nm = (
         lambda x, y: None if x is None or y is None else x * y
@@ -911,7 +911,7 @@ def backsolve_test(x0, prob):
 def solve(prob, method="L-BFGS-B", maxiter=50000, maxfun=50000):
     """Solve the ADCP navigation problem for given data."""
     x0 = init_x(prob)
-    x0 = time_rescale(x0, 1 / prob.t_scale, prob)
+    x0 = time_rescale(x0, 1 / prob.config.t_scale, prob.shape)
     ffunc = f(prob)
     gfunc = g(prob)
     hfunc = h(prob)
@@ -923,6 +923,6 @@ def solve(prob, method="L-BFGS-B", maxiter=50000, maxfun=50000):
         hess=hfunc,
         options={"maxiter": maxiter, "maxfun": maxfun, "disp": True},
     )
-    sol.x = time_rescale(sol.x, prob.t_scale, prob)
+    sol.x = time_rescale(sol.x, prob.config.t_scale, prob.shape)
 
     return sol
