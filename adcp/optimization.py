@@ -257,34 +257,38 @@ def solve_mats(prob, verbose=False):
     Returns:
         tuple of numpy arrays, (AtA,Atb)
     """
-    m = len(prob.times)
-    n = len(prob.depths)
-    zttw_e = mb.get_zttw(prob.ddat, "east", prob.t_scale)
-    zttw_n = mb.get_zttw(prob.ddat, "north", prob.t_scale)
+    data = prob.data
+    shape = prob.shape
+    config = prob.config
+    weights = prob.weights
+    m = len(data.times)
+    n = len(data.depths)
+    zttw_e = mb.get_zttw(data.ddat, "east", config.t_scale)
+    zttw_n = mb.get_zttw(data.ddat, "north", config.t_scale)
     A_ttw, B_ttw = mb.uv_select(
-        prob.times, prob.depths, prob.ddat, prob.adat, prob.vehicle_vel
+        data.times, data.depths, data.ddat, data.adat, config.vehicle_vel
     )
 
-    zadcp_e = mb.get_zadcp(prob.adat, "east", prob.t_scale)
-    zadcp_n = mb.get_zadcp(prob.adat, "north", prob.t_scale)
+    zadcp_e = mb.get_zadcp(data.adat, "east", config.t_scale)
+    zadcp_n = mb.get_zadcp(data.adat, "north", config.t_scale)
     A_adcp, B_adcp = mb.adcp_select(
-        prob.times, prob.depths, prob.ddat, prob.adat, prob.vehicle_vel
+        data.times, data.depths, data.ddat, data.adat, config.vehicle_vel
     )
 
-    zgps_e = mb.get_zgps(prob.ddat, "east")
-    zgps_n = mb.get_zgps(prob.ddat, "north")
+    zgps_e = mb.get_zgps(data.ddat, "east")
+    zgps_n = mb.get_zgps(data.ddat, "north")
     A_gps, B_gps = mb.gps_select(
-        prob.times, prob.depths, prob.ddat, prob.adat, prob.vehicle_vel
+        data.times, data.depths, data.ddat, data.adat, config.vehicle_vel
     )
 
-    Vs = prob.Vs
-    Xs = prob.Xs
-    CV = prob.CV
-    CX = prob.CX
-    EV = prob.EV
-    NV = prob.NV
-    EC = prob.EC
-    NC = prob.NC
+    Vs = shape.Vs
+    Xs = shape.Xs
+    CV = shape.CV
+    CX = shape.CX
+    EV = shape.EV
+    NV = shape.NV
+    EC = shape.EC
+    NC = shape.NC
 
     kalman_mat = gen_kalman_mat(
         prob.data, prob.config, prob.shape, prob.weights
@@ -306,36 +310,29 @@ def solve_mats(prob, verbose=False):
 
     A = (
         kalman_mat
-        + 1 / (prob.rho_t) * n_ttw_select.T @ n_ttw_select
-        + 1 / (prob.rho_t) * e_ttw_select.T @ e_ttw_select
-        + 1 / (prob.rho_a) * n_adcp_select.T @ n_adcp_select
-        + 1 / (prob.rho_a) * e_adcp_select.T @ e_adcp_select
-        + 1 / (prob.rho_g) * n_gps_select.T @ n_gps_select
-        + 1 / (prob.rho_g) * e_gps_select.T @ e_gps_select
+        + 1 / (weights.rho_t) * n_ttw_select.T @ n_ttw_select
+        + 1 / (weights.rho_t) * e_ttw_select.T @ e_ttw_select
+        + 1 / (weights.rho_a) * n_adcp_select.T @ n_adcp_select
+        + 1 / (weights.rho_a) * e_adcp_select.T @ e_adcp_select
+        + 1 / (weights.rho_g) * n_gps_select.T @ n_gps_select
+        + 1 / (weights.rho_g) * e_gps_select.T @ e_gps_select
     )
     A = (A + A.T) / 2
 
     if verbose:
         r100 = np.array(random.sample(range(0, 4 * m + 2 * n), 100))
-        # r1000 = np.array(random.sample(range(0, 4*m+2*n), 1000))
-        # c1 = np.linalg.cond(kalman_mat.todense()[r1000[:,None],r1000])
         c2 = np.linalg.cond(kalman_mat.todense()[r100[:, None], r100])
-        # c3 = np.linalg.cond(A.todense()[r1000[:,None],r1000])
         c4 = np.linalg.cond(A.todense()[r100[:, None], r100])
-        # print('Condition number of kalman matrix (1000x1000): ',
-        #       f'{c1:e}')
         print("Condition number of kalman matrix (100x100): ", f"{c2:e}")
-        # print('Condition number of A (1000x1000): ',
-        #       f'{c3:e}')
         print("Condition number of A (100x100): ", f"{c4:e}")
 
     b = (
-        1 / (prob.rho_t) * n_ttw_select.T @ zttw_n
-        + 1 / (prob.rho_t) * e_ttw_select.T @ zttw_e
-        + 1 / (prob.rho_a) * n_adcp_select.T @ zadcp_n
-        + 1 / (prob.rho_a) * e_adcp_select.T @ zadcp_e
-        + 1 / (prob.rho_g) * n_gps_select.T @ zgps_n
-        + 1 / (prob.rho_g) * e_gps_select.T @ zgps_e
+        1 / (weights.rho_t) * n_ttw_select.T @ zttw_n
+        + 1 / (weights.rho_t) * e_ttw_select.T @ zttw_e
+        + 1 / (weights.rho_a) * n_adcp_select.T @ zadcp_n
+        + 1 / (weights.rho_a) * e_adcp_select.T @ zadcp_e
+        + 1 / (weights.rho_g) * n_gps_select.T @ zgps_n
+        + 1 / (weights.rho_g) * e_gps_select.T @ zgps_e
     )
 
     return A, b
