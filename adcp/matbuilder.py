@@ -436,7 +436,7 @@ def depth_Qinv(
         depth_rate,
         conditioner,
         t_scale,
-        vehicle_vel="otg",
+        vehicle_vel=vehicle_vel,
     )
     Qinvs = [np.linalg.inv(Q) for Q in Qs]
     return scipy.sparse.block_diag(Qinvs)
@@ -461,7 +461,7 @@ def depth_Q(
         depth_rate,
         conditioner,
         t_scale,
-        vehicle_vel="otg",
+        vehicle_vel=vehicle_vel,
     )
     return scipy.sparse.block_diag(Qs, dtype=float)
 
