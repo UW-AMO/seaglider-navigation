@@ -194,7 +194,9 @@ def basic_A_b(prob):
     EC = prob.EC
     NC = prob.NC
 
-    M = gen_kalman_mat(prob, root=True)
+    M = gen_kalman_mat(
+        prob.data, prob.config, prob.shape, prob.weights, root=True
+    )
 
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ CV @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ CV @ NC
@@ -284,7 +286,9 @@ def solve_mats(prob, verbose=False):
     EC = prob.EC
     NC = prob.NC
 
-    kalman_mat = gen_kalman_mat(prob)
+    kalman_mat = gen_kalman_mat(
+        prob.data, prob.config, prob.shape, prob.weights
+    )
 
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ CV @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ CV @ NC
@@ -337,7 +341,7 @@ def solve_mats(prob, verbose=False):
     return A, b
 
 
-def gen_kalman_mat(prob, root: bool = False):
+def gen_kalman_mat(data, config, shape, weights, root: bool = False):
     """Create the combined kalman process covariance matrix for the vehicle
     and current.  Specifically, it is the symmetrized inverse covariance
     matrix for the problem.
@@ -353,45 +357,45 @@ def gen_kalman_mat(prob, root: bool = False):
             providing Q
     """
     Gv = mb.vehicle_G(
-        prob.times, prob.vehicle_order, prob.conditioner, prob.t_scale
+        data.times, config.vehicle_order, config.conditioner, config.t_scale
     )
     Gc = mb.depth_G(
-        prob.depths,
-        prob.current_order,
-        prob.depth_rates,
-        prob.conditioner,
-        prob.vehicle_vel,
+        data.depths,
+        config.current_order,
+        data.depth_rates,
+        config.conditioner,
+        config.vehicle_vel,
     )
-    if prob.rho_v != 0:
+    if weights.rho_v != 0:
         Qvinv = mb.vehicle_Qinv(
-            prob.times,
-            prob.rho_v,
-            prob.vehicle_order,
-            prob.conditioner,
-            prob.t_scale,
+            data.times,
+            weights.rho_v,
+            config.vehicle_order,
+            config.conditioner,
+            config.t_scale,
         )
     else:
         Qvinv = scipy.sparse.csr_matrix(
-            (2 * (len(prob.times) - 1), 2 * (len(prob.times) - 1))
+            (2 * (len(data.times) - 1), 2 * (len(data.times) - 1))
         )
-    if prob.rho_c != 0:
+    if weights.rho_c != 0:
         Qcinv = mb.depth_Qinv(
-            prob.depths,
-            prob.rho_c,
-            prob.current_order,
-            prob.depth_rates,
-            prob.conditioner,
-            prob.t_scale,
-            prob.vehicle_vel,
+            data.depths,
+            weights.rho_c,
+            config.current_order,
+            data.depth_rates,
+            config.conditioner,
+            config.t_scale,
+            config.vehicle_vel,
         )
     else:
         Qcinv = scipy.sparse.csr_matrix(
-            (len(prob.depths) - 1, len(prob.depths) - 1)
+            (len(data.depths) - 1, len(data.depths) - 1)
         )
-    EV = prob.EV
-    NV = prob.NV
-    EC = prob.EC
-    NC = prob.NC
+    EV = shape.EV
+    NV = shape.NV
+    EC = shape.EC
+    NC = shape.NC
     if root:
         Mv = np.linalg.cholesky(Qvinv.todense()).T
         Mc = np.linalg.cholesky(Qcinv.todense()).T
@@ -418,7 +422,9 @@ def gen_kalman_mat(prob, root: bool = False):
 
 # %%
 def _f_kalman(prob):
-    kalman_mat = gen_kalman_mat(prob)
+    kalman_mat = gen_kalman_mat(
+        prob.data, prob.config, prob.shape, prob.weights
+    )
 
     def f_eval(X):
         kalman_error = 1 / 2 * X.T @ kalman_mat @ X
@@ -567,7 +573,9 @@ def f(prob, verbose=False):
 
 # %%
 def _g_kalman(prob):
-    kalman_mat = gen_kalman_mat(prob)
+    kalman_mat = gen_kalman_mat(
+        prob.data, prob.config, prob.shape, prob.weights
+    )
 
     def g_eval(X):
         kalman_error = kalman_mat @ X
@@ -730,7 +738,9 @@ def g(prob, verbose=False):
 
 # %%
 def _h_kalman(prob):
-    kalman_mat = gen_kalman_mat(prob)
+    kalman_mat = gen_kalman_mat(
+        prob.data, prob.config, prob.shape, prob.weights
+    )
 
     def h_eval(X):
         return kalman_mat

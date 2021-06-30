@@ -13,8 +13,20 @@ class TestRescaling:
 
 
 def test_kalman_factor(standard_prob):
-    km1 = op.gen_kalman_mat(standard_prob, root=False)
-    M = op.gen_kalman_mat(standard_prob, root=True)
+    km1 = op.gen_kalman_mat(
+        standard_prob.data,
+        standard_prob.config,
+        standard_prob.shape,
+        standard_prob.weights,
+        root=False,
+    )
+    M = op.gen_kalman_mat(
+        standard_prob.data,
+        standard_prob.config,
+        standard_prob.shape,
+        standard_prob.weights,
+        root=True,
+    )
     km2 = M.T @ M
     assert (
         np.linalg.norm((km1 - km2).todense()) / np.linalg.norm(km1.todense())

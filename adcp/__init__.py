@@ -1,3 +1,4 @@
+import traceback
 from functools import cached_property
 from dataclasses import dataclass
 from typing import Optional as O  # noqa: E741
@@ -296,11 +297,15 @@ class GliderProblem:
 
     @cached_property
     def kalman_mat(self):
-        return op.gen_kalman_mat(self, root=False)
+        return op.gen_kalman_mat(
+            self.data, self.config, self.shape, self.weights, root=False
+        )
 
     @cached_property
     def kalman_root(self):
-        return op.gen_kalman_mat(self, root=True)
+        return op.gen_kalman_mat(
+            self.data, self.config, self.shape, self.weights, root=True
+        )
 
     @cached_property
     def f(self):
@@ -323,6 +328,7 @@ class GliderProblem:
                     f" GliderProblem.{name}.  Call {v.__class__}.name in the"
                     " future"
                 )
+                traceback.print_stack(limit=5)
                 return val
             except AttributeError:
                 pass
