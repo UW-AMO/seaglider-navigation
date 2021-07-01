@@ -274,25 +274,51 @@ def reduce_condition(deltas, method=None, minmax_ratio=0.2):
 
 
 def vehicle_Qblocks(
-    times, rho=1, order=2, conditioner=conditioner, t_scale=t_scale
+    times,
+    rho=1,
+    order=2,
+    conditioner=conditioner,
+    t_scale=t_scale,
+    depths=None,
+    vehicle_method="otg",
+    current_order=2,
 ):
     """Create the diagonal blocks of the kalman matrix for smoothing
     vehicle motion"""
+    if order > current_order and vehicle_method == "otg-cov":
+        raise ValueError(
+            "With current method, vehicle order must be < current order"
+        )
 
     delta_times = times[1:] - times[:-1]
     dts = delta_times.astype(float) / 1e9 / t_scale
+    if vehicle_method == "otg-cov":
+        dds = depths[1:] - depths[:-1]
+        depth_rates = dds / dts
+        dds = reduce_condition(dts, method=conditioner)
+    else:
+        dds = np.zeros_like(dts)
+        depth_rates = np.ones_like(dts)
     dts = reduce_condition(dts, method=conditioner)
+    if current_order == 2:
+        covariances = dds ** 3 / depth_rates ** 2 / 12
+    elif current_order == 3:
+        covariances = dds ** 5 / depth_rates ** 2 / 720
+    else:
+        raise ValueError
+
     cond = q_cond(dts, dim=order)
     if cond > 1e3:
         warnings.warn(ConditionWarning(cond))
     elif cond < 1:
         raise RuntimeError("Calculated invalid condition number for Q")
+
     if order == 2:
         Qs = [
             t_scale ** 3
             * rho
-            * np.array([[dt, dt ** 2 / 2], [dt ** 2 / 2, dt ** 3 / 3]])
-            for dt in dts
+            * np.array([[dt, dt ** 2 / 2], [dt ** 2 / 2, dt ** 3 / 3 + c_cov]])
+            for dt, c_cov in zip(dts, covariances)
         ]
     elif order == 3:
         Qs = [
@@ -302,10 +328,10 @@ def vehicle_Qblocks(
                 [
                     [dt, dt ** 2 / 2, dt ** 3 / 6],
                     [dt ** 2 / 2, dt ** 3 / 3, dt ** 4 / 8],
-                    [dt ** 3 / 6, dt ** 4 / 8, dt ** 5 / 20],
+                    [dt ** 3 / 6, dt ** 4 / 8, dt ** 5 / 20 + c_cov],
                 ]
             )
-            for dt in dts
+            for dt, c_cov in zip(dts, covariances)
         ]
     else:
         raise ValueError
@@ -313,31 +339,91 @@ def vehicle_Qblocks(
 
 
 def vehicle_Qinv(
-    times, rho=1, order=2, conditioner=conditioner, t_scale=t_scale
+    times,
+    rho=1,
+    order=2,
+    conditioner=conditioner,
+    t_scale=t_scale,
+    depths=None,
+    vehicle_method="otg",
+    current_order=2,
 ):
     """Creates the precision matrix for smoothing the vehicle with velocity
     covariance rho.
     """
 
-    Qs = vehicle_Qblocks(times, rho, order, conditioner, t_scale)
+    Qs = vehicle_Qblocks(
+        times,
+        rho,
+        order,
+        conditioner,
+        t_scale,
+        depths=None,
+        vehicle_method="otg",
+        current_order=2,
+    )
     Qinvs = [np.linalg.inv(Q) for Q in Qs]
     return scipy.sparse.block_diag(Qinvs)
 
 
-def vehicle_Q(times, rho=1, order=2, conditioner=conditioner, t_scale=t_scale):
+def vehicle_Q(
+    times,
+    rho=1,
+    order=2,
+    conditioner=conditioner,
+    t_scale=t_scale,
+    depths=None,
+    vehicle_method="otg",
+    current_order=2,
+):
     """Creates the covariance matrix for smoothing the vehicle with velocity
     covariance rho.
     """
 
-    Qs = vehicle_Qblocks(times, rho, order, conditioner, t_scale)
+    Qs = vehicle_Qblocks(
+        times,
+        rho,
+        order,
+        conditioner,
+        t_scale,
+        depths=None,
+        vehicle_method="otg",
+        current_order=2,
+    )
     return scipy.sparse.block_diag(Qs)
 
 
-def vehicle_G(times, order=2, conditioner=conditioner, t_scale=t_scale):
+def vehicle_G(
+    times,
+    order=2,
+    conditioner=conditioner,
+    t_scale=t_scale,
+    depths=None,
+    vehicle_method="otg",
+    current_order=2,
+):
     """Creates the update matrix for smoothing the vehicle"""
+    if order > current_order and vehicle_method == "otg-cov":
+        raise ValueError(
+            "With current method, vehicle order must be < current order"
+        )
     delta_times = times[1:] - times[:-1]
     dts = delta_times.astype(float) / 1e9 / t_scale  # raw dts in nanoseconds
+    if vehicle_method == "otg-cov":
+        dds = depths[1:] - depths[:-1]
+        depth_rates = dds / dts
+        dds = reduce_condition(dts, method=conditioner)
+    else:
+        dds = np.zeros_like(dts)
+        depth_rates = np.ones_like(dts)
     dts = reduce_condition(dts, method=conditioner)
+    if current_order == 2:
+        expected_x_given_c = dds / (2 * depth_rates)  # noqa
+    elif current_order == 3:
+        expected_x_given_c = dds / (2 * depth_rates)  # noqa
+        expected_a_given_w = depth_rates  # noqa
+    else:
+        raise ValueError
     if order == 2:
         negGs = [np.array([[-1, 0], [-dt, -1]]) for dt in dts]
     elif order == 3:
