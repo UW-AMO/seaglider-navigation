@@ -6,6 +6,9 @@ import adcp.exp.psearch2d_trials as p2t
 
 parser = argparse.ArgumentParser(description="Run a trial.")
 parser.add_argument("trial", metavar="trial", help="trial id/variant to run")
+parser.add_argument(
+    "debug", metavar="debug", default=False, type=bool, help="debug mode?"
+)
 
 
 namespace = parser.parse_args()
@@ -21,4 +24,5 @@ adcp.exp.run(
     prob_params=trial.prob_params,
     sim_params=trial.sim_params,
     trials_folder=Path(__file__).absolute().parent,
+    debug=namespace.debug,
 )
