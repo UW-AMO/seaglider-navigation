@@ -15,9 +15,15 @@ def standard_sim():
 
 
 @pytest.fixture
-def standard_prob(standard_sim):
-    ddat, adat, _ = standard_sim
+def standard_prob_fixture(standard_sim, name="standard_prob"):
+    yield standard_prob(standard_sim)
+
+
+def standard_prob(sim=None):
+    if sim is None:
+        sim = standard_sim()
+    ddat, adat, _ = sim
     data = adcp.ProblemData(ddat, adat)
-    yield adcp.GliderProblem(
+    return adcp.GliderProblem(
         data, adcp.ProblemConfig(), adcp.Weights(1, 1, 1, 1, 1)
     )
