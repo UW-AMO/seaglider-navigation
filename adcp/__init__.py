@@ -5,6 +5,7 @@ from typing import Optional as O  # noqa: E741
 import warnings
 
 import pandas as pd
+import numpy as np
 
 from adcp import dataprep as dp
 from adcp import matbuilder as mb
@@ -31,6 +32,14 @@ class ProblemData:
     @cached_property
     def interpolator(self) -> pd.DataFrame:
         return dp._depth_interpolator(self.times, self.ddat)
+
+    @cached_property
+    def idx_vehicle(self) -> np.array:
+        vehicle_depths = dp._depth_interpolator(self.times, self.ddat)["depth"]
+        idxdepth = np.array(
+            [np.argwhere(self.depths == d) for d in vehicle_depths]
+        ).flatten()
+        return idxdepth
 
 
 @dataclass(frozen=True)
