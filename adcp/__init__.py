@@ -217,37 +217,81 @@ class StateVectorShape:
             self.n, self.config.current_order, self.config.vehicle_vel
         )
 
-    def vehicle_Q(self):
-        if self.config.vehicle_vel != "otg-cov":
-            return mb.vehicle_Q(
-                self.data.times,
-                1,
-                self.config.vehicle_order,
-                self.config.conditioner,
-                self.config.t_scale,
-            )
-        pass
+    @cached_property
+    def Qv(self):
+        return mb.vehicle_Q(
+            self.data.times,
+            1,
+            self.config.vehicle_order,
+            self.config.conditioner,
+            self.config.t_scale,
+        )
 
-    def vehicle_Qinv(self):
-        if self.config.vehicle_vel != "otg-cov":
-            return mb.vehicle_Qinv(
-                self.data.times,
-                1,
-                self.config.vehicle_order,
-                self.config.conditioner,
-                self.config.t_scale,
-            )
-        pass
+    @cached_property
+    def Qvinv(self):
+        return mb.vehicle_Qinv(
+            self.data.times,
+            1,
+            self.config.vehicle_order,
+            self.config.conditioner,
+            self.config.t_scale,
+        )
 
-    def vehicle_G(self):
-        partial_G = mb.vehicle_G(
+    @cached_property
+    def Gv(self):
+        return mb.vehicle_G(
             self.data.times,
             self.config.vehicle_order,
             self.config.conditioner,
             self.config.t_scale,
         )
-        if self.config.vehicle_vel != "otg-cov":
-            return partial_G
+
+    @cached_property
+    def Gvc(self):
+        return mb.vehicle_G_given_C(
+            self.data.times,
+            self.config.vehicle_order,
+            self.config.conditioner,
+            self.config.t_scale,
+            self.data.depths,
+            self.data.idx_vehicle,
+            self.config.vehicle_vel,
+            self.config.current_order,
+        )
+
+    @cached_property
+    def Qc(self):
+        return mb.depth_Q(
+            self.data.depths,
+            1,
+            self.config.current_order,
+            self.data.depth_rates,
+            self.config.conditioner,
+            self.config.t_scale,
+            self.config.vehicle_vel,
+        )
+
+    @cached_property
+    def Qcinv(self):
+        return mb.depth_Qinv(
+            self.data.depths,
+            1,
+            self.config.current_order,
+            self.data.depth_rates,
+            self.config.conditioner,
+            self.config.t_scale,
+            self.config.vehicle_vel,
+        )
+
+    @cached_property
+    def Gc(self):
+        return mb.depth_G(
+            self.data.depths,
+            self.config.vehicle_order,
+            self.data.depth_rates,
+            self.config.conditioner,
+            self.config.vehicle_vel,
+        )
 
 
 @dataclass
