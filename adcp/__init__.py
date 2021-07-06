@@ -60,14 +60,6 @@ class StateVectorShape:
     n = cached_property(lambda self: len(self.data.depths))
 
     @cached_property
-    def vehicle_depth_mat(self):
-        return mb.vehicle_select(
-            self.data.times,
-            self.data.depths,
-            self.data.ddat,
-        )
-
-    @cached_property
     def __uv_sel_mats(self):
         return mb.uv_select(
             self.data.times,
