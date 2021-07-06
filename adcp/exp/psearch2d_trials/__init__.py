@@ -41,3 +41,49 @@ trial18c = Trial(
     },
     sim_params={"gps_points": "multi-first"},
 )
+trial19a = Trial(
+    ParameterSearch2D,
+    prob_params={
+        "t_scale": 1,
+        "vehicle_vel": "otg-cov",
+        "current_order": 3,
+        "rho_vs": np.logspace(-10, 0, 11),
+        "rho_cs": np.logspace(-10, 0, 11),
+    },
+    sim_params={},
+)
+trial19c = Trial(
+    ParameterSearch2D,
+    prob_params={
+        "t_scale": 1,
+        "vehicle_vel": "otg-cov",
+        "current_order": 3,
+        "rho_vs": np.logspace(-10, 0, 11),
+        "rho_cs": np.logspace(-10, 0, 11),
+    },
+    sim_params={"gps_points": "multi-first"},
+)
+trial20a = Trial(
+    ParameterSearch2D,
+    prob_params={
+        "t_scale": 1,
+        "vehicle_vel": "otg-cov",
+        "vehicle_order": 3,
+        "current_order": 3,
+        "rho_vs": np.logspace(-10, 0, 11),
+        "rho_cs": np.logspace(-10, 0, 11),
+    },
+    sim_params={},
+)
+trial20c = Trial(
+    ParameterSearch2D,
+    prob_params={
+        "t_scale": 1,
+        "vehicle_vel": "otg-cov",
+        "vehicle_order": 3,
+        "current_order": 3,
+        "rho_vs": np.logspace(-10, 0, 11),
+        "rho_cs": np.logspace(-10, 0, 11),
+    },
+    sim_params={"gps_points": "multi-first"},
+)
