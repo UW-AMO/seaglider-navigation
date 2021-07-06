@@ -252,11 +252,11 @@ class StateVectorShape:
 
 @dataclass
 class Weights:
-    rho_v: float
-    rho_c: float
-    rho_t: float
-    rho_a: float
-    rho_g: float
+    rho_v: float = 1
+    rho_c: float = 1
+    rho_t: float = 1
+    rho_a: float = 1
+    rho_g: float = 1
     rho_r: float = 0
 
 
