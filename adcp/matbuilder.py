@@ -350,9 +350,9 @@ def vehicle_Qinv(
         order,
         conditioner,
         t_scale,
-        depths=None,
-        vehicle_method="otg",
-        current_order=2,
+        depths,
+        vehicle_method,
+        current_order,
     )
     Qinvs = [np.linalg.inv(Q) for Q in Qs]
     return scipy.sparse.block_diag(Qinvs)
@@ -378,9 +378,9 @@ def vehicle_Q(
         order,
         conditioner,
         t_scale,
-        depths=None,
-        vehicle_method="otg",
-        current_order=2,
+        depths,
+        vehicle_method,
+        current_order,
     )
     return scipy.sparse.block_diag(Qs)
 
