@@ -354,7 +354,10 @@ def gen_kalman_mat(data, config, shape, weights, root: bool = False):
             providing Q
     """
     Gv = mb.vehicle_G(
-        data.times, config.vehicle_order, config.conditioner, config.t_scale
+        data.times,
+        config.vehicle_order,
+        config.conditioner,
+        config.t_scale,
     )
     Gc = mb.depth_G(
         data.depths,
@@ -363,6 +366,16 @@ def gen_kalman_mat(data, config, shape, weights, root: bool = False):
         config.conditioner,
         config.vehicle_vel,
     )
+    Gvc = mb.vehicle_G_given_C(
+        data.times,
+        config.vehicle_order,
+        config.t_scale,
+        data.depths,
+        data.idx_vehicle,
+        vehicle_method=config.vehicle_vel,
+        current_order=config.current_order,
+    )
+    Gv = Gv
     if weights.rho_v != 0:
         Qvinv = mb.vehicle_Qinv(
             data.times,
@@ -393,13 +406,17 @@ def gen_kalman_mat(data, config, shape, weights, root: bool = False):
     NV = shape.NV
     EC = shape.EC
     NC = shape.NC
+
+    Gv_c_E = Gv @ EV - Gvc @ EC
+    Gv_c_N = Gv @ NV - Gvc @ NC
+
     if root:
         Mv = np.linalg.cholesky(Qvinv.todense()).T
         Mc = np.linalg.cholesky(Qcinv.todense()).T
         M = scipy.sparse.vstack(
             (
-                Mv @ Gv @ EV,
-                Mv @ Gv @ NV,
+                Mv @ Gv_c_E,
+                Mv @ Gv_c_N,
                 Mc @ Gc @ EC,
                 Mc @ Gc @ NC,
             )
@@ -407,8 +424,8 @@ def gen_kalman_mat(data, config, shape, weights, root: bool = False):
         return M
     else:
         kalman_mat = (
-            EV.T @ Gv.T @ Qvinv @ Gv @ EV
-            + NV.T @ Gv.T @ Qvinv @ Gv @ NV
+            Gv_c_E.T @ Qvinv @ Gv_c_E
+            + Gv_c_N.T @ Qvinv @ Gv_c_N
             + EC.T @ Gc.T @ Qcinv @ Gc @ EC
             + NC.T @ Gc.T @ Qcinv @ Gc @ NC
         )

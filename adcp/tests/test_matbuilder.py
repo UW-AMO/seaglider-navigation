@@ -9,6 +9,7 @@ from adcp.matbuilder import (
     depth_Qinv,
     depth_G,
     legacy_select,
+    vehicle_G_given_C,
 )
 
 # %%
@@ -188,3 +189,57 @@ class TestKalman:
         result = L @ X
         expected = np.array([[4, 40, 6, 60, 3, 4]]).T
         assert np.linalg.norm(result - expected) < 1e-15
+
+
+def test_g_given_c_2nd_order(simple_otg_cov_prob):
+    prob = simple_otg_cov_prob
+    result = vehicle_G_given_C(
+        prob.data.times,
+        prob.config.vehicle_order,
+        prob.config.t_scale,
+        prob.data.depths,
+        prob.data.idx_vehicle,
+        prob.config.vehicle_vel,
+        prob.config.current_order,
+    ).todense()
+
+    expected = np.array(
+        [
+            [0.0, 0.0, -5.0, 0.0, 5.0, 0.0],
+            [0.0, 0.0, -1.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        ]
+    )
+
+    assert np.linalg.norm(result - expected) < 1e-15
+
+
+def test_g_given_c_3nd_order(simple_otg_cov_prob_3rd_order):
+    prob = simple_otg_cov_prob_3rd_order
+    result = vehicle_G_given_C(
+        prob.data.times,
+        prob.config.vehicle_order,
+        prob.config.t_scale,
+        prob.data.depths,
+        prob.data.idx_vehicle,
+        prob.config.vehicle_vel,
+        prob.config.current_order,
+    ).todense()
+
+    expected = np.array(
+        [
+            [0.0, 0.0, 0.0, 0.0, -0.15, 0.0, 0.0, 0.0, 0.15, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, -1.25, -5.0, 0.0, 0.0, 1.25, 5.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        ]
+    )
+    assert np.linalg.norm(result - expected) < 1e-15

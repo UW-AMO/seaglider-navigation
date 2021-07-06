@@ -243,7 +243,6 @@ class StateVectorShape:
         return mb.vehicle_G_given_C(
             self.data.times,
             self.config.vehicle_order,
-            self.config.conditioner,
             self.config.t_scale,
             self.data.depths,
             self.data.idx_vehicle,
