@@ -115,13 +115,15 @@ class Experiment:
         raise NotImplementedError
 
 
-def _init_logger(trial_log, table_name):
+def _init_logger(trial_log, table_name, debug):
     """Create a Trials logger with a database handler"""
     exp_logger = logging.Logger("experiments")
     exp_logger.setLevel(20)
     exp_logger.addHandler(logging.StreamHandler())
-    if len(exp_logger.handlers) < 2:  # A weird error requieres this
-        db_h = DBHandler(trial_log, table_name, trials_columns())
+    db_h = DBHandler(trial_log, table_name, trials_columns())
+    if (
+        len(exp_logger.handlers) < 2 and not debug
+    ):  # A weird error requieres this
         exp_logger.addHandler(db_h)
     return exp_logger, db_h.log_table
 
@@ -236,7 +238,7 @@ def run(
             "untracked files."
         )
     trial_db = Path(trials_folder).absolute() / logfile
-    exp_logger, trials_table = _init_logger(trial_db, "trials")
+    exp_logger, trials_table = _init_logger(trial_db, "trials", debug)
     id_table, var_table = _init_id_variant_tables(trial_db)
     trial, variant, iteration = _id_variant_iteration(
         trial_db,
@@ -304,7 +306,7 @@ def run(
     )
     cpu_time = process_time() - cpu_now
 
-    if isinstance(ex, type) and new_filename is not None:
+    if isinstance(ex, type) and new_filename is not None and not debug:
         _save_notebook(nb, new_filename, trials_folder, output_extension)
     else:
         warnings.warn("Logging trial and mock filename, but no file created")
