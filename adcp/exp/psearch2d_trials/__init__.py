@@ -1,8 +1,11 @@
 import importlib
+from collections import namedtuple
+
+import numpy as np
+
+from adcp.exp.psearch2d import ParameterSearch2D
 
 this_module = importlib.import_module(__name__)
-
-foo = 1
 
 
 def __getattr__(name):
@@ -14,3 +17,73 @@ def __getattr__(name):
     except ModuleNotFoundError:
         raise AttributeError(f"'{__name__}' has no attribute '{name}'")
     return imported
+
+
+Trial = namedtuple("Trial", ["experiment", "prob_params", "sim_params"])
+
+trial18a = Trial(
+    ParameterSearch2D,
+    prob_params={
+        "t_scale": 1,
+        "vehicle_vel": "otg-cov",
+        "rho_vs": np.logspace(-10, 0, 11),
+        "rho_cs": np.logspace(-10, 0, 11),
+    },
+    sim_params={},
+)
+trial18c = Trial(
+    ParameterSearch2D,
+    prob_params={
+        "t_scale": 1,
+        "vehicle_vel": "otg-cov",
+        "rho_vs": np.logspace(-10, 0, 11),
+        "rho_cs": np.logspace(-10, 0, 11),
+    },
+    sim_params={"gps_points": "multi-first"},
+)
+trial19a = Trial(
+    ParameterSearch2D,
+    prob_params={
+        "t_scale": 1,
+        "vehicle_vel": "otg-cov",
+        "current_order": 3,
+        "rho_vs": np.logspace(-10, 0, 11),
+        "rho_cs": np.logspace(-10, 0, 11),
+    },
+    sim_params={},
+)
+trial19c = Trial(
+    ParameterSearch2D,
+    prob_params={
+        "t_scale": 1,
+        "vehicle_vel": "otg-cov",
+        "current_order": 3,
+        "rho_vs": np.logspace(-10, 0, 11),
+        "rho_cs": np.logspace(-10, 0, 11),
+    },
+    sim_params={"gps_points": "multi-first"},
+)
+trial20a = Trial(
+    ParameterSearch2D,
+    prob_params={
+        "t_scale": 1,
+        "vehicle_vel": "otg-cov",
+        "vehicle_order": 3,
+        "current_order": 3,
+        "rho_vs": np.logspace(-10, 0, 11),
+        "rho_cs": np.logspace(-10, 0, 11),
+    },
+    sim_params={},
+)
+trial20c = Trial(
+    ParameterSearch2D,
+    prob_params={
+        "t_scale": 1,
+        "vehicle_vel": "otg-cov",
+        "vehicle_order": 3,
+        "current_order": 3,
+        "rho_vs": np.logspace(-10, 0, 11),
+        "rho_cs": np.logspace(-10, 0, 11),
+    },
+    sim_params={"gps_points": "multi-first"},
+)

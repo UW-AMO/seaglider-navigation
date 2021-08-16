@@ -14,20 +14,20 @@ from adcp import matbuilder as mb
 from adcp import optimization as op
 from adcp import viz
 from adcp.exp import Experiment
+import adcp
 
 
 class ParameterSearch2D(Experiment):
-    default_prob = op.GliderProblem(
-        rho_g=1e-0,
-        rho_t=1e-2,
-        rho_a=1e-2,
-        rho_r=0,
-        t_scale=1e3,
-        conditioner="tanh",
-        vehicle_vel="otg",
-        current_order=2,
-        vehicle_order=2,
-    )
+    rho_g = 1e-0
+    rho_t = 1e-2
+    rho_a = 1e-2
+    rho_r = 0
+    t_scale = 1e3
+    conditioner = "tanh"
+    vehicle_vel = "otg"
+    current_order = 2
+    vehicle_order = 2
+
     default_sp = sim.SimParams(
         rho_t=1e-2,
         rho_a=1e-2,
@@ -54,52 +54,53 @@ class ParameterSearch2D(Experiment):
         gps_points="endpoints",
         seed=3453,
         sp=default_sp,
-        prob=default_prob,
         variant="Basic",
     ):
         self.name = "2D Parameter Search"
         self.variant = variant
-        # unexpected parameters
-        self.overrides = {}
-        if sp != self.default_sp:
-            self.overrides["SimParams":sp]
-        if prob != self.default_prob:
-            self.overrides["GliderProblem":prob]
+
+        # self.prob = prob
+        # # expected parameters dominate
+        # self.prob = op.GliderProblem(
+        #     copyobj=self.prob,
+        #     t_scale=t_scale,
+        #     conditioner=conditioner,
+        #     vehicle_vel=vehicle_vel,
+        #     current_order=current_order,
+        #     vehicle_order=vehicle_order,
+        # )
         self.sp = sp
-        self.prob = prob
-        # expected parameters dominate
-        self.prob = op.GliderProblem(
-            copyobj=self.prob,
-            t_scale=t_scale,
-            conditioner=conditioner,
-            vehicle_vel=vehicle_vel,
-            current_order=current_order,
-            vehicle_order=vehicle_order,
-        )
-        self.sp.measure_points = {**self.sp.measure_points, "gps": gps_points}
+        self.sp.measure_points["gps"] = gps_points
         self.rho_vs = rho_vs
         self.rho_cs = rho_cs
         self.errmap = np.zeros((2, len(rho_vs), len(rho_cs)))
         self.paths = []
-        self.output = None
         self.seed = seed
+        self.config = adcp.ProblemConfig(
+            t_scale, conditioner, vehicle_vel, current_order, vehicle_order
+        )
 
     def gen_data(self):
         ddat, adat, x, curr_df, v_df = sim.simulate(self.sp)
-        self.ddat = ddat
-        self.adat = adat
         self.x = x
         self.curr_df = curr_df
         self.v_df = v_df
-        self.prob = op.GliderProblem(copyobj=self.prob, ddat=ddat, adat=adat)
+        return ddat, adat
 
     def run(self, visuals=True):
-        self.gen_data()
-        legacy_size_prob = self.prob.legacy_size_prob()
+        self.data = adcp.ProblemData(*self.gen_data())
+        self.shape = adcp.StateVectorShape(self.data, self.config)
+
+        legacy_size_shape = adcp.create_legacy_shape(self.shape)
         for ((i, rv), (j, rc)) in product(
             enumerate(self.rho_vs), enumerate(self.rho_cs)
         ):
-            prob = op.GliderProblem(copyobj=self.prob, rho_v=rv, rho_c=rc)
+            rho_t = type(self).rho_t
+            rho_a = type(self).rho_a
+            rho_g = type(self).rho_g
+            rho_r = type(self).rho_r
+            weights = adcp.Weights(rv, rc, rho_t, rho_a, rho_g, rho_r)
+            prob = adcp.GliderProblem(self.data, self.config, weights)
 
             x_sol = op.backsolve(prob)
             if np.isnan(x_sol.max()):  # too ill conditioned, couldn't solve
@@ -107,28 +108,29 @@ class ParameterSearch2D(Experiment):
                 self.paths.append(None)
                 continue
             legacy = mb.legacy_select(
-                prob.m,
-                prob.n,
-                prob.vehicle_order,
-                prob.current_order,
-                prob.vehicle_vel,
+                prob.shape.m,
+                prob.shape.n,
+                prob.config.vehicle_order,
+                prob.config.current_order,
+                prob.config.vehicle_vel,
                 prob=prob,
             )
-
             x_leg = legacy @ x_sol
 
             err = x_leg - self.x
             path_error = (
-                np.linalg.norm(legacy_size_prob.Xs @ legacy_size_prob.NV @ err)
+                np.linalg.norm(
+                    legacy_size_shape.Xs @ legacy_size_shape.NV @ err
+                )
                 ** 2
                 + np.linalg.norm(
-                    legacy_size_prob.Xs @ legacy_size_prob.NV @ err
+                    legacy_size_shape.Xs @ legacy_size_shape.NV @ err
                 )
                 ** 2
             )
             current_error = (
-                np.linalg.norm(legacy_size_prob.EC @ err) ** 2
-                + np.linalg.norm(legacy_size_prob.NC @ err) ** 2
+                np.linalg.norm(legacy_size_shape.EC @ err) ** 2
+                + np.linalg.norm(legacy_size_shape.NC @ err) ** 2
             )
             self.errmap[0, i, j] = path_error
             self.errmap[1, i, j] = current_error
@@ -195,11 +197,15 @@ class ParameterSearch2D(Experiment):
 
     def display_solutions(self, i, j):
         best_x = self.paths[i * len(self.rho_vs) + j]
-        prob = op.GliderProblem(
-            copyobj=self.prob,
-            rho_v=self.rho_vs[i],
-            rho_c=self.rho_cs[j],
+        weights = adcp.Weights(
+            self.rho_vs[i],
+            self.rho_cs[j],
+            self.rho_t,
+            self.rho_a,
+            self.rho_g,
+            self.rho_r,
         )
+        prob = adcp.GliderProblem(self.data, self.config, weights)
         try:
             c1, c2, c3, c4 = viz.check_condition(prob)
             viz.print_condition(c1, c2, c3, c4)
@@ -208,10 +214,10 @@ class ParameterSearch2D(Experiment):
 
         viz.plot_bundle(
             best_x,
-            self.prob.adat,
-            self.prob.ddat,
-            self.prob.times,
-            self.prob.depths,
+            prob.adat,
+            prob.ddat,
+            prob.times,
+            prob.depths,
             self.x,
         )
 

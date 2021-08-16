@@ -10,6 +10,7 @@ from adcp import simulation as sim
 from adcp import matbuilder as mb
 from adcp import optimization as op
 from adcp import viz
+import adcp
 
 
 def test_default_integration():
@@ -57,44 +58,35 @@ def standard_sim(
       TTW measurement: {rho_t}
       ADCP meawsurement: {rho_a}"""
     )
-
-    prob = op.GliderProblem(
-        ddat=ddat,
-        adat=adat,
-        rho_v=rho_v,
-        rho_c=rho_c,
-        rho_g=rho_g,
-        rho_t=rho_t,
-        rho_a=rho_a,
-        rho_r=rho_r,
-        t_scale=t_scale,
-        conditioner=conditioner,
-        vehicle_vel=vehicle_vel,
-        current_order=current_order,
-        vehicle_order=vehicle_order,
+    data = adcp.ProblemData(ddat, adat)
+    config = adcp.ProblemConfig(
+        t_scale, conditioner, vehicle_vel, current_order, vehicle_order
     )
+    weights = adcp.Weights(rho_v, rho_c, rho_t, rho_a, rho_g, rho_r)
+    prob = adcp.GliderProblem(data, config, weights)
 
     # %%  Solve problem
     x_sol = op.backsolve(prob)
 
     legacy = mb.legacy_select(
-        prob.m,
-        prob.n,
-        prob.vehicle_order,
-        prob.current_order,
-        prob.vehicle_vel,
+        prob.shape.m,
+        prob.shape.n,
+        prob.config.vehicle_order,
+        prob.config.current_order,
+        prob.config.vehicle_vel,
         prob=prob,
     )
-    legacy_size_prob = prob.legacy_size_prob()
+    legacy_size_shape = adcp.create_legacy_shape(prob.shape)
 
     err = legacy @ x_sol - x
     path_error = (
-        np.linalg.norm(legacy_size_prob.Xs @ legacy_size_prob.NV @ err) ** 2
-        + np.linalg.norm(legacy_size_prob.Xs @ legacy_size_prob.NV @ err) ** 2
+        np.linalg.norm(legacy_size_shape.Xs @ legacy_size_shape.NV @ err) ** 2
+        + np.linalg.norm(legacy_size_shape.Xs @ legacy_size_shape.NV @ err)
+        ** 2
     )
     current_error = (
-        np.linalg.norm(legacy_size_prob.EC @ err) ** 2
-        + np.linalg.norm(legacy_size_prob.NC @ err) ** 2
+        np.linalg.norm(legacy_size_shape.EC @ err) ** 2
+        + np.linalg.norm(legacy_size_shape.NC @ err) ** 2
     )
     return {
         "path_error": path_error,

@@ -16,6 +16,7 @@ import scipy
 from adcp import dataprep as dp
 from adcp import matbuilder as mb
 from adcp import optimization as op
+import adcp
 
 cmap = plt.get_cmap("tab10")
 
@@ -695,11 +696,13 @@ def show_errmap(
     fig.colorbar(im, cax=cax)
 
 
-def check_condition(prob: op.GliderProblem) -> Tuple:
+def check_condition(prob: adcp.GliderProblem) -> Tuple:
     """Checks condition on matrices for glider problem"""
     m = len(prob.times)
     n = len(prob.depths)
-    kalman_mat = op.gen_kalman_mat(prob)
+    kalman_mat = op.gen_kalman_mat(
+        prob.data, prob.config, prob.shape, prob.weights
+    )
     A, _ = op.solve_mats(prob)
 
     r100 = np.array(random.sample(range(0, 4 * m + 2 * n), 100))

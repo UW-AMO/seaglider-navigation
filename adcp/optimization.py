@@ -15,7 +15,6 @@ on top of an easterly current vector from 0 to 2*max depth which is
 in turn stacked on top of a similar northerly current vector.
 """
 import random
-import copy
 
 import numpy as np
 from numpy import sqrt
@@ -23,97 +22,8 @@ import scipy.sparse
 from scipy.optimize import minimize
 
 from adcp import matbuilder as mb
-from adcp import dataprep as dp
 
 
-class GliderProblem:
-    defaults = {
-        "ddat": None,
-        "adat": None,
-        "rho_v": 1,
-        "rho_c": 1,
-        "rho_t": 1,
-        "rho_a": 1,
-        "rho_g": 1,
-        "rho_r": 0,
-        "t_scale": 1e3,
-        "conditioner": "tanh",
-        "vehicle_order": 2,
-        "current_order": 2,
-        "vehicle_vel": "otg",
-    }
-
-    def __init__(self, copyobj=None, **kwargs):
-
-        if copyobj is not None:
-            self.__dict__ = copy.copy(copyobj.__dict__)
-        else:
-            self.__dict__ = copy.copy(self.defaults)
-        for k, v in kwargs.items():
-            try:
-                self.defaults[k]
-                setattr(self, k, v)
-            except KeyError:
-                raise AttributeError(
-                    f"{k} not a argument for Problem constructor"
-                )
-
-        if self.ddat is not None and self.adat is not None:
-            self.__precompute()
-
-    def __precompute(self):
-        self.times = dp.timepoints(self.adat, self.ddat)
-        self.depths = dp.depthpoints(self.adat, self.ddat)
-        if self.vehicle_vel == "ttw":
-            self.depth_rates = dp.depth_rates(
-                self.times, self.depths, self.ddat
-            )
-        else:
-            self.depth_rates = None
-        self.m = len(self.times)
-        self.n = len(self.depths)
-        self.As = mb.a_select(self.m, self.vehicle_order)
-        self.Vs = mb.v_select(self.m, self.vehicle_order)
-        self.Xs = mb.x_select(self.m, self.vehicle_order)
-        self.CA = mb.ca_select(self.n, self.current_order, self.vehicle_vel)
-        self.CV = mb.cv_select(self.n, self.current_order, self.vehicle_vel)
-        self.CX = mb.cx_select(self.n, self.current_order, self.vehicle_vel)
-        self.EV = mb.ev_select(
-            self.m,
-            self.n,
-            self.vehicle_order,
-            self.current_order,
-            self.vehicle_vel,
-        )
-        self.NV = mb.nv_select(
-            self.m,
-            self.n,
-            self.vehicle_order,
-            self.current_order,
-            self.vehicle_vel,
-        )
-        self.EC = mb.ec_select(
-            self.m,
-            self.n,
-            self.vehicle_order,
-            self.current_order,
-            self.vehicle_vel,
-        )
-        self.NC = mb.nc_select(
-            self.m,
-            self.n,
-            self.vehicle_order,
-            self.current_order,
-            self.vehicle_vel,
-        )
-
-    def legacy_size_prob(self):
-        return GliderProblem(
-            self, vehicle_order=2, current_order=2, vehicle_vel="otg"
-        )
-
-
-# %%
 def init_x(prob):
     ev0, nv0 = initial_kinematics(
         prob.times,
@@ -182,11 +92,11 @@ def backsolve(prob):
     """
     A, b = solve_mats(prob)
     x = scipy.sparse.linalg.spsolve(A, b)
-    x = time_rescale(x, prob.t_scale, prob)
+    x = time_rescale(x, prob.config.t_scale, prob.shape)
     return x
 
 
-def time_rescale(x, t_s, prob):
+def time_rescale(x, t_s, shape):
     """Rescales the velocity measurements in a solution vector to undo
     scaling factor t_s
 
@@ -197,16 +107,16 @@ def time_rescale(x, t_s, prob):
         prob (GliderProblem) : A glider problem
     """
 
-    As = prob.As
-    Vs = prob.Vs
-    Xs = prob.Xs
-    CA = prob.CA
-    CV = prob.CV
-    CX = prob.CX
-    EV = prob.EV
-    NV = prob.NV
-    EC = prob.EC
-    NC = prob.NC
+    As = shape.As
+    Vs = shape.Vs
+    Xs = shape.Xs
+    CA = shape.CA
+    CV = shape.CV
+    CX = shape.CX
+    EV = shape.EV
+    NV = shape.NV
+    EC = shape.EC
+    NC = shape.NC
 
     nm = (
         lambda x, y: None if x is None or y is None else x * y
@@ -284,7 +194,9 @@ def basic_A_b(prob):
     EC = prob.EC
     NC = prob.NC
 
-    M = gen_kalman_mat(prob, root=True)
+    M = gen_kalman_mat(
+        prob.data, prob.config, prob.shape, prob.weights, root=True
+    )
 
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ CV @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ CV @ NC
@@ -345,36 +257,42 @@ def solve_mats(prob, verbose=False):
     Returns:
         tuple of numpy arrays, (AtA,Atb)
     """
-    m = len(prob.times)
-    n = len(prob.depths)
-    zttw_e = mb.get_zttw(prob.ddat, "east", prob.t_scale)
-    zttw_n = mb.get_zttw(prob.ddat, "north", prob.t_scale)
+    data = prob.data
+    shape = prob.shape
+    config = prob.config
+    weights = prob.weights
+    m = len(data.times)
+    n = len(data.depths)
+    zttw_e = mb.get_zttw(data.ddat, "east", config.t_scale)
+    zttw_n = mb.get_zttw(data.ddat, "north", config.t_scale)
     A_ttw, B_ttw = mb.uv_select(
-        prob.times, prob.depths, prob.ddat, prob.adat, prob.vehicle_vel
+        data.times, data.depths, data.ddat, data.adat, config.vehicle_vel
     )
 
-    zadcp_e = mb.get_zadcp(prob.adat, "east", prob.t_scale)
-    zadcp_n = mb.get_zadcp(prob.adat, "north", prob.t_scale)
+    zadcp_e = mb.get_zadcp(data.adat, "east", config.t_scale)
+    zadcp_n = mb.get_zadcp(data.adat, "north", config.t_scale)
     A_adcp, B_adcp = mb.adcp_select(
-        prob.times, prob.depths, prob.ddat, prob.adat, prob.vehicle_vel
+        data.times, data.depths, data.ddat, data.adat, config.vehicle_vel
     )
 
-    zgps_e = mb.get_zgps(prob.ddat, "east")
-    zgps_n = mb.get_zgps(prob.ddat, "north")
+    zgps_e = mb.get_zgps(data.ddat, "east")
+    zgps_n = mb.get_zgps(data.ddat, "north")
     A_gps, B_gps = mb.gps_select(
-        prob.times, prob.depths, prob.ddat, prob.adat, prob.vehicle_vel
+        data.times, data.depths, data.ddat, data.adat, config.vehicle_vel
     )
 
-    Vs = prob.Vs
-    Xs = prob.Xs
-    CV = prob.CV
-    CX = prob.CX
-    EV = prob.EV
-    NV = prob.NV
-    EC = prob.EC
-    NC = prob.NC
+    Vs = shape.Vs
+    Xs = shape.Xs
+    CV = shape.CV
+    CX = shape.CX
+    EV = shape.EV
+    NV = shape.NV
+    EC = shape.EC
+    NC = shape.NC
 
-    kalman_mat = gen_kalman_mat(prob)
+    kalman_mat = gen_kalman_mat(
+        prob.data, prob.config, prob.shape, prob.weights
+    )
 
     e_ttw_select = A_ttw @ Vs @ EV - B_ttw @ CV @ EC
     n_ttw_select = A_ttw @ Vs @ NV - B_ttw @ CV @ NC
@@ -392,42 +310,35 @@ def solve_mats(prob, verbose=False):
 
     A = (
         kalman_mat
-        + 1 / (prob.rho_t) * n_ttw_select.T @ n_ttw_select
-        + 1 / (prob.rho_t) * e_ttw_select.T @ e_ttw_select
-        + 1 / (prob.rho_a) * n_adcp_select.T @ n_adcp_select
-        + 1 / (prob.rho_a) * e_adcp_select.T @ e_adcp_select
-        + 1 / (prob.rho_g) * n_gps_select.T @ n_gps_select
-        + 1 / (prob.rho_g) * e_gps_select.T @ e_gps_select
+        + 1 / (weights.rho_t) * n_ttw_select.T @ n_ttw_select
+        + 1 / (weights.rho_t) * e_ttw_select.T @ e_ttw_select
+        + 1 / (weights.rho_a) * n_adcp_select.T @ n_adcp_select
+        + 1 / (weights.rho_a) * e_adcp_select.T @ e_adcp_select
+        + 1 / (weights.rho_g) * n_gps_select.T @ n_gps_select
+        + 1 / (weights.rho_g) * e_gps_select.T @ e_gps_select
     )
     A = (A + A.T) / 2
 
     if verbose:
         r100 = np.array(random.sample(range(0, 4 * m + 2 * n), 100))
-        # r1000 = np.array(random.sample(range(0, 4*m+2*n), 1000))
-        # c1 = np.linalg.cond(kalman_mat.todense()[r1000[:,None],r1000])
         c2 = np.linalg.cond(kalman_mat.todense()[r100[:, None], r100])
-        # c3 = np.linalg.cond(A.todense()[r1000[:,None],r1000])
         c4 = np.linalg.cond(A.todense()[r100[:, None], r100])
-        # print('Condition number of kalman matrix (1000x1000): ',
-        #       f'{c1:e}')
         print("Condition number of kalman matrix (100x100): ", f"{c2:e}")
-        # print('Condition number of A (1000x1000): ',
-        #       f'{c3:e}')
         print("Condition number of A (100x100): ", f"{c4:e}")
 
     b = (
-        1 / (prob.rho_t) * n_ttw_select.T @ zttw_n
-        + 1 / (prob.rho_t) * e_ttw_select.T @ zttw_e
-        + 1 / (prob.rho_a) * n_adcp_select.T @ zadcp_n
-        + 1 / (prob.rho_a) * e_adcp_select.T @ zadcp_e
-        + 1 / (prob.rho_g) * n_gps_select.T @ zgps_n
-        + 1 / (prob.rho_g) * e_gps_select.T @ zgps_e
+        1 / (weights.rho_t) * n_ttw_select.T @ zttw_n
+        + 1 / (weights.rho_t) * e_ttw_select.T @ zttw_e
+        + 1 / (weights.rho_a) * n_adcp_select.T @ zadcp_n
+        + 1 / (weights.rho_a) * e_adcp_select.T @ zadcp_e
+        + 1 / (weights.rho_g) * n_gps_select.T @ zgps_n
+        + 1 / (weights.rho_g) * e_gps_select.T @ zgps_e
     )
 
     return A, b
 
 
-def gen_kalman_mat(prob: GliderProblem, root: bool = False):
+def gen_kalman_mat(data, config, shape, weights, root: bool = False):
     """Create the combined kalman process covariance matrix for the vehicle
     and current.  Specifically, it is the symmetrized inverse covariance
     matrix for the problem.
@@ -443,47 +354,69 @@ def gen_kalman_mat(prob: GliderProblem, root: bool = False):
             providing Q
     """
     Gv = mb.vehicle_G(
-        prob.times, prob.vehicle_order, prob.conditioner, prob.t_scale
+        data.times,
+        config.vehicle_order,
+        config.conditioner,
+        config.t_scale,
     )
     Gc = mb.depth_G(
-        prob.depths, prob.current_order, prob.depth_rates, prob.conditioner
+        data.depths,
+        config.current_order,
+        data.depth_rates,
+        config.conditioner,
+        config.vehicle_vel,
     )
-    if prob.rho_v != 0:
+    Gvc = mb.vehicle_G_given_C(
+        data.times,
+        config.vehicle_order,
+        config.t_scale,
+        data.depths,
+        data.idx_vehicle,
+        vehicle_method=config.vehicle_vel,
+        current_order=config.current_order,
+    )
+    Gv = Gv
+    if weights.rho_v != 0:
         Qvinv = mb.vehicle_Qinv(
-            prob.times,
-            prob.rho_v,
-            prob.vehicle_order,
-            prob.conditioner,
-            prob.t_scale,
+            data.times,
+            weights.rho_v,
+            config.vehicle_order,
+            config.conditioner,
+            config.t_scale,
         )
     else:
         Qvinv = scipy.sparse.csr_matrix(
-            (2 * (len(prob.times) - 1), 2 * (len(prob.times) - 1))
+            (2 * (len(data.times) - 1), 2 * (len(data.times) - 1))
         )
-    if prob.rho_c != 0:
+    if weights.rho_c != 0:
         Qcinv = mb.depth_Qinv(
-            prob.depths,
-            prob.rho_c,
-            prob.current_order,
-            prob.depth_rates,
-            prob.conditioner,
-            prob.t_scale,
+            data.depths,
+            weights.rho_c,
+            config.current_order,
+            data.depth_rates,
+            config.conditioner,
+            config.t_scale,
+            config.vehicle_vel,
         )
     else:
         Qcinv = scipy.sparse.csr_matrix(
-            (len(prob.depths) - 1, len(prob.depths) - 1)
+            (len(data.depths) - 1, len(data.depths) - 1)
         )
-    EV = prob.EV
-    NV = prob.NV
-    EC = prob.EC
-    NC = prob.NC
+    EV = shape.EV
+    NV = shape.NV
+    EC = shape.EC
+    NC = shape.NC
+
+    Gv_c_E = Gv @ EV - Gvc @ EC
+    Gv_c_N = Gv @ NV - Gvc @ NC
+
     if root:
         Mv = np.linalg.cholesky(Qvinv.todense()).T
         Mc = np.linalg.cholesky(Qcinv.todense()).T
         M = scipy.sparse.vstack(
             (
-                Mv @ Gv @ EV,
-                Mv @ Gv @ NV,
+                Mv @ Gv_c_E,
+                Mv @ Gv_c_N,
                 Mc @ Gc @ EC,
                 Mc @ Gc @ NC,
             )
@@ -491,8 +424,8 @@ def gen_kalman_mat(prob: GliderProblem, root: bool = False):
         return M
     else:
         kalman_mat = (
-            EV.T @ Gv.T @ Qvinv @ Gv @ EV
-            + NV.T @ Gv.T @ Qvinv @ Gv @ NV
+            Gv_c_E.T @ Qvinv @ Gv_c_E
+            + Gv_c_N.T @ Qvinv @ Gv_c_N
             + EC.T @ Gc.T @ Qcinv @ Gc @ EC
             + NC.T @ Gc.T @ Qcinv @ Gc @ NC
         )
@@ -503,7 +436,9 @@ def gen_kalman_mat(prob: GliderProblem, root: bool = False):
 
 # %%
 def _f_kalman(prob):
-    kalman_mat = gen_kalman_mat(prob)
+    kalman_mat = gen_kalman_mat(
+        prob.data, prob.config, prob.shape, prob.weights
+    )
 
     def f_eval(X):
         kalman_error = 1 / 2 * X.T @ kalman_mat @ X
@@ -652,7 +587,9 @@ def f(prob, verbose=False):
 
 # %%
 def _g_kalman(prob):
-    kalman_mat = gen_kalman_mat(prob)
+    kalman_mat = gen_kalman_mat(
+        prob.data, prob.config, prob.shape, prob.weights
+    )
 
     def g_eval(X):
         kalman_error = kalman_mat @ X
@@ -815,7 +752,9 @@ def g(prob, verbose=False):
 
 # %%
 def _h_kalman(prob):
-    kalman_mat = gen_kalman_mat(prob)
+    kalman_mat = gen_kalman_mat(
+        prob.data, prob.config, prob.shape, prob.weights
+    )
 
     def h_eval(X):
         return kalman_mat
@@ -989,7 +928,7 @@ def backsolve_test(x0, prob):
 def solve(prob, method="L-BFGS-B", maxiter=50000, maxfun=50000):
     """Solve the ADCP navigation problem for given data."""
     x0 = init_x(prob)
-    x0 = time_rescale(x0, 1 / prob.t_scale, prob)
+    x0 = time_rescale(x0, 1 / prob.config.t_scale, prob.shape)
     ffunc = f(prob)
     gfunc = g(prob)
     hfunc = h(prob)
@@ -1001,6 +940,6 @@ def solve(prob, method="L-BFGS-B", maxiter=50000, maxfun=50000):
         hess=hfunc,
         options={"maxiter": maxiter, "maxfun": maxfun, "disp": True},
     )
-    sol.x = time_rescale(sol.x, prob.t_scale, prob)
+    sol.x = time_rescale(sol.x, prob.config.t_scale, prob.shape)
 
     return sol

@@ -22,6 +22,15 @@ control condition number of problem.
 conditioner = "tanh"
 
 
+def idx_vehicle_depths(times, depths, ddat):
+    """Identifies the depth indices that also have a vehicle depth"""
+    vehicle_depths = dp._depth_interpolator(times, ddat)["depth"]
+    idxdepth = np.array(
+        [np.argwhere(depths == d) for d in vehicle_depths]
+    ).flatten()
+    return idxdepth
+
+
 # %% Vector item selection
 def uv_select(times, depths, ddat, adat=None, vehicle_vel="otg"):
     """Creates the matrices that will select the appropriate V_otg
@@ -53,12 +62,12 @@ def uv_select(times, depths, ddat, adat=None, vehicle_vel="otg"):
     d_list = list(depths)
     idxdepth = [d_list.index(d) for d in uv_depths]
     mat_shape = (len(idxdepth), len(depths))
-    if vehicle_vel == "otg":
+    if vehicle_vel[:3] == "otg":
         B = scipy.sparse.coo_matrix(
             (np.ones(len(idxdepth)), (range(len(idxdepth)), idxdepth)),
             shape=mat_shape,
         )
-    else:
+    elif vehicle_vel == "ttw":
         B = scipy.sparse.coo_matrix(mat_shape)
     return A, B
 
@@ -257,25 +266,51 @@ def reduce_condition(deltas, method=None, minmax_ratio=0.2):
 
 
 def vehicle_Qblocks(
-    times, rho=1, order=2, conditioner=conditioner, t_scale=t_scale
+    times,
+    rho=1,
+    order=2,
+    conditioner=conditioner,
+    t_scale=t_scale,
+    depths=None,
+    vehicle_method="otg",
+    current_order=2,
 ):
     """Create the diagonal blocks of the kalman matrix for smoothing
     vehicle motion"""
+    if order > current_order and vehicle_method == "otg-cov":
+        raise ValueError(
+            "With current method, vehicle order must be < current order"
+        )
 
     delta_times = times[1:] - times[:-1]
     dts = delta_times.astype(float) / 1e9 / t_scale
+    if vehicle_method == "otg-cov":
+        dds = depths[1:] - depths[:-1]
+        depth_rates = dds / dts
+        dds = reduce_condition(dts, method=conditioner)
+    else:
+        dds = np.zeros_like(dts)
+        depth_rates = np.ones_like(dts)
     dts = reduce_condition(dts, method=conditioner)
+    if current_order == 2:
+        covariances = dds ** 3 / depth_rates ** 2 / 12
+    elif current_order == 3:
+        covariances = dds ** 5 / depth_rates ** 2 / 720
+    else:
+        raise ValueError
+
     cond = q_cond(dts, dim=order)
     if cond > 1e3:
         warnings.warn(ConditionWarning(cond))
     elif cond < 1:
         raise RuntimeError("Calculated invalid condition number for Q")
+
     if order == 2:
         Qs = [
             t_scale ** 3
             * rho
-            * np.array([[dt, dt ** 2 / 2], [dt ** 2 / 2, dt ** 3 / 3]])
-            for dt in dts
+            * np.array([[dt, dt ** 2 / 2], [dt ** 2 / 2, dt ** 3 / 3 + c_cov]])
+            for dt, c_cov in zip(dts, covariances)
         ]
     elif order == 3:
         Qs = [
@@ -285,10 +320,10 @@ def vehicle_Qblocks(
                 [
                     [dt, dt ** 2 / 2, dt ** 3 / 6],
                     [dt ** 2 / 2, dt ** 3 / 3, dt ** 4 / 8],
-                    [dt ** 3 / 6, dt ** 4 / 8, dt ** 5 / 20],
+                    [dt ** 3 / 6, dt ** 4 / 8, dt ** 5 / 20 + c_cov],
                 ]
             )
-            for dt in dts
+            for dt, c_cov in zip(dts, covariances)
         ]
     else:
         raise ValueError
@@ -296,27 +331,66 @@ def vehicle_Qblocks(
 
 
 def vehicle_Qinv(
-    times, rho=1, order=2, conditioner=conditioner, t_scale=t_scale
+    times,
+    rho=1,
+    order=2,
+    conditioner=conditioner,
+    t_scale=t_scale,
+    depths=None,
+    vehicle_method="otg",
+    current_order=2,
 ):
     """Creates the precision matrix for smoothing the vehicle with velocity
     covariance rho.
     """
 
-    Qs = vehicle_Qblocks(times, rho, order, conditioner, t_scale)
+    Qs = vehicle_Qblocks(
+        times,
+        rho,
+        order,
+        conditioner,
+        t_scale,
+        depths,
+        vehicle_method,
+        current_order,
+    )
     Qinvs = [np.linalg.inv(Q) for Q in Qs]
     return scipy.sparse.block_diag(Qinvs)
 
 
-def vehicle_Q(times, rho=1, order=2, conditioner=conditioner, t_scale=t_scale):
+def vehicle_Q(
+    times,
+    rho=1,
+    order=2,
+    conditioner=conditioner,
+    t_scale=t_scale,
+    depths=None,
+    vehicle_method="otg",
+    current_order=2,
+):
     """Creates the covariance matrix for smoothing the vehicle with velocity
     covariance rho.
     """
 
-    Qs = vehicle_Qblocks(times, rho, order, conditioner, t_scale)
+    Qs = vehicle_Qblocks(
+        times,
+        rho,
+        order,
+        conditioner,
+        t_scale,
+        depths,
+        vehicle_method,
+        current_order,
+    )
     return scipy.sparse.block_diag(Qs)
 
 
-def vehicle_G(times, order=2, conditioner=conditioner, t_scale=t_scale):
+def vehicle_G(
+    times,
+    order=2,
+    conditioner=conditioner,
+    t_scale=t_scale,
+):
     """Creates the update matrix for smoothing the vehicle"""
     delta_times = times[1:] - times[:-1]
     dts = delta_times.astype(float) / 1e9 / t_scale  # raw dts in nanoseconds
@@ -339,6 +413,67 @@ def vehicle_G(times, order=2, conditioner=conditioner, t_scale=t_scale):
     )
 
 
+def vehicle_G_given_C(
+    times,
+    vehicle_order,
+    t_scale,
+    depths,
+    idx_vehicle,
+    vehicle_method,
+    current_order,
+):
+    """Calculate the expected value of vehicle state given the current
+    state.
+
+    Returns:
+        Sparse matrix that when multiplied by the state vector, gives
+        the expected value of the vehicle state as a function of current
+        state.
+    """
+    m = len(times)
+    n = len(depths)
+    mat_shape = (
+        vehicle_order * (m - 1),
+        (current_order - 1) * n,
+    )
+    if vehicle_method != "otg-cov":
+        return scipy.sparse.bsr_matrix(mat_shape)
+    if vehicle_order > current_order and vehicle_method == "otg-cov":
+        raise ValueError(
+            "With current method, vehicle order must be < current order"
+        )
+    vehicle_depths = depths[idx_vehicle]
+    delta_times = times[1:] - times[:-1]
+    dts = delta_times.astype(float) / 1e9 / t_scale  # raw dts in nanoseconds
+    dds = vehicle_depths[1:] - vehicle_depths[:-1]
+
+    depth_rates = dds / dts
+    x_given_c = dds / (2 * depth_rates)
+    x_given_c = np.nan_to_num(x_given_c, nan=0, posinf=0)
+    if current_order == 3:
+        x_given_w = dds ** 2 / (12 * depth_rates)
+        x_given_w = np.nan_to_num(x_given_w, nan=0, posinf=0)
+    elif current_order != 2:
+        raise ValueError
+    if vehicle_order == 2:
+        Gs = [np.array([[x_c], [1]]) for x_c in x_given_c]
+    elif vehicle_order == 3:
+        Gs = [
+            np.array([[dr, 0], [0, 1], [x_w, x_c]])
+            for x_c, x_w, dr in zip(x_given_c, x_given_w, depth_rates)
+        ]
+    else:
+        raise ValueError
+
+    Gs = np.array(Gs)
+    all_Gs = np.zeros((2 * Gs.shape[0], *Gs.shape[1:]))
+    all_Gs[::2] = -Gs
+    all_Gs[1::2] = Gs
+    indices = np.repeat(idx_vehicle, 2)[1:-1]
+    indptr = np.arange(0, len(indices) + 1, 2)
+    return scipy.sparse.bsr_matrix((all_Gs, indices, indptr), shape=mat_shape)
+
+
 def depth_Qblocks(
     depths,
     rho=1,
@@ -346,12 +481,13 @@ def depth_Qblocks(
     depth_rate=None,
     conditioner=conditioner,
     t_scale=t_scale,
+    vehicle_vel="otg",
 ):
     """Create the diagonal blocks of the kalman matrix for smoothing
     current"""
 
     delta_depths = depths[1:] - depths[:-1]
-    if depth_rate is None:
+    if vehicle_vel[:3] == "otg":
         order -= 1
         depth_rate = np.ones(len(delta_depths))
     elif order == 1:
@@ -406,11 +542,20 @@ def depth_Qinv(
     depth_rate=None,
     conditioner=conditioner,
     t_scale=t_scale,
+    vehicle_vel="otg",
 ):
     """Creates the precision matrix for smoothing the currint with depth
     covariance rho.
     """
-    Qs = depth_Qblocks(depths, rho, order, depth_rate, conditioner, t_scale)
+    Qs = depth_Qblocks(
+        depths,
+        rho,
+        order,
+        depth_rate,
+        conditioner,
+        t_scale,
+        vehicle_vel=vehicle_vel,
+    )
     Qinvs = [np.linalg.inv(Q) for Q in Qs]
     return scipy.sparse.block_diag(Qinvs)
 
@@ -422,18 +567,33 @@ def depth_Q(
     depth_rate=None,
     conditioner=conditioner,
     t_scale=t_scale,
+    vehicle_vel="otg",
 ):
     """Creates the covariance matrix for smoothing the current with depth
     covariance rho.
     """
-    Qs = depth_Qblocks(depths, rho, order, depth_rate, conditioner, t_scale)
+    Qs = depth_Qblocks(
+        depths,
+        rho,
+        order,
+        depth_rate,
+        conditioner,
+        t_scale,
+        vehicle_vel=vehicle_vel,
+    )
     return scipy.sparse.block_diag(Qs, dtype=float)
 
 
-def depth_G(depths, order=2, depth_rate=None, conditioner=conditioner):
+def depth_G(
+    depths,
+    order=2,
+    depth_rate=None,
+    conditioner=conditioner,
+    vehicle_vel="otg",
+):
     """Creates the update matrix for smoothing the current"""
     delta_depths = depths[1:] - depths[:-1]
-    if depth_rate is None:
+    if vehicle_vel[:3] == "otg":
         order -= 1
         depth_rate = np.ones(len(delta_depths))
     elif order == 1:
@@ -605,7 +765,7 @@ def ca_select(n, order=3, vehicle_vel="otg"):
 
     if order < 3:
         return None
-    if vehicle_vel == "otg":
+    if vehicle_vel[:3] == "otg":
         order = order - 1
         cols = range(order - 2, order * n, order)
     elif vehicle_vel == "ttw":
@@ -630,7 +790,7 @@ def cv_select(n, order=2, vehicle_vel="otg"):
             -water velocity or over-the-ground
     """
 
-    if vehicle_vel == "otg":
+    if vehicle_vel[:3] == "otg":
         order = order - 1
         cols = range(order - 1, order * n, order)
     elif vehicle_vel == "ttw":
@@ -655,7 +815,7 @@ def cx_select(n, order=2, vehicle_vel="otg"):
             -water velocity or over-the-ground
     """
 
-    if vehicle_vel == "otg":
+    if vehicle_vel[:3] == "otg":
         return None
         # Current X position not modeled when vehicle velocity is measured over ground. # noqa
     elif vehicle_vel == "ttw":
@@ -680,7 +840,7 @@ def e_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
         vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
-    current_order -= vehicle_vel == "otg"
+    current_order -= vehicle_vel[:3] == "otg"
     EV = ev_select(m, n, vehicle_order, current_order)
     EC = ec_select(m, n, vehicle_order, current_order)
     return scipy.sparse.vstack((EV, EC))
@@ -698,7 +858,7 @@ def n_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
         vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
-    current_order -= vehicle_vel == "otg"
+    current_order -= vehicle_vel[:3] == "otg"
     NV = nv_select(m, n, vehicle_order, current_order)
     NC = nc_select(m, n, vehicle_order, current_order)
     return scipy.sparse.vstack((NV, NC))
@@ -716,7 +876,7 @@ def ev_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
         vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
-    current_order -= vehicle_vel == "otg"
+    current_order -= vehicle_vel[:3] == "otg"
     n_rows = vehicle_order * m
     n_cols = size_of_x(m, n, vehicle_order, current_order)
     return scipy.sparse.eye(n_rows, n_cols)
@@ -734,7 +894,7 @@ def nv_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
         vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
-    current_order -= vehicle_vel == "otg"
+    current_order -= vehicle_vel[:3] == "otg"
     n_rows = vehicle_order * m
     n_cols = size_of_x(m, n, vehicle_order, current_order)
     diag = vehicle_order * m
@@ -754,7 +914,7 @@ def ec_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
         vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
-    current_order -= vehicle_vel == "otg"
+    current_order -= vehicle_vel[:3] == "otg"
     n_rows = current_order * n
     n_cols = size_of_x(m, n, vehicle_order, current_order)
     diag = 2 * vehicle_order * m
@@ -774,7 +934,7 @@ def nc_select(m, n, vehicle_order=2, current_order=2, vehicle_vel="otg"):
         vehicle_vel (str) : if "otg", then current skips modeling 1st order
     """
 
-    current_order -= vehicle_vel == "otg"
+    current_order -= vehicle_vel[:3] == "otg"
     n_rows = current_order * n
     n_cols = size_of_x(m, n, vehicle_order, current_order)
     diag = 2 * vehicle_order * m + current_order * n
@@ -802,13 +962,13 @@ def legacy_select(
     NC = nc_select(m, n, vehicle_order, current_order, vehicle_vel)
     CV = cv_select(n, current_order, vehicle_vel)
 
-    current_order -= vehicle_vel == "otg"
+    current_order -= vehicle_vel[:3] == "otg"
     vehicle_block = scipy.sparse.diags(
         np.ones(2), vehicle_order - 2, (2, vehicle_order)
     )
     vehicle_mat = scipy.sparse.block_diag(list(repeat(vehicle_block, m)))
 
-    if vehicle_vel == "otg":
+    if vehicle_vel[:3] == "otg":
         vehicle_c_mat = scipy.sparse.csr_matrix((2 * m, current_order * n))
     else:
         vehicle_depths = dp._depth_interpolator(prob.times, prob.ddat).loc[

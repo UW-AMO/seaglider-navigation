@@ -6,6 +6,7 @@ import adcp.exp
 from adcp.exp.psearch2d import ParameterSearch2D
 
 
+experiment = ParameterSearch2D
 prob_params = {
     "t_scale": 1,
     "rho_vs": np.logspace(-10, 0, 11),
@@ -15,7 +16,6 @@ sim_params = {}
 
 
 def __main__():
-    experiment = ParameterSearch2D
     adcp.exp.run(
         experiment,
         prob_params=prob_params,

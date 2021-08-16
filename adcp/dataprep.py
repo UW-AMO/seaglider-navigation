@@ -10,7 +10,6 @@ import datetime as dt
 
 # 3rd party libraries
 import h5py
-
 from scipy.io import loadmat
 from scipy.interpolate import interp1d
 import numpy as np
@@ -215,7 +214,7 @@ def depth_rates(times, depths, ddat):
      Parameters:
         times ([numpy.datetime64,]) : the times of observations
         depths ([numpy.datetime64,]) : the depths of observations
-        adat (dict): the recorded ADCP data returned by load_adcp()
+        ddat (dict): the recorded dive data returned by load_dive()
     """
 
     depth_df = _depth_interpolator(times, ddat)
