@@ -2,6 +2,7 @@ todo
 commit-msg
 .asv/
 nohup.out
+*.pickle
 
 # virtual environment
 adcp-env/
