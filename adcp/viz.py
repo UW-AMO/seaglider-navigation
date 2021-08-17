@@ -671,6 +671,19 @@ def plot_bundle(sol_x, adat, ddat, times, depths, x):
     vehicle_posit_plot(sol_x, ddat, times, depths, x_true=x, dead_reckon=True)
 
 
+def display_uncertainty(AtAinv, A):
+    solution_variance_plot(AtAinv)
+    influence_plot(AtAinv, A)
+
+
+def solution_variance_plot(AtAinv):
+    plt.imshow(AtAinv)
+
+
+def influence_plot(AtA, A, m, n):
+    pass
+
+
 def show_errmap(
     errmap, index: int = 0, rho_vs: list = [], rho_cs: list = [], norm=None
 ) -> None:

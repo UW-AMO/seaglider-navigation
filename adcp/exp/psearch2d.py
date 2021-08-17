@@ -220,6 +220,17 @@ class ParameterSearch2D(Experiment):
             prob.depths,
             self.x,
         )
+        weights = adcp.Weights(
+            self.rho_vs[i],
+            self.rho_cs[j],
+            self.rho_t,
+            self.rho_a,
+            self.rho_g,
+            self.rho_r,
+        )
+        prob = adcp.GliderProblem(self.data, self.config, weights)
+
+        viz.display_uncertainty(prob.AtAinv, prob.A)
 
 
 class RigorousParameterSearch2D(ParameterSearch2D):
