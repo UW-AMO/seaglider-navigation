@@ -335,6 +335,17 @@ class GliderProblem:
         return AtA
 
     @cached_property
+    def AtAinv(self):
+        return op.solution_variance_estimator(
+            self.AtA,
+            self.shape.m,
+            self.shape.n,
+            self.config.vehicle_order,
+            self.config.current_order,
+            self.config.vehicle_vel,
+        )
+
+    @cached_property
     def Atb(self):
         _, Atb = self.__AtA_Atb
         return Atb
