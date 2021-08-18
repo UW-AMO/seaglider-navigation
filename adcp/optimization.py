@@ -346,10 +346,10 @@ def solution_variance_estimator(
         m, n, current_order, vehicle_order, vehicle_vel
     )
     X = scipy.sparse.linalg.spsolve(AtA, I)
-    AtAinv = scipy.sparse.coo_matrix(AtA.shape)
+    AtAinv = scipy.sparse.lil_matrix(AtA.shape)
     AtAinv[:, cols] = X
     AtAinv[cols, :] = X.T
-    return AtAinv
+    return AtAinv, cols
 
 
 def _limited_inversion_dividend(

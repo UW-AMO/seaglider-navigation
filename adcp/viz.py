@@ -677,11 +677,15 @@ def display_uncertainty(AtAinv, A, rows):
 
 
 def solution_variance_plot(AtAinv, rows):
-    plt.imshow(AtAinv[rows, rows])
-    plt.plot(np.diagonal(AtAinv[rows, rows].todense())[rows])
+    plt.figure()
+    ax = plt.gca()
+    ax.matshow(AtAinv.todense()[rows, rows])
+    # plt.figure()
+    # ax = plt.gca()
+    # ax.plot(np.diagonal(AtAinv.todense())[rows])
 
 
-def influence_plot(AtA, A, m, n):
+def influence_plot(AtA, A, rows):
     pass
 
 
