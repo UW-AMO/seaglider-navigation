@@ -671,13 +671,14 @@ def plot_bundle(sol_x, adat, ddat, times, depths, x):
     vehicle_posit_plot(sol_x, ddat, times, depths, x_true=x, dead_reckon=True)
 
 
-def display_uncertainty(AtAinv, A):
-    solution_variance_plot(AtAinv)
-    influence_plot(AtAinv, A)
+def display_uncertainty(AtAinv, A, rows):
+    solution_variance_plot(AtAinv, rows)
+    influence_plot(AtAinv, A, rows)
 
 
-def solution_variance_plot(AtAinv):
-    plt.imshow(AtAinv)
+def solution_variance_plot(AtAinv, rows):
+    plt.imshow(AtAinv[rows, rows])
+    plt.plot(np.diagonal(AtAinv[rows, rows].todense())[rows])
 
 
 def influence_plot(AtA, A, m, n):
