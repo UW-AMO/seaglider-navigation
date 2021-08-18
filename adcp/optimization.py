@@ -342,14 +342,15 @@ def solve_mats(prob, verbose=False):
 def solution_variance_estimator(
     AtA, m, n, current_order, vehicle_order, vehicle_vel
 ):
-    I, cols = _limited_inversion_dividend(
+    I, v_points, c_points = _limited_inversion_dividend(
         m, n, current_order, vehicle_order, vehicle_vel
     )
     X = scipy.sparse.linalg.spsolve(AtA, I)
     AtAinv = scipy.sparse.lil_matrix(AtA.shape)
+    cols = v_points + c_points
     AtAinv[:, cols] = X
     AtAinv[cols, :] = X.T
-    return AtAinv, cols
+    return AtAinv, v_points, c_points
 
 
 def _limited_inversion_dividend(
@@ -384,7 +385,7 @@ def _limited_inversion_dividend(
 
     n_rows = 2 * m * vehicle_order + 2 * n * current_order
     I_reduced = scipy.sparse.csc_matrix(scipy.sparse.eye(n_rows))[:, cols]
-    return I_reduced, cols
+    return I_reduced, v_points, c_points
 
 
 def gen_kalman_mat(data, config, shape, weights, root: bool = False):

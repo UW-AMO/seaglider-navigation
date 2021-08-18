@@ -671,25 +671,30 @@ def plot_bundle(sol_x, adat, ddat, times, depths, x):
     vehicle_posit_plot(sol_x, ddat, times, depths, x_true=x, dead_reckon=True)
 
 
-def display_uncertainty(AtAinv, A, rows):
-    solution_variance_plot(AtAinv, rows)
-    influence_plot(AtAinv, A, rows)
+def display_uncertainty(AtAinv, A, v_points, c_points):
+    solution_variance_plot(AtAinv, v_points, c_points)
+    influence_plot(AtAinv, A, v_points, c_points)
 
 
-def solution_variance_plot(AtAinv, rows):
+def solution_variance_plot(AtAinv, v_points, c_points):
+    rows = v_points + c_points
     fig = plt.figure(figsize=[12, 6])
     fig.suptitle("Uncertainty Quantification, select states")
     plt.subplot(1, 2, 1)
     ax = plt.gca()
     ax.matshow(AtAinv[rows, :][:, rows].todense())
-    ax.title("Error Covariance")
+    ax.axvline(len(v_points) + 0.5, 0, 1)
+    ax.axhline(len(v_points) + 0.5, 0, 1)
+    ax.set_title("Error Covariance")
+    ax.set_xlabel("Vehicle\t\tCurrent")
+    ax.set_ylabel("Vehicle\t\tCurrent")
     plt.subplot(1, 2, 2)
     ax = plt.gca()
     ax.plot(np.diagonal(AtAinv[rows].todense()))
-    ax.title("Error Variance (diagonal of left)")
+    ax.set_title("Error Variance (diagonal of left)")
 
 
-def influence_plot(AtA, A, rows):
+def influence_plot(AtA, A, v_points, c_points):
     pass
 
 

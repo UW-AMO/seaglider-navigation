@@ -230,7 +230,9 @@ class ParameterSearch2D(Experiment):
         )
         prob = adcp.GliderProblem(self.data, self.config, weights)
 
-        viz.display_uncertainty(prob.AtAinv, prob.A, prob.AtAinv_rows)
+        viz.display_uncertainty(
+            prob.AtAinv, prob.A, prob.AtAinv_v_points, prob.AtAinv_c_points
+        )
 
 
 class RigorousParameterSearch2D(ParameterSearch2D):

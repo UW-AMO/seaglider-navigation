@@ -347,12 +347,17 @@ class GliderProblem:
 
     @cached_property
     def AtAinv(self):
-        AtAinv, _ = self.__AtAinv
+        AtAinv, _, _ = self.__AtAinv
         return AtAinv
 
     @cached_property
-    def AtAinv_rows(self):
-        _, rows = self.__AtAinv
+    def AtAinv_v_points(self):
+        _, rows, _ = self.__AtAinv
+        return rows
+
+    @cached_property
+    def AtAinv_c_points(self):
+        _, _, rows = self.__AtAinv
         return rows
 
     @cached_property
