@@ -229,9 +229,19 @@ class ParameterSearch2D(Experiment):
             self.rho_r,
         )
         prob = adcp.GliderProblem(self.data, self.config, weights)
+        n_ttw_e = len(mb.get_zttw(prob.data.ddat, "east", prob.t_scale))
+        n_ttw_n = len(mb.get_zttw(prob.data.ddat, "north", prob.t_scale))
+        n_adcp_e = len(mb.get_zadcp(prob.data.adat, "east", prob.t_scale))
+        n_adcp_n = len(mb.get_zadcp(prob.data.adat, "north", prob.t_scale))
+        n_gps_e = len(mb.get_zgps(prob.data.ddat, "east"))
+        n_gps_n = len(mb.get_zgps(prob.data.ddat, "north"))
 
         viz.display_uncertainty(
-            prob.AtAinv, prob.A, prob.AtAinv_v_points, prob.AtAinv_c_points
+            prob.AtAinv,
+            prob.A,
+            prob.AtAinv_v_points,
+            prob.AtAinv_c_points,
+            (n_ttw_e, n_ttw_n, n_adcp_e, n_adcp_n, n_gps_e, n_gps_n),
         )
 
 

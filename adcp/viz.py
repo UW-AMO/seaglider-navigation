@@ -672,9 +672,9 @@ def plot_bundle(sol_x, adat, ddat, times, depths, x):
     vehicle_posit_plot(sol_x, ddat, times, depths, x_true=x, dead_reckon=True)
 
 
-def display_uncertainty(AtAinv, A, v_points, c_points):
+def display_uncertainty(AtAinv, A, v_points, c_points, n_obs: Tuple):
     solution_variance_plot(AtAinv, v_points, c_points)
-    influence_plot(AtAinv, A, v_points, c_points)
+    influence_plot(AtAinv, A, v_points, c_points, n_obs)
 
 
 def solution_variance_plot(AtAinv, v_points, c_points):
@@ -717,10 +717,30 @@ def solution_variance_plot(AtAinv, v_points, c_points):
     ax.set_xlabel("Vehicle\t\t\t\t\t\t\tCurrent".expandtabs(8))
     ax.axvline(len(v_points) - 0.5, 0, 1)
     plt.tight_layout()
-    pass
 
 
-def influence_plot(AtA, A, v_points, c_points):
+def influence_plot(AtAinv, A, v_points, c_points, n_obs):
+    plt.figure()
+    ax = plt.gca()
+    rows = v_points + c_points
+    total_obs = sum(n_obs)
+    fraction = 0.05
+    start_ttw = A.shape[0] - total_obs
+    ttw_obs = np.arange(
+        start_ttw, start_ttw + n_obs[0], int(np.floor(fraction * n_obs[0]))
+    )
+    start_adcp = start_ttw + sum(n_obs[:2])
+    adcp_obs = np.arange(
+        start_adcp, start_adcp + n_obs[2], int(np.floor(fraction * n_obs[2]))
+    )
+    start_gps = start_adcp + sum(n_obs[2:4])
+    gps_obs = np.arange(start_gps, start_gps + n_obs[4], 1)
+    plot_obs = np.hstack((ttw_obs, adcp_obs, gps_obs))
+    # subselect only a certain number of easterly observations
+    influence = scipy.sparse.csr_matrix(
+        AtAinv[rows, :]
+    ) @ scipy.sparse.csc_matrix(scipy.sparse.lil_matrix(A)[plot_obs, :].T)
+    ax.matshow(influence.todense())
     pass
 
 
