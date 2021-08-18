@@ -677,12 +677,16 @@ def display_uncertainty(AtAinv, A, rows):
 
 
 def solution_variance_plot(AtAinv, rows):
-    plt.figure()
+    fig = plt.figure(figsize=[12, 6])
+    fig.suptitle("Uncertainty Quantification, select states")
+    plt.subplot(1, 2, 1)
     ax = plt.gca()
-    ax.matshow(AtAinv.todense()[rows, rows])
-    # plt.figure()
-    # ax = plt.gca()
-    # ax.plot(np.diagonal(AtAinv.todense())[rows])
+    ax.matshow(AtAinv[rows, :][:, rows].todense())
+    ax.title("Error Covariance")
+    plt.subplot(1, 2, 2)
+    ax = plt.gca()
+    ax.plot(np.diagonal(AtAinv[rows].todense()))
+    ax.title("Error Variance (diagonal of left)")
 
 
 def influence_plot(AtA, A, rows):
