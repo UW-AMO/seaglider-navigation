@@ -382,7 +382,8 @@ def _limited_inversion_dividend(
     c_points = list(c_points)
     cols = v_points + c_points
 
-    I_reduced = scipy.sparse.csc_matrix(scipy.sparse.eye(60))[:, cols]
+    n_rows = 2 * m * vehicle_order + 2 * n * current_order
+    I_reduced = scipy.sparse.csc_matrix(scipy.sparse.eye(n_rows))[:, cols]
     return I_reduced, cols
 
 
