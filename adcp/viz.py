@@ -769,7 +769,7 @@ def show_errmap(
     fig.colorbar(im, cax=cax)
 
 
-def check_condition(prob: adcp.GliderProblem) -> Tuple:
+def check_condition(prob: adcp.GliderProblem, seed: int = None) -> Tuple:
     """Checks condition on matrices for glider problem"""
     m = len(prob.times)
     n = len(prob.depths)
@@ -778,6 +778,8 @@ def check_condition(prob: adcp.GliderProblem) -> Tuple:
     )
     A, _ = op.solve_mats(prob)
 
+    if seed:
+        random.seed(seed)
     r100 = np.array(random.sample(range(0, 4 * m + 2 * n), 100))
     r1000 = np.array(random.sample(range(0, 4 * m + 2 * n), 1000))
     c1 = np.linalg.cond(kalman_mat[r100[:, None], r100].todense())

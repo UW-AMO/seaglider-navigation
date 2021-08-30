@@ -359,13 +359,16 @@ def _limited_inversion_dividend(
     """Select columns of I to produce a smaller dividend to invert AtA.
 
     Returns:
-        The reduced matrix I and the columns of the original matrix
-        that it represents
+        The reduced matrix I and the columns of the original matrix,
+        firstly the columns representing vehicle process, and secondly
+        the columns representing the current process.
     """
     if vehicle_vel[:3] == "otg":
         current_order = current_order - 1
 
-    interesting_sections = np.array([0.1, 0.3, 0.5, 0.7, 0.9])
+    interesting_sections = np.array(
+        [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    )
 
     v_points = np.floor(interesting_sections * vehicle_order * m).astype(int)
     v_points = itertools.chain(
