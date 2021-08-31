@@ -4,6 +4,7 @@ Created on Mon Feb  3 18:44:43 2020
 
 @author: 600301
 """
+from itertools import chain, repeat
 from typing import Tuple
 import math
 import random
@@ -671,6 +672,78 @@ def plot_bundle(sol_x, adat, ddat, times, depths, x):
     vehicle_posit_plot(sol_x, ddat, times, depths, x_true=x, dead_reckon=True)
 
 
+def display_uncertainty(AtAinv, A, v_points, c_points, n_obs: Tuple):
+    solution_variance_plot(AtAinv, v_points, c_points)
+    influence_plot(AtAinv, A, v_points, c_points, n_obs)
+
+
+def solution_variance_plot(AtAinv, v_points, c_points):
+    rows = v_points + c_points
+    fig = plt.figure(figsize=[12, 6])
+    fig.suptitle("Uncertainty Quantification, select states")
+    plt.subplot(1, 2, 1)
+    ax = plt.gca()
+    ax.matshow(AtAinv[rows, :][:, rows].todense())
+    ax.axvline(len(v_points) - 0.5, 0, 1)
+    ax.axhline(len(v_points) - 0.5, 0, 1)
+    ax.set_title("Error Covariance")
+    ax.set_xlabel("Vehicle\t\t\t\t\tCurrent".expandtabs(8))
+    ax.set_ylabel("Current\t\t\t\t\tVehicle".expandtabs(8))
+    x_ticks = np.hstack(
+        (
+            np.linspace(0, len(v_points) - 1, 3),
+            np.linspace(len(v_points), len(rows) - 1, 3),
+        )
+    )
+    labels = list(chain(*repeat(("descending", "bottom", "resurfaced"), 2)))
+    x_labels = [
+        plt.Text(tick, 1, label) for tick, label in zip(x_ticks, labels)
+    ]
+    y_labels = [
+        plt.Text(0, tick, label) for tick, label in zip(x_ticks, labels)
+    ]
+    ax.set_xticks(x_ticks)
+    ax.set_yticks(x_ticks)
+    ax.set_xticklabels(x_labels, rotation=45)
+    ax.set_yticklabels(y_labels)
+
+    plt.subplot(1, 2, 2)
+    ax = plt.gca()
+    ax.plot(np.diagonal(AtAinv[rows].todense()))
+    ax.set_title("Error Variance (diagonal of left)")
+    ax.set_xticks(x_ticks)
+    ax.set_xticklabels(x_labels, rotation=60)
+    ax.set_ylabel("Variance")
+    ax.set_xlabel("Vehicle\t\t\t\t\t\t\tCurrent".expandtabs(8))
+    ax.axvline(len(v_points) - 0.5, 0, 1)
+    plt.tight_layout()
+
+
+def influence_plot(AtAinv, A, v_points, c_points, n_obs):
+    plt.figure()
+    ax = plt.gca()
+    rows = v_points + c_points
+    total_obs = sum(n_obs)
+    fraction = 0.05
+    start_ttw = A.shape[0] - total_obs
+    ttw_obs = np.arange(
+        start_ttw, start_ttw + n_obs[0], int(np.floor(fraction * n_obs[0]))
+    )
+    start_adcp = start_ttw + sum(n_obs[:2])
+    adcp_obs = np.arange(
+        start_adcp, start_adcp + n_obs[2], int(np.floor(fraction * n_obs[2]))
+    )
+    start_gps = start_adcp + sum(n_obs[2:4])
+    gps_obs = np.arange(start_gps, start_gps + n_obs[4], 1)
+    plot_obs = np.hstack((ttw_obs, adcp_obs, gps_obs))
+    # subselect only a certain number of easterly observations
+    influence = scipy.sparse.csr_matrix(
+        AtAinv[rows, :]
+    ) @ scipy.sparse.csc_matrix(scipy.sparse.lil_matrix(A)[plot_obs, :].T)
+    ax.matshow(influence.todense())
+    pass
+
+
 def show_errmap(
     errmap, index: int = 0, rho_vs: list = [], rho_cs: list = [], norm=None
 ) -> None:
@@ -696,7 +769,7 @@ def show_errmap(
     fig.colorbar(im, cax=cax)
 
 
-def check_condition(prob: adcp.GliderProblem) -> Tuple:
+def check_condition(prob: adcp.GliderProblem, seed: int = None) -> Tuple:
     """Checks condition on matrices for glider problem"""
     m = len(prob.times)
     n = len(prob.depths)
@@ -705,6 +778,8 @@ def check_condition(prob: adcp.GliderProblem) -> Tuple:
     )
     A, _ = op.solve_mats(prob)
 
+    if seed:
+        random.seed(seed)
     r100 = np.array(random.sample(range(0, 4 * m + 2 * n), 100))
     r1000 = np.array(random.sample(range(0, 4 * m + 2 * n), 1000))
     c1 = np.linalg.cond(kalman_mat[r100[:, None], r100].todense())

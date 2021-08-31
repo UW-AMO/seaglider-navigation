@@ -22,7 +22,6 @@ def __main__():
         prob_params=prob_params,
         sim_params=sim_params,
         trials_folder=Path(__file__).absolute().parent,
-        debug=True,
     )
 
 

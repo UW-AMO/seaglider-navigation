@@ -14,6 +14,7 @@ kinematic vector of the same format.  The kinematic vector is stacked
 on top of an easterly current vector from 0 to 2*max depth which is
 in turn stacked on top of a similar northerly current vector.
 """
+import itertools
 import random
 
 import numpy as np
@@ -336,6 +337,58 @@ def solve_mats(prob, verbose=False):
     )
 
     return A, b
+
+
+def solution_variance_estimator(
+    AtA, m, n, current_order, vehicle_order, vehicle_vel
+):
+    I, v_points, c_points = _limited_inversion_dividend(
+        m, n, current_order, vehicle_order, vehicle_vel
+    )
+    X = scipy.sparse.linalg.spsolve(AtA, I)
+    AtAinv = scipy.sparse.lil_matrix(AtA.shape)
+    cols = v_points + c_points
+    AtAinv[:, cols] = X
+    AtAinv[cols, :] = X.T
+    return AtAinv, v_points, c_points
+
+
+def _limited_inversion_dividend(
+    m, n, current_order, vehicle_order, vehicle_vel
+):
+    """Select columns of I to produce a smaller dividend to invert AtA.
+
+    Returns:
+        The reduced matrix I and the columns of the original matrix,
+        firstly the columns representing vehicle process, and secondly
+        the columns representing the current process.
+    """
+    if vehicle_vel[:3] == "otg":
+        current_order = current_order - 1
+
+    interesting_sections = np.array(
+        [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    )
+
+    v_points = np.floor(interesting_sections * vehicle_order * m).astype(int)
+    v_points = itertools.chain(
+        *[range(i, i + vehicle_order) for i in v_points]
+    )
+    v_points = list(v_points)
+
+    first_curr_index = 2 * m * vehicle_order
+    c_points = first_curr_index + np.floor(
+        interesting_sections * current_order * n
+    ).astype(int)
+    c_points = itertools.chain(
+        *[range(i, i + current_order) for i in c_points]
+    )
+    c_points = list(c_points)
+    cols = v_points + c_points
+
+    n_rows = 2 * m * vehicle_order + 2 * n * current_order
+    I_reduced = scipy.sparse.csc_matrix(scipy.sparse.eye(n_rows))[:, cols]
+    return I_reduced, v_points, c_points
 
 
 def gen_kalman_mat(data, config, shape, weights, root: bool = False):
