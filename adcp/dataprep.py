@@ -286,8 +286,11 @@ def dead_reckon(ddat):
         ddat (dict): the recorded dive data returned by load_dive()
 
     Returns:
-        Pandas dataframe, an augmented version of ddat['uv'] with
+        Tuple:
+        (1) Pandas dataframe, an augmented version of ddat['uv'] with
         dead reckoned position columns
+        (2) Boolean value whether corrections for depth averaged current is
+        included or not.
 
     Note:
         Requires that ddat's uv DataFrame and gps DataFrame both have
@@ -300,23 +303,30 @@ def dead_reckon(ddat):
     delta_y = delta_times.total_seconds() * ddat["uv"].loc[:, "u_north"]
     x_dead = np.cumsum(delta_x) + ddat["gps"].gps_nx_east.iloc[0]
     y_dead = np.cumsum(delta_y) + ddat["gps"].gps_ny_north.iloc[0]
+    new_cols = {
+        "x_dead": x_dead,
+        "y_dead": y_dead,
+    }
+    dac = False
     # Now add constant drift to correct reckoning for final GPS position
-    x_err = ddat["gps"].gps_nx_east.iloc[-1] - x_dead[-1]
-    y_err = ddat["gps"].gps_ny_north.iloc[-1] - y_dead[-1]
-    uv_time_elapsed = ddat["uv"].index[-1] - ddat["uv"].index[0]
-    x_step = x_err / uv_time_elapsed.total_seconds()
-    y_step = y_err / uv_time_elapsed.total_seconds()
-    x_correction = x_step * cum_secs
-    y_correction = y_step * cum_secs
-    x_corrected = x_dead + x_correction
-    y_corrected = y_dead + y_correction
-    new_cols = pd.DataFrame(
-        {
-            "x_dead": x_dead,
-            "y_dead": y_dead,
+    gps_pct = (
+        ddat["gps"].index[-1] - ddat["gps"].index[0]
+    ).total_seconds() / cum_secs[-1]
+    if gps_pct > 0.1:
+        x_err = ddat["gps"].gps_nx_east.iloc[-1] - x_dead[-1]
+        y_err = ddat["gps"].gps_ny_north.iloc[-1] - y_dead[-1]
+        uv_time_elapsed = ddat["uv"].index[-1] - ddat["uv"].index[0]
+        x_step = x_err / uv_time_elapsed.total_seconds()
+        y_step = y_err / uv_time_elapsed.total_seconds()
+        x_correction = x_step * cum_secs
+        y_correction = y_step * cum_secs
+        x_corrected = x_dead + x_correction
+        y_corrected = y_dead + y_correction
+        new_cols = {
+            **new_cols,
             "x_corr": x_corrected,
             "y_corr": y_corrected,
-        },
-        index=ddat["uv"].index,
-    )
-    return ddat["uv"].join(new_cols, sort=False)
+        }
+        dac = True
+    new_cols = pd.DataFrame(new_cols, index=ddat["uv"].index)
+    return ddat["uv"].join(new_cols, sort=False), dac

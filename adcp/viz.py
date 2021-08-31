@@ -632,7 +632,7 @@ def vehicle_posit_plot(
         )
         lns.append(ln4[0])
     if dead_reckon:
-        df = dp.dead_reckon(ddat)
+        df, dac = dp.dead_reckon(ddat)
         ln5 = ax.plot(
             df.x_dead / 1000,
             df.y_dead / 1000,
@@ -640,22 +640,23 @@ def vehicle_posit_plot(
             color=cmap(4),
             label="Dead Reckoning (DR)",
         )
-        ln6 = ax.plot(
-            df.x_corr / 1000,
-            df.y_corr / 1000,
-            "--",
-            color=cmap(5),
-            label="DR Corrected for DAC",
-        )
         lns.append(ln5[0])
-        lns.append(ln6[0])
+        if dac:
+            ln6 = ax.plot(
+                df.x_corr / 1000,
+                df.y_corr / 1000,
+                "--",
+                color=cmap(5),
+                label="DR Corrected for DAC",
+            )
+            lns.append(ln6[0])
     ax.legend()
     ax.set_xlabel("Easting (km)")
     ax.set_ylabel("Northing (km)")
     return ax
 
 
-def plot_bundle(sol_x, adat, ddat, times, depths, x):
+def plot_bundle(sol_x, adat, ddat, times, depths, x, dac=True):
     vehicle_speed_plot(
         sol_x, ddat, times, depths, direction="both", x_true=x, ttw=False
     )
