@@ -638,14 +638,14 @@ def vehicle_posit_plot(
             df.y_dead / 1000,
             ":",
             color=cmap(4),
-            label="Dead Reckoning",
+            label="Dead Reckoning (DR)",
         )
         ln6 = ax.plot(
             df.x_corr / 1000,
             df.y_corr / 1000,
             "--",
             color=cmap(5),
-            label="Reckoning, Corrected",
+            label="DR Corrected for DAC",
         )
         lns.append(ln5[0])
         lns.append(ln6[0])
@@ -766,6 +766,11 @@ def show_errmap(
     ax.set_xlabel("rho_c (log scale)")
     cax = fig.add_axes([0.95, 0.15, 0.05, 0.7])
     ax.invert_yaxis()
+
+    # Display square box around best value
+    min_idx = np.argmin(errmap[index, :, :])
+    idx_tup = np.unravel_index(min_idx, errmap.shape[1:])
+    ax.text(idx_tup[1], idx_tup[0], "\u2b24", color="red", size="x-small")
     fig.colorbar(im, cax=cax)
 
 
