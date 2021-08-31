@@ -777,8 +777,8 @@ def show_errmap(
 
 def check_condition(prob: adcp.GliderProblem, seed: int = None) -> Tuple:
     """Checks condition on matrices for glider problem"""
-    m = len(prob.times)
-    n = len(prob.depths)
+    m = len(prob.data.times)
+    n = len(prob.data.depths)
     kalman_mat = op.gen_kalman_mat(
         prob.data, prob.config, prob.shape, prob.weights
     )

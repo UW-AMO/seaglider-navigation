@@ -166,34 +166,46 @@ def basic_A_b(prob):
     the A and b produced by the solve_mats() function is equivalent to
     A^TA and the A^Tb  in this formulation.
     """
-    m = len(prob.times)
-    n = len(prob.depths)
-    zttw_e = mb.get_zttw(prob.ddat, "east", prob.t_scale)
-    zttw_n = mb.get_zttw(prob.ddat, "north", prob.t_scale)
+    m = len(prob.data.times)
+    n = len(prob.data.depths)
+    zttw_e = mb.get_zttw(prob.data.ddat, "east", prob.config.t_scale)
+    zttw_n = mb.get_zttw(prob.data.ddat, "north", prob.config.t_scale)
     A_ttw, B_ttw = mb.uv_select(
-        prob.times, prob.depths, prob.ddat, prob.adat, prob.vehicle_vel
+        prob.data.times,
+        prob.data.depths,
+        prob.data.ddat,
+        prob.data.adat,
+        prob.config.vehicle_vel,
     )
 
-    zadcp_e = mb.get_zadcp(prob.adat, "east", prob.t_scale)
-    zadcp_n = mb.get_zadcp(prob.adat, "north", prob.t_scale)
+    zadcp_e = mb.get_zadcp(prob.data.adat, "east", prob.config.t_scale)
+    zadcp_n = mb.get_zadcp(prob.data.adat, "north", prob.config.t_scale)
     A_adcp, B_adcp = mb.adcp_select(
-        prob.times, prob.depths, prob.ddat, prob.adat, prob.vehicle_vel
+        prob.data.times,
+        prob.data.depths,
+        prob.data.ddat,
+        prob.data.adat,
+        prob.config.vehicle_vel,
     )
 
-    zgps_e = mb.get_zgps(prob.ddat, "east")
-    zgps_n = mb.get_zgps(prob.ddat, "north")
+    zgps_e = mb.get_zgps(prob.data.ddat, "east")
+    zgps_n = mb.get_zgps(prob.data.ddat, "north")
     A_gps, B_gps = mb.gps_select(
-        prob.times, prob.depths, prob.ddat, prob.adat, prob.vehicle_vel
+        prob.data.times,
+        prob.data.depths,
+        prob.data.ddat,
+        prob.data.adat,
+        prob.config.vehicle_vel,
     )
 
-    Vs = prob.Vs
-    Xs = prob.Xs
-    CV = prob.CV
-    CX = prob.CX
-    EV = prob.EV
-    NV = prob.NV
-    EC = prob.EC
-    NC = prob.NC
+    Vs = prob.shape.Vs
+    Xs = prob.shape.Xs
+    CV = prob.shape.CV
+    CX = prob.shape.CX
+    EV = prob.shape.EV
+    NV = prob.shape.NV
+    EC = prob.shape.EC
+    NC = prob.shape.NC
 
     M = gen_kalman_mat(
         prob.data, prob.config, prob.shape, prob.weights, root=True
@@ -216,34 +228,37 @@ def basic_A_b(prob):
     A = scipy.sparse.vstack(
         (
             M,
-            1 / sqrt(prob.rho_t) * n_ttw_select,
-            1 / sqrt(prob.rho_t) * e_ttw_select,
-            1 / sqrt(prob.rho_t) * n_adcp_select,
-            1 / sqrt(prob.rho_a) * e_adcp_select,
-            1 / sqrt(prob.rho_g) * n_gps_select,
-            1 / sqrt(prob.rho_g) * e_gps_select,
+            1 / sqrt(prob.weights.rho_t) * n_ttw_select,
+            1 / sqrt(prob.weights.rho_t) * e_ttw_select,
+            1 / sqrt(prob.weights.rho_t) * n_adcp_select,
+            1 / sqrt(prob.weights.rho_a) * e_adcp_select,
+            1 / sqrt(prob.weights.rho_g) * n_gps_select,
+            1 / sqrt(prob.weights.rho_g) * e_gps_select,
         )
     )
     current_order = (
-        prob.current_order
-        if prob.vehicle_vel == "ttw"
-        else prob.current_order - 1
+        prob.config.current_order
+        if prob.config.vehicle_vel == "ttw"
+        else prob.config.current_order - 1
     )
     b = np.vstack(
         (
             np.zeros(
                 (
                     2
-                    * ((m - 1) * prob.vehicle_order + (n - 1) * current_order),
+                    * (
+                        (m - 1) * prob.config.vehicle_order
+                        + (n - 1) * current_order
+                    ),
                     1,
                 )
             ),
-            1 / sqrt(prob.rho_t) * zttw_n.values.reshape((-1, 1)),
-            1 / sqrt(prob.rho_t) * zttw_e.values.reshape((-1, 1)),
-            1 / sqrt(prob.rho_a) * zadcp_n.reshape((-1, 1)),
-            1 / sqrt(prob.rho_a) * zadcp_e.reshape((-1, 1)),
-            1 / sqrt(prob.rho_g) * zgps_n.reshape((-1, 1)),
-            1 / sqrt(prob.rho_g) * zgps_e.reshape((-1, 1)),
+            1 / sqrt(prob.weights.rho_t) * zttw_n.values.reshape((-1, 1)),
+            1 / sqrt(prob.weights.rho_t) * zttw_e.values.reshape((-1, 1)),
+            1 / sqrt(prob.weights.rho_a) * zadcp_n.reshape((-1, 1)),
+            1 / sqrt(prob.weights.rho_a) * zadcp_e.reshape((-1, 1)),
+            1 / sqrt(prob.weights.rho_g) * zgps_n.reshape((-1, 1)),
+            1 / sqrt(prob.weights.rho_g) * zgps_e.reshape((-1, 1)),
         )
     )
     return A, b

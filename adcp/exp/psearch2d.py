@@ -214,10 +214,10 @@ class ParameterSearch2D(Experiment):
 
         viz.plot_bundle(
             best_x,
-            prob.adat,
-            prob.ddat,
-            prob.times,
-            prob.depths,
+            prob.data.adat,
+            prob.data.ddat,
+            prob.data.times,
+            prob.data.depths,
             self.x,
         )
         weights = adcp.Weights(
@@ -229,10 +229,16 @@ class ParameterSearch2D(Experiment):
             self.rho_r,
         )
         prob = adcp.GliderProblem(self.data, self.config, weights)
-        n_ttw_e = len(mb.get_zttw(prob.data.ddat, "east", prob.t_scale))
-        n_ttw_n = len(mb.get_zttw(prob.data.ddat, "north", prob.t_scale))
-        n_adcp_e = len(mb.get_zadcp(prob.data.adat, "east", prob.t_scale))
-        n_adcp_n = len(mb.get_zadcp(prob.data.adat, "north", prob.t_scale))
+        n_ttw_e = len(mb.get_zttw(prob.data.ddat, "east", prob.config.t_scale))
+        n_ttw_n = len(
+            mb.get_zttw(prob.data.ddat, "north", prob.config.t_scale)
+        )
+        n_adcp_e = len(
+            mb.get_zadcp(prob.data.adat, "east", prob.config.t_scale)
+        )
+        n_adcp_n = len(
+            mb.get_zadcp(prob.data.adat, "north", prob.config.t_scale)
+        )
         n_gps_e = len(mb.get_zgps(prob.data.ddat, "east"))
         n_gps_n = len(mb.get_zgps(prob.data.ddat, "north"))
 
