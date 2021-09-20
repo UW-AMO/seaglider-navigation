@@ -675,14 +675,15 @@ def plot_bundle(sol_x, adat, ddat, times, depths, x, dac=True):
 
 def display_uncertainty(AtAinv, A, v_points, c_points, n_obs: Tuple):
     solution_variance_plot(AtAinv, v_points, c_points)
-    influence_plot(AtAinv, A, v_points, c_points, n_obs)
+    # influence_plot(AtAinv, A, v_points, c_points, n_obs)
 
 
 def solution_variance_plot(AtAinv, v_points, c_points):
     rows = v_points + c_points
-    fig = plt.figure(figsize=[12, 6])
-    fig.suptitle("Uncertainty Quantification, select states")
-    plt.subplot(1, 2, 1)
+    # fig = plt.figure(figsize=[12, 6])
+    # fig.suptitle("Uncertainty Quantification, select states")
+    fig = plt.figure()  # noqa
+    # plt.subplot(1, 2, 1)
     ax = plt.gca()
     ax.matshow(AtAinv[rows, :][:, rows].todense())
     ax.axvline(len(v_points) - 0.5, 0, 1)
@@ -692,32 +693,34 @@ def solution_variance_plot(AtAinv, v_points, c_points):
     ax.set_ylabel("Current\t\t\t\t\tVehicle".expandtabs(8))
     x_ticks = np.hstack(
         (
-            np.linspace(0, len(v_points) - 1, 3),
+            np.linspace(2, len(v_points) - 2, 3),
             np.linspace(len(v_points), len(rows) - 1, 3),
         )
     )
     labels = list(chain(*repeat(("descending", "bottom", "resurfaced"), 2)))
-    x_labels = [
-        plt.Text(tick, 1, label) for tick, label in zip(x_ticks, labels)
-    ]
+    x_labels = []
+    # x_labels = [
+    #     plt.Text(tick, 1, label) for tick, label in zip(x_ticks, labels)
+    # ]
     y_labels = [
         plt.Text(0, tick, label) for tick, label in zip(x_ticks, labels)
     ]
-    ax.set_xticks(x_ticks)
+    ax.set_xticks([])
+    # ax.set_xticks(x_ticks)
     ax.set_yticks(x_ticks)
     ax.set_xticklabels(x_labels, rotation=45)
     ax.set_yticklabels(y_labels)
 
-    plt.subplot(1, 2, 2)
-    ax = plt.gca()
-    ax.plot(np.diagonal(AtAinv[rows].todense()))
-    ax.set_title("Error Variance (diagonal of left)")
-    ax.set_xticks(x_ticks)
-    ax.set_xticklabels(x_labels, rotation=60)
-    ax.set_ylabel("Variance")
-    ax.set_xlabel("Vehicle\t\t\t\t\t\t\tCurrent".expandtabs(8))
-    ax.axvline(len(v_points) - 0.5, 0, 1)
-    plt.tight_layout()
+    # plt.subplot(1, 2, 2)
+    # ax = plt.gca()
+    # ax.plot(np.diagonal(AtAinv[rows].todense()))
+    # ax.set_title("Error Variance (diagonal of left)")
+    # ax.set_xticks(x_ticks)
+    # ax.set_xticklabels(x_labels, rotation=60)
+    # ax.set_ylabel("Variance")
+    # ax.set_xlabel("Vehicle\t\t\t\t\t\t\tCurrent".expandtabs(8))
+    # ax.axvline(len(v_points) - 0.5, 0, 1)
+    # plt.tight_layout()
 
 
 def influence_plot(AtAinv, A, v_points, c_points, n_obs):

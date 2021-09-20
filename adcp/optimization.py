@@ -399,9 +399,7 @@ def _limited_inversion_dividend(
         firstly the columns representing vehicle process, and secondly
         the columns representing the current process.
     """
-    interesting_sections = np.array(
-        [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-    )
+    interesting_sections = np.arange(0.05, 0.95, 0.05)
     interesting_timepoints = np.floor(interesting_sections * m)
 
     v_points = vehicle_order * interesting_timepoints + (vehicle_order - 2)
