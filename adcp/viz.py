@@ -660,12 +660,14 @@ def plot_bundle(sol_x, adat, ddat, times, depths, x, dac=True):
     vehicle_speed_plot(
         sol_x, ddat, times, depths, direction="both", x_true=x, ttw=False
     )
+    plt.figure()
     inferred_ttw_error_plot(sol_x, adat, ddat, direction="both", x_true=x)
+    plt.figure()
     current_depth_plot(
         sol_x,
         adat,
         ddat,
-        direction="both",
+        direction="north",
         x_true=x,
         adcp=True,
     )
