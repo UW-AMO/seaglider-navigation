@@ -14,7 +14,6 @@ kinematic vector of the same format.  The kinematic vector is stacked
 on top of an easterly current vector from 0 to 2*max depth which is
 in turn stacked on top of a similar northerly current vector.
 """
-import itertools
 import random
 
 import numpy as np
@@ -357,6 +356,28 @@ def solve_mats(prob, verbose=False):
 def solution_variance_estimator(
     AtA, m, n, current_order, vehicle_order, vehicle_vel
 ):
+    """Calculate a reduced version of the inverse of AtA.
+
+    Selects evenly spread out 1st order terms (velocities) in the
+    easterly direction.
+
+    Arguments:
+        AtA (numpy.array): The inverse of the least squares estimator
+            covariance matrix.
+        m (int): number of time points
+        n (int): number of depth points.
+        current_order (int): highest order of current terms present in
+            AtA
+        vehicle_order (int): highest order of vehicle terms present in
+            AtA
+        vehicle_vel (str): What form of vehicle process problem models
+
+    Returns:
+        Tuple.  (1) the reduced inverse AtA matrix, as well as the
+        column indexes of the original matrix that are present in the
+        reduced inverse that correspond to (2) vehicle process and (3)
+        current process
+    """
     I, v_points, c_points = _limited_inversion_dividend(
         m, n, current_order, vehicle_order, vehicle_vel
     )
@@ -378,27 +399,27 @@ def _limited_inversion_dividend(
         firstly the columns representing vehicle process, and secondly
         the columns representing the current process.
     """
-    if vehicle_vel[:3] == "otg":
-        current_order = current_order - 1
-
     interesting_sections = np.array(
         [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     )
+    interesting_timepoints = np.floor(interesting_sections * m)
 
-    v_points = np.floor(interesting_sections * vehicle_order * m).astype(int)
-    v_points = itertools.chain(
-        *[range(i, i + vehicle_order) for i in v_points]
-    )
-    v_points = list(v_points)
+    v_points = vehicle_order * interesting_timepoints + (vehicle_order - 2)
+    v_points = list(v_points.astype(int))
 
     first_curr_index = 2 * m * vehicle_order
-    c_points = first_curr_index + np.floor(
-        interesting_sections * current_order * n
-    ).astype(int)
-    c_points = itertools.chain(
-        *[range(i, i + current_order) for i in c_points]
+    interesting_depthpoints = np.floor(interesting_sections * n)
+    if vehicle_vel[:3] == "otg":
+        current_order = current_order - 1
+        cv_offset = 1  # there is no lower order than velocity
+    else:
+        cv_offset = 2
+    c_points = (
+        first_curr_index
+        + interesting_depthpoints * current_order
+        + (current_order - cv_offset)
     )
-    c_points = list(c_points)
+    c_points = list(c_points.astype(int))
     cols = v_points + c_points
 
     n_rows = 2 * m * vehicle_order + 2 * n * current_order
