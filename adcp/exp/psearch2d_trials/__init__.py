@@ -20,7 +20,32 @@ def __getattr__(name):
 
 
 Trial = namedtuple("Trial", ["ex", "prob_params", "sim_params"])
+var_a = {"ex": ParameterSearch2D, "sim_params": {}}
+var_b = {"ex": ParameterSearch2D, "sim_params": {"gps_points": "first"}}
+var_c = {"ex": ParameterSearch2D, "sim_params": {"gps_points": "multi-first"}}
+var_d = {"ex": RigorousParameterSearch2D, "sim_params": {"sims": 20}}
+var_e = {
+    "ex": RigorousParameterSearch2D,
+    "sim_params": {
+        "sims": 20,
+        "gps_points": "multi-first",
+    },
+}
+trial12 = {
+    "prob_params": {
+        "t_scale": 1,
+        "current_order": 3,
+        "vehicle_order": 3,
+        "rho_vs": np.logspace(-10, 0, 11),
+        "rho_cs": np.logspace(-10, 0, 11),
+    }
+}
 
+trial12a = Trial(**trial12, **var_a)
+trial12b = Trial(**trial12, **var_b)
+trial12c = Trial(**trial12, **var_c)
+trial12d = Trial(**trial12, **var_d)
+trial12e = Trial(**trial12, **var_e)
 trial18a = Trial(
     ParameterSearch2D,
     prob_params={

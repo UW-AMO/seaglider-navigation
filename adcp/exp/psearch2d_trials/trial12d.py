@@ -1,9 +1,15 @@
 from pathlib import Path
+import warnings
 
 import numpy as np
 
 import adcp.exp
 from adcp.exp.psearch2d import RigorousParameterSearch2D
+
+warnings.warn(
+    "Import trial 12a definitions from psearch2d.py, rather than from this"
+    " module"
+)
 
 
 def __main__():
