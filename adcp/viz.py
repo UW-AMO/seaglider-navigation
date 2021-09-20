@@ -96,14 +96,14 @@ def inferred_adcp_error_plot(
         sinking_depths,
         "--",
         color="deeppink",
-        label="Descending-LBFGS",
+        label="Descending-solution",
     )
     ln3 = ax.plot(
         rising_lbfgs,
         2 * deepest - rising_depths,
         "--",
         color="chartreuse",
-        label="Ascending-LBFGS",
+        label="Ascending-solution",
     )
 
     lines = [*lines, ln2, ln3]
@@ -195,7 +195,7 @@ def inferred_ttw_error_plot(
     )
 
     ttw_lbfgs = (A @ Vs @ XV - B @ XC) @ solx
-    ln1 = ax.plot(zttw.index, ttw_lbfgs, "--", color=cmap(0), label="LBFGS")
+    ln1 = ax.plot(zttw.index, ttw_lbfgs, "--", color=cmap(0), label="solution")
 
     lines = [ln0, ln1]
 
@@ -231,7 +231,7 @@ def current_depth_plot(
     descending and ascending measurements.  Various other options.
 
     Parameters:
-        solx (numpy.array): LBFGS solution for state vector
+        solx (numpy.array): Optimal solution for state vector
         adat (dict): ADCP data. See dataprep.load_adcp() or
             simulation.construct_load_dicts()
         ddat (dict): dive data. See dataprep.load_dive() or
@@ -328,14 +328,14 @@ def current_depth_plot(
         sinking_depths,
         "--",
         color="deeppink",
-        label="Descending-LBFGS",
+        label="Descending-solution",
     )
     ln1 = ax.plot(
         rising,
         2 * deepest - rising_depths,
         "--",
         color="chartreuse",
-        label="Ascending-LBFGS",
+        label="Ascending-solution",
     )
     lines.append(ln0)
     lines.append(ln1)
@@ -446,7 +446,7 @@ def vehicle_speed_plot(
     comparison solutions.
 
     Parameters:
-        solx (numpy.array): LBFGS solution for state vector
+        solx (numpy.array): Optimal solution for state vector
         ddat (dict): dive data. See dataprep.load_dive() or
             simulation.construct_load_dicts()
         times (numpy.array): times at which a measurement occured
@@ -454,7 +454,7 @@ def vehicle_speed_plot(
         direction (str): either 'north' or 'south'
         x_sol (numpy.array): backsolve solution for state vector
         x_true (numpy.array): true state vector
-        x0 (numpy.array): starting state vector for LBFGS
+        x0 (numpy.array): starting state vector for optimal
         ttw (bool): Whether to include measured TTW values
     """
     if direction.lower() == "both":
@@ -496,7 +496,7 @@ def vehicle_speed_plot(
     font_dict = {"size": "medium"}
     ax.set_title(f"{direction}ward Vehicle Velocity".title(), **font_dict)
     ln1 = ax.plot(
-        times, Vs @ dirV @ solx, "--", color=cmap(0), label="LBFGS Votg"
+        times, Vs @ dirV @ solx, "--", color=cmap(0), label="solution Votg"
     )
     lns = [ln1[0]]
     if x_sol is not None:
@@ -556,7 +556,7 @@ def current_plot(solx, x_sol, adat, times, depths, direction="north"):
     cmap = ax.get_cmap("tab10")
     ax.set_title(f"{direction}ward Current".title())
     ax.plot(dirC @ x_sol, color=cmap(0), label="backsolve")
-    ax.plot(dirC @ solx, color=cmap(1), label="LBFGS")
+    ax.plot(dirC @ solx, color=cmap(1), label="solution")
     ax.legend()
     ax.twiny()
     ax.plot(mb.get_zadcp(adat) / 1e3, color=cmap(3), label="z_ttw")
@@ -577,12 +577,12 @@ def vehicle_posit_plot(
     with different comparison solutions.
 
          Parameters:
-         x (numpy.array): LBFGS solution for state vector
+         x (numpy.array): Optimal solution for state vector
          ddat (dict): dive data. See dataprep.load_dive() or
              simulation.construct_load_dicts()
          times (numpy.array): times at which a measurement occured
          depths (numpy.array): depths at which a measurement occured
-         x0 (numpy.array): starting state vector for LBFGS
+         x0 (numpy.array): starting state vector for optimal
          backsolve (numpy.array): backsolve solution for state vector
          x_true (numpy.array): true state vector
          dead_reckon (bool): Whether to include dead reckoning solution,
