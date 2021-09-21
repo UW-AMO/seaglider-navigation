@@ -20,7 +20,7 @@ except NameError:
     except AttributeError:
         raise NameError(f"There is no trial named {namespace.trial}")
 adcp.exp.run(
-    trial.experiment,
+    trial.ex,
     prob_params=trial.prob_params,
     sim_params=trial.sim_params,
     trials_folder=Path(__file__).absolute().parent,
