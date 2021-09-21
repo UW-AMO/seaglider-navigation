@@ -36,7 +36,9 @@ def test_kalman_factor(standard_prob):
 
 
 def test_limited_inversion_dividend():
-    mat, v_cols, c_cols = op._limited_inversion_dividend(20, 20, 2, 2, "otg")
+    mat, v_cols, c_cols = op._limited_inversion_dividend(
+        20, 20, 2, 2, "otg", 2
+    )
 
     m = 20
     n = 20

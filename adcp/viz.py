@@ -4,7 +4,6 @@ Created on Mon Feb  3 18:44:43 2020
 
 @author: 600301
 """
-from itertools import chain, repeat
 from typing import Tuple
 import math
 import random
@@ -688,18 +687,23 @@ def solution_variance_plot(AtAinv, v_points, c_points):
     # plt.subplot(1, 2, 1)
     ax = plt.gca()
     ax.matshow(AtAinv[rows, :][:, rows].todense())
-    ax.axvline(len(v_points) - 0.5, 0, 1)
-    ax.axhline(len(v_points) - 0.5, 0, 1)
-    ax.set_title("Error Covariance")
-    ax.set_xlabel("Vehicle\t\t\t\t\tCurrent".expandtabs(8))
-    ax.set_ylabel("Current\t\t\t\t\tVehicle".expandtabs(8))
-    x_ticks = np.hstack(
-        (
-            np.linspace(2, len(v_points) - 2, 3),
-            np.linspace(len(v_points), len(rows) - 1, 3),
+    x_ticks = np.linspace(2, len(v_points) - 2, 3)
+    labels = ["descending", "bottom", "resurfacing"]
+    if c_points:
+        ax.set_title("Error Covariance")
+        ax.set_xlabel("Vehicle\t\t\t\t\tCurrent".expandtabs(8))
+        ax.set_ylabel("Current\t\t\t\t\tVehicle".expandtabs(8))
+        ax.axvline(len(v_points) - 0.5, 0, 1)
+        ax.axhline(len(v_points) - 0.5, 0, 1)
+        x_ticks = np.hstack(
+            (
+                x_ticks,
+                np.linspace(len(v_points) + 1, len(rows) - 2, 3),
+            )
         )
-    )
-    labels = list(chain(*repeat(("descending", "bottom", "resurfaced"), 2)))
+        labels = labels + labels
+    else:
+        ax.set_title("Error Covariance: Vehicle Position")
     x_labels = []
     # x_labels = [
     #     plt.Text(tick, 1, label) for tick, label in zip(x_ticks, labels)

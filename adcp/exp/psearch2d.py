@@ -242,11 +242,28 @@ class ParameterSearch2D(Experiment):
         n_gps_e = len(mb.get_zgps(prob.data.ddat, "east"))
         n_gps_n = len(mb.get_zgps(prob.data.ddat, "north"))
 
+        AtAinv_vel = prob.AtAinv
+        AtAinv_pos, v_pos_cols, c_pos_cols = op.solution_variance_estimator(
+            prob.AtA,
+            prob.shape.m,
+            prob.shape.n,
+            prob.config.current_order,
+            prob.config.vehicle_order,
+            prob.config.vehicle_vel,
+            1,
+        )
         viz.display_uncertainty(
-            prob.AtAinv,
+            AtAinv_vel,
             prob.A,
             prob.AtAinv_v_points,
             prob.AtAinv_c_points,
+            (n_ttw_e, n_ttw_n, n_adcp_e, n_adcp_n, n_gps_e, n_gps_n),
+        )
+        viz.display_uncertainty(
+            AtAinv_pos,
+            prob.A,
+            v_pos_cols,
+            c_pos_cols,
             (n_ttw_e, n_ttw_n, n_adcp_e, n_adcp_n, n_gps_e, n_gps_n),
         )
 

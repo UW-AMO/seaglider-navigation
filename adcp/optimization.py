@@ -354,12 +354,11 @@ def solve_mats(prob, verbose=False):
 
 
 def solution_variance_estimator(
-    AtA, m, n, current_order, vehicle_order, vehicle_vel
+    AtA, m, n, current_order, vehicle_order, vehicle_vel, order=2
 ):
     """Calculate a reduced version of the inverse of AtA.
 
-    Selects evenly spread out 1st order terms (velocities) in the
-    easterly direction.
+    Selects evenly spread out terms in the easterly direction.
 
     Arguments:
         AtA (numpy.array): The inverse of the least squares estimator
@@ -371,6 +370,8 @@ def solution_variance_estimator(
         vehicle_order (int): highest order of vehicle terms present in
             AtA
         vehicle_vel (str): What form of vehicle process problem models
+        order (int): which order of process to select rows/columns from.
+            Default = 1 (velocities)
 
     Returns:
         Tuple.  (1) the reduced inverse AtA matrix, as well as the
@@ -378,8 +379,13 @@ def solution_variance_estimator(
         reduced inverse that correspond to (2) vehicle process and (3)
         current process
     """
+    if order > vehicle_order or order > current_order:
+        raise ValueError(
+            f"Cannot provide order {order} terms when vehicle or current is"
+            f" limited to order {min(vehicle_order, current_order)}"
+        )
     I, v_points, c_points = _limited_inversion_dividend(
-        m, n, current_order, vehicle_order, vehicle_vel
+        m, n, current_order, vehicle_order, vehicle_vel, order
     )
     X = scipy.sparse.linalg.spsolve(AtA, I)
     AtAinv = scipy.sparse.lil_matrix(AtA.shape)
@@ -390,9 +396,13 @@ def solution_variance_estimator(
 
 
 def _limited_inversion_dividend(
-    m, n, current_order, vehicle_order, vehicle_vel
+    m, n, current_order, vehicle_order, vehicle_vel, order
 ):
     """Select columns of I to produce a smaller dividend to invert AtA.
+
+    Arguments:
+        order (int): which order of process to select rows/columns from.
+            Default = 1 (velocities)
 
     Returns:
         The reduced matrix I and the columns of the original matrix,
@@ -402,22 +412,23 @@ def _limited_inversion_dividend(
     interesting_sections = np.arange(0.05, 0.95, 0.05)
     interesting_timepoints = np.floor(interesting_sections * m)
 
-    v_points = vehicle_order * interesting_timepoints + (vehicle_order - 2)
+    v_points = vehicle_order * interesting_timepoints + (vehicle_order - order)
     v_points = list(v_points.astype(int))
 
     first_curr_index = 2 * m * vehicle_order
     interesting_depthpoints = np.floor(interesting_sections * n)
     if vehicle_vel[:3] == "otg":
         current_order = current_order - 1
-        cv_offset = 1  # there is no lower order than velocity
+        order = order - 1  # there is no lower order than velocity
+    if order == 0:
+        c_points = []
     else:
-        cv_offset = 2
-    c_points = (
-        first_curr_index
-        + interesting_depthpoints * current_order
-        + (current_order - cv_offset)
-    )
-    c_points = list(c_points.astype(int))
+        c_points = (
+            first_curr_index
+            + interesting_depthpoints * current_order
+            + (current_order - order)
+        )
+        c_points = list(c_points.astype(int))
     cols = v_points + c_points
 
     n_rows = 2 * m * vehicle_order + 2 * n * current_order
