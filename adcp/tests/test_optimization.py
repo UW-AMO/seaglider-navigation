@@ -36,16 +36,15 @@ def test_kalman_factor(standard_prob):
 
 
 def test_limited_inversion_dividend():
-    mat, v_cols, c_cols = op._limited_inversion_dividend(10, 10, 2, 2, "otg")
+    mat, v_cols, c_cols = op._limited_inversion_dividend(20, 20, 2, 2, "otg")
 
-    m = 10
-    n = 10
+    m = 20
+    n = 20
     current_order = 1
     vehicle_order = 2
 
-    interesting_sections = np.array(
-        [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-    )
+    interesting_sections = np.arange(0.05, 0.95, 0.05)
+
     n_rows = 2 * m * vehicle_order + 2 * n * current_order
     mat_shape = (n_rows, vehicle_order * 5 + current_order * 5)
 
@@ -56,14 +55,14 @@ def test_limited_inversion_dividend():
         v_mats.append(
             scipy.sparse.eye(
                 mat_shape[0],
-                vehicle_order,
+                1,
                 -np.floor(section * vehicle_order * m),
             )
         )
         c_mats.append(
             scipy.sparse.eye(
                 mat_shape[0],
-                current_order,
+                1,
                 -2 * m * vehicle_order - np.floor(section * current_order * n),
             )
         )
@@ -73,4 +72,5 @@ def test_limited_inversion_dividend():
 
     assert not (mat != expected).todense().any()
 
-    assert (mat.sum(axis=0) == np.ones((27,))).all()
+    # Each column has only a single nonzero entry, equal to one
+    assert (mat.sum(axis=0) == np.ones(mat.shape[1])).all()
