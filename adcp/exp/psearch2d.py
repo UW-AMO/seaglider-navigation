@@ -119,19 +119,19 @@ class ParameterSearch2D(Experiment):
 
             err = x_leg - self.x
             path_error = (
-                np.linalg.norm(
-                    legacy_size_shape.Xs @ legacy_size_shape.NV @ err
-                )
-                ** 2
-                + np.linalg.norm(
-                    legacy_size_shape.Xs @ legacy_size_shape.NV @ err
-                )
-                ** 2
+                sum((legacy_size_shape.Xs @ legacy_size_shape.EV @ err) ** 2)
+                / legacy_size_shape.Xs.shape[0]
+                + sum((legacy_size_shape.Xs @ legacy_size_shape.NV @ err) ** 2)
+                / legacy_size_shape.Xs.shape[0]
             )
+            path_error = np.sqrt(path_error)
             current_error = (
-                np.linalg.norm(legacy_size_shape.EC @ err) ** 2
-                + np.linalg.norm(legacy_size_shape.NC @ err) ** 2
+                sum((legacy_size_shape.EC @ err) ** 2)
+                / legacy_size_shape.EC.shape[0]
+                + sum((legacy_size_shape.NC @ err) ** 2)
+                / legacy_size_shape.NC.shape[0]
             )
+            current_error = np.sqrt(current_error)
             self.errmap[0, i, j] = path_error
             self.errmap[1, i, j] = current_error
             self.paths.append(x_leg)
@@ -167,14 +167,14 @@ class ParameterSearch2D(Experiment):
             0,
             self.rho_vs,
             self.rho_cs,
-            norm=colors.LogNorm(vmin=1e7, vmax=2e9),
+            norm=colors.LogNorm(vmin=3e1, vmax=3e3),
         )
         viz.show_errmap(
             self.errmap,
             1,
             self.rho_vs,
             self.rho_cs,
-            norm=colors.LogNorm(vmin=1e0, vmax=1e3),
+            norm=colors.LogNorm(vmin=1e-2, vmax=1e0),
         )
         # %%
         print(
