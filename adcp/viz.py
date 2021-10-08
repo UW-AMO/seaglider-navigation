@@ -415,7 +415,7 @@ def current_depth_plot(
     font_dict = {"size": "medium"}
     ax.set_title(direction.title() + "erly Current", **font_dict)
     ax.set_xlabel("Current (meters/sec)".title(), **font_dict)
-    ax.set_ylabel("Depth (m); Descending=warm, Ascending=cool", **font_dict)
+    ax.set_ylabel("Depth (m); Descent=warm, Ascent=cool", **font_dict)
     plt.tight_layout()
 
     # Adjust ylim if just plotting surface
@@ -690,7 +690,7 @@ def solution_variance_plot(AtAinv, v_points, c_points):
     x_ticks = np.linspace(2, len(v_points) - 2, 3)
     labels = ["descending", "bottom", "resurfacing"]
     if c_points:
-        ax.set_title("Error Covariance")
+        ax.set_title("Error Covariance: Velocities")
         ax.set_xlabel("Vehicle\t\t\t\t\tCurrent".expandtabs(8))
         ax.set_ylabel("Current\t\t\t\t\tVehicle".expandtabs(8))
         ax.axvline(len(v_points) - 0.5, 0, 1)
@@ -772,8 +772,8 @@ def show_errmap(
     xlabels = np.round(np.log(rho_cs) / math.log(10)).astype(int)
     ax.set_yticklabels(ylabels)
     ax.set_xticklabels(xlabels)
-    ax.set_ylabel("rho_v (log scale)")
-    ax.set_xlabel("rho_c (log scale)")
+    ax.set_ylabel("Vehicle process covariance (log scale)")
+    ax.set_xlabel("Current process covariance (log scale)")
     cax = fig.add_axes([0.95, 0.15, 0.05, 0.7])
     ax.invert_yaxis()
 
