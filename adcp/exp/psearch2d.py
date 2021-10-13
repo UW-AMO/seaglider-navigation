@@ -58,24 +58,13 @@ class ParameterSearch2D(Experiment):
     ):
         self.name = "2D Parameter Search"
         self.variant = variant
-
-        # self.prob = prob
-        # # expected parameters dominate
-        # self.prob = op.GliderProblem(
-        #     copyobj=self.prob,
-        #     t_scale=t_scale,
-        #     conditioner=conditioner,
-        #     vehicle_vel=vehicle_vel,
-        #     current_order=current_order,
-        #     vehicle_order=vehicle_order,
-        # )
         self.sp = sp
         self.sp.measure_points["gps"] = gps_points
+        self.sp.seed = seed
         self.rho_vs = rho_vs
         self.rho_cs = rho_cs
         self.errmap = np.zeros((2, len(rho_vs), len(rho_cs)))
         self.paths = []
-        self.seed = seed
         self.config = adcp.ProblemConfig(
             t_scale, conditioner, vehicle_vel, current_order, vehicle_order
         )
@@ -277,7 +266,9 @@ class RigorousParameterSearch2D(ParameterSearch2D):
     def run(self):
         results = []
         for n_sim in range(self.sims):
-            curr_search = ParameterSearch2D(**self.sub_problem_kwargs)
+            curr_search = ParameterSearch2D(
+                **self.sub_problem_kwargs, seed=np.random.randint(1e9)
+            )
             results.append(curr_search.run(visuals=False))
 
         self.errmap = np.zeros((2, len(self.rho_vs), len(self.rho_cs)))
