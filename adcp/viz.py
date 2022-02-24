@@ -655,7 +655,7 @@ def vehicle_posit_plot(
     return ax
 
 
-def plot_bundle(sol_x, adat, ddat, times, depths, x, dac=True):
+def plot_bundle(sol_x, adat, ddat, times, depths, x, dac=True, mdat=None):
     vehicle_speed_plot(
         sol_x, ddat, times, depths, direction="both", x_true=x, ttw=False
     )
@@ -666,9 +666,10 @@ def plot_bundle(sol_x, adat, ddat, times, depths, x, dac=True):
         sol_x,
         adat,
         ddat,
-        direction="north",
+        direction="both",
         x_true=x,
         adcp=True,
+        mdat=mdat,
     )
     inferred_adcp_error_plot(sol_x, adat, ddat, direction="both", x_true=x)
     vehicle_posit_plot(sol_x, ddat, times, depths, x_true=x, dead_reckon=True)
