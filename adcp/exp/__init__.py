@@ -9,6 +9,7 @@ from collections import OrderedDict
 import sys
 import re
 
+import numpy as np
 import pandas as pd
 from sqlalchemy import (
     create_engine,
@@ -248,7 +249,10 @@ def run(
         prob_params=prob_params,
         id_table=id_table,
     )
+    debug_suffix = "_" + "".join(np.random.choice(list("0123456789abcde"), 6))
     new_filename = f"trial{trial}_{variant}_{iteration}"
+    if debug:
+        new_filename += debug_suffix
     if output_extension is None:
         new_filename = None
     elif output_extension == "html":
@@ -306,7 +310,7 @@ def run(
     )
     cpu_time = process_time() - cpu_now
 
-    if isinstance(ex, type) and new_filename is not None and not debug:
+    if isinstance(ex, type) and new_filename is not None:
         _save_notebook(nb, new_filename, trials_folder, output_extension)
     else:
         warnings.warn("Logging trial and mock filename, but no file created")
