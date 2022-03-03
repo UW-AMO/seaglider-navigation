@@ -35,6 +35,7 @@ class ProblemData:
 
     @cached_property
     def idx_vehicle(self) -> np.array:
+        """Depth indicies where problem has a vehicle measurement"""
         vehicle_depths = dp._depth_interpolator(self.times, self.ddat)["depth"]
         idxdepth = np.array(
             [np.argwhere(self.depths == d) for d in vehicle_depths]
