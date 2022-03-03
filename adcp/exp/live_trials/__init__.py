@@ -10,7 +10,7 @@ from adcp import dataprep as dp
 from adcp.exp import Experiment
 
 
-class Cabbage17(Experiment):
+class Cabage17(Experiment):
     def __init__(
         self,
         dive,
@@ -100,10 +100,10 @@ class Cabbage17(Experiment):
 
 
 Trial = namedtuple("Trial", ["ex", "prob_params", "sim_params"])
-var_a = {"ex": Cabbage17, "sim_params": {"dive": 1980097}}
-var_b = {"ex": Cabbage17, "sim_params": {"dive": 1980099}}
-var_c = {"ex": Cabbage17, "sim_params": {"dive": 1960131}}
-var_d = {"ex": Cabbage17, "sim_params": {"dive": 1960132}}
+var_a = {"ex": Cabage17, "sim_params": {"dive": 1980097}}
+var_b = {"ex": Cabage17, "sim_params": {"dive": 1980099}}
+var_c = {"ex": Cabage17, "sim_params": {"dive": 1960131}}
+var_d = {"ex": Cabage17, "sim_params": {"dive": 1960132}}
 trial1 = {"prob_params": {}}
 trial2 = {"prob_params": {"current_order": 3, "vehicle_order": 3}}
 trial3 = {"prob_params": {"vehicle_vel": "otg-cov"}}
