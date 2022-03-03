@@ -271,11 +271,14 @@ def timepoints(adat, ddat):
         adat (dict): the recorded ADCP data returned by load_adcp()
     """
     uv_time = ddat["uv"].index.to_numpy()
+    depth_time = ddat["depth"].index.to_numpy()
     gps_time = ddat["gps"].index.to_numpy()
     range_time = ddat["range"].index.to_numpy()
     adcp_time = adat["time"]
 
-    combined = np.concatenate((uv_time, gps_time, range_time, adcp_time))
+    combined = np.concatenate(
+        (uv_time, gps_time, range_time, adcp_time, depth_time)
+    )
     return np.unique(combined)
 
 
