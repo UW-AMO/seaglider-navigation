@@ -20,7 +20,7 @@ class Cabbage17(Experiment):
         rho_a=1e-2,
         rho_g=1e-0,
         rho_r=0,
-        t_scale=1e1,
+        t_scale=1e0,
         conditioner="tanh",
         vehicle_vel="otg",
         current_order=2,
