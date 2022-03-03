@@ -1,6 +1,9 @@
 from collections import namedtuple
 
 import numpy as np
+import pandas as pd
+from scipy.interpolate import interp1d
+from scipy.integrate import trapezoid
 
 import adcp
 from adcp import viz
@@ -47,34 +50,109 @@ class Cabage17(Experiment):
 
         mdat = dp.load_mooring("CBX16_T3_AUG2017.mat")
 
+        # identify which buoy data is relevant to trial
         first_time = data.ddat["depth"].index.min()
         first_time_buoy_idx = np.argmin(np.abs(first_time - mdat["time"]))
-        first_buoy_depths = mdat["depth"][
-            first_time_buoy_idx,
-        ]
+        first_buoy_currs_e = mdat["u"][first_time_buoy_idx]
+        first_buoy_currs_n = mdat["v"][first_time_buoy_idx]
+        first_buoy_depths = mdat["depth"][first_time_buoy_idx]
         first_buoy_bottom_depth = first_buoy_depths.max()
         first_buoy_top_depth = np.nan_to_num(
             first_buoy_depths, nan=np.inf
         ).min()
         last_time = data.ddat["depth"].index.max()
         last_time_buoy_idx = np.argmin(np.abs(last_time - mdat["time"]))
-        last_buoy_depths = mdat["depth"][
-            last_time_buoy_idx,
-        ]
+        last_buoy_currs_e = mdat["u"][last_time_buoy_idx]
+        last_buoy_currs_n = mdat["v"][last_time_buoy_idx]
+        last_buoy_depths = mdat["depth"][last_time_buoy_idx]
         last_buoy_bottom_depth = last_buoy_depths.max()
         last_buoy_top_depth = np.nan_to_num(last_buoy_depths, nan=np.inf).min()
-        first_state_depths_idx = (  # noqa
-            data.depths > first_buoy_top_depth
-        ) & (data.depths <= first_buoy_bottom_depth)
-        last_state_depths_idx = (  # noqa
-            data.depths.max() - data.depths > last_buoy_top_depth
-        ) & (data.depths.max() - data.depths <= last_buoy_bottom_depth)
 
-        # east_eval_currents = (VC @ EC x_sol)[first_state_depths_idx
-        # + last_stape_depths_idx]
-        # north_eval_currents = (VC @ NC x_sol)[first_state_depths_idx
-        # + last_stape_depths_idx]
+        # identify which state current data is within buoy's water column
+        first_state_depths_idx = np.argwhere(
+            (data.depths > first_buoy_top_depth)
+            & (data.depths <= first_buoy_bottom_depth)
+        ).flatten()
+        last_state_depths_idx = np.argwhere(
+            (2 * data.deepest - data.depths > last_buoy_top_depth)
+            & (2 * data.deepest - data.depths <= last_buoy_bottom_depth)
+        ).flatten()
+        first_state_depths = data.depths[first_state_depths_idx]
+        last_state_depths = (
+            2 * data.deepest - data.depths[last_state_depths_idx]
+        )
+        CV = prob.shape.CV
+        EC = prob.shape.EC
+        NC = prob.shape.NC
+        first_state_currs_e = (CV @ EC @ x_sol)[first_state_depths_idx]
+        first_state_currs_n = (CV @ NC @ x_sol)[first_state_depths_idx]
+        last_state_currs_e = (CV @ EC @ x_sol)[last_state_depths_idx]
+        last_state_currs_n = (CV @ NC @ x_sol)[last_state_depths_idx]
 
+        # interpolate current from buoy and solution at all depths to get error
+        first_depths = np.union1d(first_state_depths, first_buoy_depths)
+        last_depths = np.union1d(last_state_depths, last_buoy_depths)
+        interp_f_state_e = interp1d(
+            first_state_depths, first_state_currs_e, fill_value="extrapolate"
+        )
+        interp_f_state_n = interp1d(
+            first_state_depths, first_state_currs_n, fill_value="extrapolate"
+        )
+        interp_f_buoy_e = interp1d(
+            first_buoy_depths, first_buoy_currs_e, fill_value="extrapolate"
+        )
+        interp_f_buoy_n = interp1d(
+            first_buoy_depths, first_buoy_currs_n, fill_value="extrapolate"
+        )
+        descent_df = pd.DataFrame(
+            {
+                "state_e": interp_f_state_e(first_depths),
+                "state_n": interp_f_state_n(first_depths),
+                "buoy_e": interp_f_buoy_e(first_depths),
+                "buoy_n": interp_f_buoy_n(first_depths),
+            },
+            index=first_depths,
+        ).dropna()
+        interp_f_state_e = interp1d(
+            last_state_depths, last_state_currs_e, fill_value="extrapolate"
+        )
+        interp_f_state_n = interp1d(
+            last_state_depths, last_state_currs_n, fill_value="extrapolate"
+        )
+        interp_f_buoy_e = interp1d(
+            last_buoy_depths, last_buoy_currs_e, fill_value="extrapolate"
+        )
+        interp_f_buoy_n = interp1d(
+            last_buoy_depths, last_buoy_currs_n, fill_value="extrapolate"
+        )
+        ascent_df = pd.DataFrame(
+            {
+                "state_e": interp_f_state_e(last_depths),
+                "state_n": interp_f_state_n(last_depths),
+                "buoy_e": interp_f_buoy_e(last_depths),
+                "buoy_n": interp_f_buoy_n(last_depths),
+            },
+            index=last_depths,
+        ).dropna()
+
+        descent_df["delta_e"] = descent_df["state_e"] - descent_df["buoy_e"]
+        descent_df["delta_n"] = descent_df["state_n"] - descent_df["buoy_n"]
+        ascent_df["delta_e"] = ascent_df["state_e"] - ascent_df["buoy_e"]
+        ascent_df["delta_n"] = ascent_df["state_n"] - ascent_df["buoy_n"]
+
+        mean_squared_error = (
+            trapezoid(descent_df["delta_e"] ** 2, descent_df.index)
+            + trapezoid(descent_df["delta_n"] ** 2, descent_df.index)
+            + trapezoid(ascent_df["delta_e"] ** 2, ascent_df.index)
+            + trapezoid(ascent_df["delta_n"] ** 2, ascent_df.index)
+        ) / (
+            descent_df.index[-1]
+            - descent_df.index[0]
+            + ascent_df.index[-1]
+            - ascent_df.index[0]
+        )
+
+        # Plotting.
         legacy = mb.legacy_select(
             prob.shape.m,
             prob.shape.n,
@@ -84,7 +162,6 @@ class Cabage17(Experiment):
             prob=prob,
         )
         x_leg = legacy @ x_sol
-
         if visuals:
             viz.plot_bundle(
                 x_leg,
@@ -96,7 +173,7 @@ class Cabage17(Experiment):
                 dac=True,
                 mdat=mdat,
             )
-        return {"metrics": [0]}
+        return {"metrics": [mean_squared_error]}
 
 
 Trial = namedtuple("Trial", ["ex", "prob_params", "sim_params"])

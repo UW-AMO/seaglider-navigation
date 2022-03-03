@@ -26,6 +26,18 @@ class ProblemData:
         return dp.timepoints(self.adat, self.ddat)
 
     @cached_property
+    def turnaround(self):
+        depth_df = dp._depth_interpolator(self.times, self.ddat)
+        turnaround = depth_df.ascending.idxmax()
+        return turnaround
+
+    @cached_property
+    def deepest(self):
+        depth_df = dp._depth_interpolator(self.times, self.ddat)
+        deepest = depth_df.loc[self.turnaround, "depth"]
+        return deepest
+
+    @cached_property
     def depth_rates(self):
         return dp.depth_rates(self.times, self.depths, self.ddat)
 
