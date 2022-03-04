@@ -62,7 +62,9 @@ class Cabage17(Experiment):
         viz.print_condition(c1, c2, c3, c4)
 
         # Calculate positional error to final GPS point
-        gps_time_idx = np.argwhere(last_gps_time == data.times).flatten()[0]
+        gps_time_idx = np.argmin(
+            abs(last_gps_time - pd.to_datetime(data.times))
+        )
         Xs = prob.shape.Xs
         EV = prob.shape.EV
         NV = prob.shape.NV
@@ -194,8 +196,8 @@ class Cabage17(Experiment):
                 data.times,
                 data.depths,
                 x=None,
-                dac=True,
                 mdat=mdat,
+                final_posit=last_gps_posit,
             )
         return {"metrics": [nav_error, mean_squared_error]}
 
@@ -205,6 +207,10 @@ var_a = {"ex": Cabage17, "sim_params": {"dive": 1980097}}
 var_b = {"ex": Cabage17, "sim_params": {"dive": 1980099}}
 var_c = {"ex": Cabage17, "sim_params": {"dive": 1960131}}
 var_d = {"ex": Cabage17, "sim_params": {"dive": 1960132}}
+var_e = {"ex": Cabage17, "sim_params": {"dive": 1980097, "last_gps": False}}
+var_f = {"ex": Cabage17, "sim_params": {"dive": 1980099, "last_gps": False}}
+var_g = {"ex": Cabage17, "sim_params": {"dive": 1960131, "last_gps": False}}
+var_h = {"ex": Cabage17, "sim_params": {"dive": 1960132, "last_gps": False}}
 trial1 = {"prob_params": {}}
 trial2 = {"prob_params": {"current_order": 3, "vehicle_order": 3}}
 trial3 = {"prob_params": {"vehicle_vel": "otg-cov"}}
@@ -219,3 +225,7 @@ trial1a = Trial(**trial1, **var_a)
 trial2a = Trial(**trial2, **var_a)
 trial3a = Trial(**trial3, **var_a)
 trial4a = Trial(**trial4, **var_a)
+trial1e = Trial(**trial1, **var_e)
+trial2e = Trial(**trial2, **var_e)
+trial3a = Trial(**trial3, **var_e)
+trial4e = Trial(**trial4, **var_e)

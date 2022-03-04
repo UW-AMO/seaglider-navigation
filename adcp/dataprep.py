@@ -282,11 +282,12 @@ def timepoints(adat, ddat):
     return np.unique(combined)
 
 
-def dead_reckon(ddat):
+def dead_reckon(ddat, final_posit=None):
     """Dead reckons motion with and without average current.
 
     Parameters:
         ddat (dict): the recorded dive data returned by load_dive()
+        final_posit (Tuple(Float, Float)): the GPS final coordinates
 
     Returns:
         Tuple:
@@ -312,10 +313,12 @@ def dead_reckon(ddat):
     }
     dac = False
     # Now add constant drift to correct reckoning for final GPS position
+    if final_posit is not None:
+        ddat["gps"].loc[final_posit.name] = final_posit
     gps_pct = (
         ddat["gps"].index[-1] - ddat["gps"].index[0]
     ).total_seconds() / cum_secs[-1]
-    if gps_pct > 0.1:
+    if gps_pct > 0.1:  # DAC must be measured by at least 10% of a dive
         x_err = ddat["gps"].gps_nx_east.iloc[-1] - x_dead[-1]
         y_err = ddat["gps"].gps_ny_north.iloc[-1] - y_dead[-1]
         uv_time_elapsed = ddat["uv"].index[-1] - ddat["uv"].index[0]
