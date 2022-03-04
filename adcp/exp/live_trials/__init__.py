@@ -29,9 +29,14 @@ class Cabage17(Experiment):
         current_order=2,
         vehicle_order=2,
         variant="Basic",
+        last_gps=True,
     ):
         """Currently known dives:
         1980097, 1980099, 1960131, 1960132
+
+        Arguments:
+            last_gps: whether to remove the last GPS point from the data in
+                order to simulate submerged navigation.
         """
         self.dive = dive
         self.name = "Real Dive Tracking"
@@ -40,17 +45,33 @@ class Cabage17(Experiment):
             t_scale, conditioner, vehicle_vel, current_order, vehicle_order
         )
         self.weights = adcp.Weights(rho_v, rho_c, rho_t, rho_a, rho_g, rho_r)
+        self.last_gps = last_gps
 
     def run(self, visuals=True):
         data = adcp.ProblemData(
             dp.load_dive(self.dive), dp.load_adcp(self.dive)
         )
+        last_gps_time = sorted(data.ddat["gps"].index)[-1]
+        last_gps_posit = data.ddat["gps"].loc[last_gps_time]
+        if not self.last_gps:
+            data.ddat["gps"].drop(last_gps_time, inplace=True)
         prob = adcp.GliderProblem(data, self.config, self.weights)
         x_sol = op.backsolve(prob)
 
-        mdat = dp.load_mooring("CBX16_T3_AUG2017.mat")
+        # Calculate positional error to final GPS point
+        gps_time_idx = np.argwhere(last_gps_time == data.times).flatten()[0]
+        Xs = prob.shape.Xs
+        EV = prob.shape.EV
+        NV = prob.shape.NV
+
+        east_posit = (Xs @ EV @ x_sol)[gps_time_idx]
+        north_posit = (Xs @ NV @ x_sol)[gps_time_idx]
+        nav_error = (last_gps_posit["gps_nx_east"] - east_posit) ** 2 + (
+            last_gps_posit["gps_ny_north"] - north_posit
+        ) ** 2
 
         # identify which buoy data is relevant to trial
+        mdat = dp.load_mooring("CBX16_T3_AUG2017.mat")
         first_time = data.ddat["depth"].index.min()
         first_time_buoy_idx = np.argmin(np.abs(first_time - mdat["time"]))
         first_buoy_currs_e = mdat["u"][first_time_buoy_idx]
@@ -173,7 +194,7 @@ class Cabage17(Experiment):
                 dac=True,
                 mdat=mdat,
             )
-        return {"metrics": [mean_squared_error]}
+        return {"metrics": [nav_error, mean_squared_error]}
 
 
 Trial = namedtuple("Trial", ["ex", "prob_params", "sim_params"])
