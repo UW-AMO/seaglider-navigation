@@ -58,6 +58,9 @@ class Cabage17(Experiment):
         prob = adcp.GliderProblem(data, self.config, self.weights)
         x_sol = op.backsolve(prob)
 
+        c1, c2, c3, c4 = viz.check_condition(prob)
+        viz.print_condition(c1, c2, c3, c4)
+
         # Calculate positional error to final GPS point
         gps_time_idx = np.argwhere(last_gps_time == data.times).flatten()[0]
         Xs = prob.shape.Xs
