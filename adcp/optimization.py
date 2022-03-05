@@ -126,10 +126,10 @@ def time_rescale(x, t_s, shape):
     )  # "None, matrix multiplied"
     velocity_scaler = scipy.sparse.vstack(
         (
-            nm(1 / t_s ** 2, nmm(As, NV)),
+            nm(1 / t_s**2, nmm(As, NV)),
             1 / t_s * Vs @ NV,
             Xs @ NV,
-            nm(1 / t_s ** 2, nmm(As, EV)),
+            nm(1 / t_s**2, nmm(As, EV)),
             1 / t_s * Vs @ EV,
             Xs @ EV,
             nm(1 / t_s, nmm(CA, NC)),
