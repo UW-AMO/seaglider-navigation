@@ -314,13 +314,16 @@ def dead_reckon(ddat, final_posit=None):
     dac = False
     # Now add constant drift to correct reckoning for final GPS position
     if final_posit is not None:
-        ddat["gps"].loc[final_posit.name] = final_posit
-    gps_pct = (
-        ddat["gps"].index[-1] - ddat["gps"].index[0]
-    ).total_seconds() / cum_secs[-1]
+        final_time = final_posit.name
+    else:
+        final_time = ddat["gps"].index[-1]
+        final_posit = ddat["gps"].loc[final_time]
+    gps_pct = (final_time - ddat["gps"].index[0]).total_seconds() / cum_secs[
+        -1
+    ]
     if gps_pct > 0.1:  # DAC must be measured by at least 10% of a dive
-        x_err = ddat["gps"].gps_nx_east.iloc[-1] - x_dead[-1]
-        y_err = ddat["gps"].gps_ny_north.iloc[-1] - y_dead[-1]
+        x_err = final_posit.gps_nx_east - x_dead[-1]
+        y_err = final_posit.gps_ny_north - y_dead[-1]
         uv_time_elapsed = ddat["uv"].index[-1] - ddat["uv"].index[0]
         x_step = x_err / uv_time_elapsed.total_seconds()
         y_step = y_err / uv_time_elapsed.total_seconds()
