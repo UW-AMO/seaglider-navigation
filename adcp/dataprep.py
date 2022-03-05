@@ -244,7 +244,7 @@ def _depth_interpolator(times, ddat):
     Returns:
         pandas DataFrame
     """
-    new_times = pd.DataFrame([], index=times, columns=["depth"])
+    new_times = pd.DataFrame([], index=times, columns=["depth"], dtype=float)
     new_times.index.name = "time"
     depth_df = ddat["depth"].append(new_times)
     depth_df = depth_df.interpolate(method="time", limit_direction="both")
