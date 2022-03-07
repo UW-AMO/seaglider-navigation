@@ -215,7 +215,45 @@ trial4 = Trial(
         "vehicle_order": 3,
     },
 )
-
+basic_solve_params = {
+    "rho_v": 1e-2,
+    "rho_c": 1e-2,
+    "rho_t": 1e-2,
+    "rho_a": 5e-2,
+    "rho_g": 1e0,
+    "t_scale": 1e0,
+}
+trial5 = Trial(Cabage17, basic_solve_params)
+trial6 = Trial(
+    Cabage17,
+    {
+        "current_order": 3,
+        "vehicle_order": 3,
+        **basic_solve_params,
+        "rho_v": 5e-5,
+        "rho_c": 5e-3,
+    },
+)
+trial7 = Trial(
+    Cabage17,
+    {
+        "vehicle_vel": "otg-cov",
+        **basic_solve_params,
+        "rho_v": 1e-1,
+        "rho_c": 1e-1,
+    },
+)
+trial8 = Trial(
+    Cabage17,
+    {
+        "vehicle_vel": "otg-cov",
+        "current_order": 3,
+        "vehicle_order": 3,
+        **basic_solve_params,
+        "rho_v": 1e-5,
+        "rho_c": 1e-4,
+    },
+)
 Variant = namedtuple(
     "Variant",
     [
