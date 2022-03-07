@@ -203,30 +203,30 @@ class Cabage17(Experiment):
         return {"metrics": [nav_error, mean_squared_error]}
 
 
-Trial = namedtuple("Trial", ["ex", "prob_params", "sim_params"])
-var_a = {"ex": Cabage17, "sim_params": {"dive": 1980097}}
-var_b = {"ex": Cabage17, "sim_params": {"dive": 1980099}}
-var_c = {"ex": Cabage17, "sim_params": {"dive": 1960131}}
-var_d = {"ex": Cabage17, "sim_params": {"dive": 1960132}}
-var_e = {"ex": Cabage17, "sim_params": {"dive": 1980097, "last_gps": False}}
-var_f = {"ex": Cabage17, "sim_params": {"dive": 1980099, "last_gps": False}}
-var_g = {"ex": Cabage17, "sim_params": {"dive": 1960131, "last_gps": False}}
-var_h = {"ex": Cabage17, "sim_params": {"dive": 1960132, "last_gps": False}}
-trial1 = {"prob_params": {}}
-trial2 = {"prob_params": {"current_order": 3, "vehicle_order": 3}}
-trial3 = {"prob_params": {"vehicle_vel": "otg-cov"}}
-trial4 = {
-    "prob_params": {
+Trial = namedtuple("Trial", ["ex", "solve_params"])
+trial1 = Trial(Cabage17, {})
+trial2 = Trial(Cabage17, {"current_order": 3, "vehicle_order": 3})
+trial3 = Trial(Cabage17, {"vehicle_vel": "otg-cov"})
+trial4 = Trial(
+    Cabage17,
+    {
         "vehicle_vel": "otg-cov",
         "current_order": 3,
         "vehicle_order": 3,
-    }
-}
-trial1a = Trial(**trial1, **var_a)
-trial2a = Trial(**trial2, **var_a)
-trial3a = Trial(**trial3, **var_a)
-trial4a = Trial(**trial4, **var_a)
-trial1e = Trial(**trial1, **var_e)
-trial2e = Trial(**trial2, **var_e)
-trial3a = Trial(**trial3, **var_e)
-trial4e = Trial(**trial4, **var_e)
+    },
+)
+
+Variant = namedtuple(
+    "Variant",
+    [
+        "data_params",
+    ],
+)
+var_a = Variant({"dive": 1980097})
+var_b = Variant({"dive": 1980099})
+var_c = Variant({"dive": 1960131})
+var_d = Variant({"dive": 1960132})
+var_e = Variant({"dive": 1980097, "last_gps": False})
+var_f = Variant({"dive": 1980099, "last_gps": False})
+var_g = Variant({"dive": 1960131, "last_gps": False})
+var_h = Variant({"dive": 1960132, "last_gps": False})
