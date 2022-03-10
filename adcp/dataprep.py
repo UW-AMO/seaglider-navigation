@@ -246,7 +246,7 @@ def _depth_interpolator(times, ddat):
     """
     new_times = pd.DataFrame([], index=times, columns=["depth"], dtype=float)
     new_times.index.name = "time"
-    depth_df = ddat["depth"].append(new_times)
+    depth_df = pd.concat((ddat["depth"], new_times))
     depth_df = depth_df.interpolate(method="time", limit_direction="both")
     depth_df = depth_df.reset_index().drop_duplicates(subset=["time"])
     depth_df = depth_df.set_index("time")
