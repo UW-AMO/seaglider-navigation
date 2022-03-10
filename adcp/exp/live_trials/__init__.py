@@ -204,7 +204,7 @@ class Cabage17(Experiment):
 
 
 Trial = namedtuple("Trial", ["ex", "solve_params"])
-trial1 = Trial(Cabage17, {})
+trial1 = Trial(Cabage17, {"rho_r": 1e-4})
 trial2 = Trial(Cabage17, {"current_order": 3, "vehicle_order": 3})
 trial3 = Trial(Cabage17, {"vehicle_vel": "otg-cov"})
 trial4 = Trial(
@@ -216,11 +216,10 @@ trial4 = Trial(
     },
 )
 basic_solve_params = {
-    "rho_v": 1e-2,
-    "rho_c": 1e-2,
     "rho_t": 1e-2,
     "rho_a": 5e-2,
     "rho_g": 1e0,
+    "rho_r": 0,
     "t_scale": 1e0,
 }
 trial5 = Trial(Cabage17, basic_solve_params)
