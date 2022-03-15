@@ -253,6 +253,71 @@ trial8 = Trial(
         "rho_c": 1e-4,
     },
 )
+trial9 = Trial(
+    Cabage17,
+    {
+        "current_order": 3,
+        "vehicle_order": 3,
+        **basic_solve_params,
+        "rho_v": 5e-5,
+        "rho_c": 5e-5,
+        "rho_t": 1e-1,
+        "rho_a": 1e-1,
+    },
+)
+
+trial11 = Trial(
+    Cabage17,
+    {
+        "vehicle_vel": "otg-cov",
+        "current_order": 3,
+        "vehicle_order": 3,
+        **basic_solve_params,
+        "rho_v": 1e-8,
+        "rho_c": 1e-8,
+        "rho_t": 1e-1,
+        "rho_a": 1e-1,
+    },
+)
+
+trial12 = Trial(
+    Cabage17,
+    {
+        "current_order": 3,
+        "vehicle_order": 3,
+        **basic_solve_params,
+        "rho_v": 1e-6,
+        "rho_c": 1e-6,
+        "rho_t": 1e-1,
+        "rho_a": 1e-1,
+    },
+)
+
+trial13 = Trial(
+    Cabage17,
+    {
+        "current_order": 3,
+        "vehicle_order": 3,
+        **basic_solve_params,
+        "rho_v": 1e-8,
+        "rho_c": 1e-8,
+        "rho_t": 1e-1,
+        "rho_a": 1e-1,
+    },
+)
+trial14 = Trial(
+    Cabage17,
+    {
+        "current_order": 3,
+        "vehicle_order": 3,
+        **basic_solve_params,
+        "rho_v": 1e-1,
+        "rho_c": 1e-1,
+        "rho_t": 1e-1,
+        "rho_a": 1e-1,
+    },
+)
+
 Variant = namedtuple(
     "Variant",
     [
