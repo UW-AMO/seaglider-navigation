@@ -731,17 +731,7 @@ def solution_variance_plot(AtAinv, v_points, c_points):
     ax.set_yticks(x_ticks)
     ax.set_xticklabels(x_labels, rotation=45)
     ax.set_yticklabels(y_labels)
-
-    # plt.subplot(1, 2, 2)
-    # ax = plt.gca()
-    # ax.plot(np.diagonal(AtAinv[rows].todense()))
-    # ax.set_title("Error Variance (diagonal of left)")
-    # ax.set_xticks(x_ticks)
-    # ax.set_xticklabels(x_labels, rotation=60)
-    # ax.set_ylabel("Variance")
-    # ax.set_xlabel("Vehicle\t\t\t\t\t\t\tCurrent".expandtabs(8))
-    # ax.axvline(len(v_points) - 0.5, 0, 1)
-    # plt.tight_layout()
+    fig.colorbar(ax)
 
 
 def influence_plot(AtAinv, A, v_points, c_points, n_obs):
