@@ -218,9 +218,9 @@ def q_cond(dts, dim=2):
         def arr_func(dt: Iterable) -> np.ndarray:
             return np.array(
                 [
-                    [dt, dt ** 2 / 2, dt ** 3 / 6],
-                    [dt ** 2 / 2, dt ** 3 / 3, dt ** 4 / 8],
-                    [dt ** 3 / 6, dt ** 4 / 8, dt ** 5 / 20],
+                    [dt, dt**2 / 2, dt**3 / 6],
+                    [dt**2 / 2, dt**3 / 3, dt**4 / 8],
+                    [dt**3 / 6, dt**4 / 8, dt**5 / 20],
                 ]
             )
 
@@ -230,13 +230,13 @@ def q_cond(dts, dim=2):
         min_eig = min(abs(np.linalg.eigvals(min_arr)))
         return max_eig / min_eig
     elif dim == 2:
-        max_disc = 1 + max_dt ** 2 / 3 + max_dt ** 4 / 9
+        max_disc = 1 + max_dt**2 / 3 + max_dt**4 / 9
         max_eig = (
-            1 / 2 * (max_dt + max_dt ** 3 / 3 + max_dt * np.sqrt(max_disc))
+            1 / 2 * (max_dt + max_dt**3 / 3 + max_dt * np.sqrt(max_disc))
         )
-        min_disc = 1 + min_dt ** 2 / 3 + min_dt ** 4 / 9
+        min_disc = 1 + min_dt**2 / 3 + min_dt**4 / 9
         min_eig = (
-            1 / 2 * (min_dt + min_dt ** 3 / 3 - min_dt * np.sqrt(min_disc))
+            1 / 2 * (min_dt + min_dt**3 / 3 - min_dt * np.sqrt(min_disc))
         )
         return max_eig / min_eig
     elif dim == 1:
@@ -293,9 +293,9 @@ def vehicle_Qblocks(
         depth_rates = np.ones_like(dts)
     dts = reduce_condition(dts, method=conditioner)
     if current_order == 2:
-        covariances = dds ** 3 / depth_rates ** 2 / 12
+        covariances = dds**3 / depth_rates**2 / 12
     elif current_order == 3:
-        covariances = dds ** 5 / depth_rates ** 2 / 720
+        covariances = dds**5 / depth_rates**2 / 720
     else:
         raise ValueError
 
@@ -307,20 +307,20 @@ def vehicle_Qblocks(
 
     if order == 2:
         Qs = [
-            t_scale ** 3
+            t_scale**3
             * rho
-            * np.array([[dt, dt ** 2 / 2], [dt ** 2 / 2, dt ** 3 / 3 + c_cov]])
+            * np.array([[dt, dt**2 / 2], [dt**2 / 2, dt**3 / 3 + c_cov]])
             for dt, c_cov in zip(dts, covariances)
         ]
     elif order == 3:
         Qs = [
-            t_scale ** 5
+            t_scale**5
             * rho
             * np.array(
                 [
-                    [dt, dt ** 2 / 2, dt ** 3 / 6],
-                    [dt ** 2 / 2, dt ** 3 / 3, dt ** 4 / 8],
-                    [dt ** 3 / 6, dt ** 4 / 8, dt ** 5 / 20 + c_cov],
+                    [dt, dt**2 / 2, dt**3 / 6],
+                    [dt**2 / 2, dt**3 / 3, dt**4 / 8],
+                    [dt**3 / 6, dt**4 / 8, dt**5 / 20 + c_cov],
                 ]
             )
             for dt, c_cov in zip(dts, covariances)
@@ -399,7 +399,7 @@ def vehicle_G(
         negGs = [np.array([[-1, 0], [-dt, -1]]) for dt in dts]
     elif order == 3:
         negGs = [
-            np.array([[-1, 0, 0], [-dt, -1, 0], [-(dt ** 2) / 2, -dt, -1]])
+            np.array([[-1, 0, 0], [-dt, -1, 0], [-(dt**2) / 2, -dt, -1]])
             for dt in dts
         ]
     else:
@@ -451,7 +451,7 @@ def vehicle_G_given_C(
     x_given_c = dds / (2 * depth_rates)
     x_given_c = np.nan_to_num(x_given_c, nan=0, posinf=0)
     if current_order == 3:
-        x_given_w = dds ** 2 / (12 * depth_rates)
+        x_given_w = dds**2 / (12 * depth_rates)
         x_given_w = np.nan_to_num(x_given_w, nan=0, posinf=0)
     elif current_order != 2:
         raise ValueError
@@ -497,35 +497,35 @@ def depth_Qblocks(
     dds = reduce_condition(delta_depths, method=conditioner)
     cond = q_cond(dds, dim=1)
 
-    dr_neg1 = depth_rate ** -1
-    dr_neg2 = depth_rate ** -2
+    dr_neg1 = depth_rate**-1
+    dr_neg2 = depth_rate**-2
     if cond > 1e3:
         warnings.warn(ConditionWarning(cond))
     elif cond < 1:
         raise RuntimeError("Calculated invalid condition number for Q")
     if order == 1:
-        Qs = [t_scale ** 2 * rho * np.array([[dd]]) for dd in dds]
+        Qs = [t_scale**2 * rho * np.array([[dd]]) for dd in dds]
     elif order == 2:
         Qs = [
-            t_scale ** 2
+            t_scale**2
             * rho
             * np.array(
                 [
-                    [dd, dd ** 2 / 2 * dr1],
-                    [dd ** 2 / 2 * dr1, dd ** 3 / 3 * dr2],
+                    [dd, dd**2 / 2 * dr1],
+                    [dd**2 / 2 * dr1, dd**3 / 3 * dr2],
                 ]
             )
             for dd, dr1, dr2 in zip(dds, dr_neg1, dr_neg2)
         ]
     elif order == 3:
         Qs = [
-            t_scale ** 2
+            t_scale**2
             * rho
             * np.array(
                 [
-                    [dd, dd ** 2 / 2, dd ** 3 / 6 * dr1],
-                    [dd ** 2 / 2, dd ** 3 / 3, dd ** 4 / 8 * dr1],
-                    [dd ** 3 / 6 * dr1, dd ** 4 / 8 * dr1, dd ** 5 / 20 * dr2],
+                    [dd, dd**2 / 2, dd**3 / 6 * dr1],
+                    [dd**2 / 2, dd**3 / 3, dd**4 / 8 * dr1],
+                    [dd**3 / 6 * dr1, dd**4 / 8 * dr1, dd**5 / 20 * dr2],
                 ]
             )
             for dd, dr1, dr2 in zip(dds, dr_neg1, dr_neg2)
@@ -602,7 +602,7 @@ def depth_G(
         )
     dds = reduce_condition(delta_depths, method=conditioner)
 
-    dr_neg1 = depth_rate ** -1
+    dr_neg1 = depth_rate**-1
     if order == 1:
         negGs = [np.array([[-1]]) for dd in dds]
     elif order == 2:
@@ -616,7 +616,7 @@ def depth_G(
                 [
                     [-1, 0, 0],
                     [-dd, -1, 0],
-                    [-(dd ** 2) / 2 * dr1, -dd * dr1, -1],
+                    [-(dd**2) / 2 * dr1, -dd * dr1, -1],
                 ]
             )
             for dd, dr1 in zip(dds, dr_neg1)

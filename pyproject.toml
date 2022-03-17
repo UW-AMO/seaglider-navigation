@@ -11,10 +11,11 @@ omit = [
 
 [tool.black]
 line-length = 79
-experimental-string-processing = 1
+preview = 1
 exclude = '''
 (
-  adcp-env
+  adcp-env |
+  .ipynb
 )
 '''
 
