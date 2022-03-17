@@ -365,6 +365,19 @@ trial18 = Trial(
         "rho_a": 1e5,
     },
 )
+trial18 = Trial(
+    Cabage17,
+    {
+        "t_scale": 1e-3,
+        "current_order": 3,
+        "vehicle_order": 3,
+        **basic_solve_params,
+        "rho_v": 5e-5,
+        "rho_c": 1e-3,
+        "rho_t": 1e-1,
+        "rho_a": 1e5,
+    },
+)
 
 
 Variant = namedtuple(
