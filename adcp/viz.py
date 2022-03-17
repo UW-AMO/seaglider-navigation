@@ -686,7 +686,7 @@ def solution_variance_plot(AtAinv, v_points, c_points):
     fig = plt.figure()  # noqa
     # plt.subplot(1, 2, 1)
     ax = plt.gca()
-    ax.matshow(AtAinv[rows, :][:, rows].todense())
+    im = ax.matshow(AtAinv[rows, :][:, rows].todense())
     x_ticks = np.linspace(2, len(v_points) - 2, 3)
     labels = ["descending", "bottom", "resurfacing"]
     if c_points:
@@ -716,7 +716,6 @@ def solution_variance_plot(AtAinv, v_points, c_points):
     ax.set_yticks(x_ticks)
     ax.set_xticklabels(x_labels, rotation=45)
     ax.set_yticklabels(y_labels)
-
     # plt.subplot(1, 2, 2)
     # ax = plt.gca()
     # ax.plot(np.diagonal(AtAinv[rows].todense()))
@@ -727,6 +726,7 @@ def solution_variance_plot(AtAinv, v_points, c_points):
     # ax.set_xlabel("Vehicle\t\t\t\t\t\t\tCurrent".expandtabs(8))
     # ax.axvline(len(v_points) - 0.5, 0, 1)
     # plt.tight_layout()
+    fig.colorbar(im)
 
 
 def influence_plot(AtAinv, A, v_points, c_points, n_obs):
