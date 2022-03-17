@@ -244,9 +244,9 @@ def _depth_interpolator(times, ddat):
     Returns:
         pandas DataFrame
     """
-    new_times = pd.DataFrame([], index=times, columns=["depth"])
+    new_times = pd.DataFrame([], index=times, columns=["depth"], dtype=float)
     new_times.index.name = "time"
-    depth_df = ddat["depth"].append(new_times)
+    depth_df = pd.concat((ddat["depth"], new_times))
     depth_df = depth_df.interpolate(method="time", limit_direction="both")
     depth_df = depth_df.reset_index().drop_duplicates(subset=["time"])
     depth_df = depth_df.set_index("time")
@@ -271,19 +271,23 @@ def timepoints(adat, ddat):
         adat (dict): the recorded ADCP data returned by load_adcp()
     """
     uv_time = ddat["uv"].index.to_numpy()
+    depth_time = ddat["depth"].index.to_numpy()
     gps_time = ddat["gps"].index.to_numpy()
     range_time = ddat["range"].index.to_numpy()
     adcp_time = adat["time"]
 
-    combined = np.concatenate((uv_time, gps_time, range_time, adcp_time))
+    combined = np.concatenate(
+        (uv_time, gps_time, range_time, adcp_time, depth_time)
+    )
     return np.unique(combined)
 
 
-def dead_reckon(ddat):
+def dead_reckon(ddat, final_posit=None):
     """Dead reckons motion with and without average current.
 
     Parameters:
         ddat (dict): the recorded dive data returned by load_dive()
+        final_posit (Tuple(Float, Float)): the GPS final coordinates
 
     Returns:
         Tuple:
@@ -309,12 +313,17 @@ def dead_reckon(ddat):
     }
     dac = False
     # Now add constant drift to correct reckoning for final GPS position
-    gps_pct = (
-        ddat["gps"].index[-1] - ddat["gps"].index[0]
-    ).total_seconds() / cum_secs[-1]
-    if gps_pct > 0.1:
-        x_err = ddat["gps"].gps_nx_east.iloc[-1] - x_dead[-1]
-        y_err = ddat["gps"].gps_ny_north.iloc[-1] - y_dead[-1]
+    if final_posit is not None:
+        final_time = final_posit.name
+    else:
+        final_time = ddat["gps"].index[-1]
+        final_posit = ddat["gps"].loc[final_time]
+    gps_pct = (final_time - ddat["gps"].index[0]).total_seconds() / cum_secs[
+        -1
+    ]
+    if gps_pct > 0.1:  # DAC must be measured by at least 10% of a dive
+        x_err = final_posit.gps_nx_east - x_dead[-1]
+        y_err = final_posit.gps_ny_north - y_dead[-1]
         uv_time_elapsed = ddat["uv"].index[-1] - ddat["uv"].index[0]
         x_step = x_err / uv_time_elapsed.total_seconds()
         y_step = y_err / uv_time_elapsed.total_seconds()

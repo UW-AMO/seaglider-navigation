@@ -407,10 +407,9 @@ def current_depth_plot(
             color="cyan",
             label="Ascending-Mooring",
         )
-        #        ax.legend(loc='lower left')
         lines = [*lines, ln6, ln7]
 
-    ax.legend()
+    ax.legend(loc="lower left")
     ax.invert_yaxis()
     font_dict = {"size": "medium"}
     ax.set_title(direction.title() + "erly Current", **font_dict)
@@ -571,6 +570,7 @@ def vehicle_posit_plot(
     backsolve=None,
     x_true=None,
     dead_reckon=True,
+    final_posit=None,
 ):
     """Plots the vehicle's position in x-y coordinates, optionally
     with different comparison solutions.
@@ -586,6 +586,7 @@ def vehicle_posit_plot(
          x_true (numpy.array): true state vector
          dead_reckon (bool): Whether to include dead reckoning solution,
              treating TTW measurements as over-the-ground truth.
+        final_posit (Tuple(Float, Float)): the GPS final coordinates
     """
     m = len(times)
     n = len(depths)
@@ -631,7 +632,7 @@ def vehicle_posit_plot(
         )
         lns.append(ln4[0])
     if dead_reckon:
-        df, dac = dp.dead_reckon(ddat)
+        df, dac = dp.dead_reckon(ddat, final_posit)
         ln5 = ax.plot(
             df.x_dead / 1000,
             df.y_dead / 1000,
@@ -649,13 +650,18 @@ def vehicle_posit_plot(
                 label="DR Corrected for DAC",
             )
             lns.append(ln6[0])
+    if final_posit is not None:
+        ln7 = ax.plot(*final_posit / 1000, "r*", label="GPS @ resurfacing")
+        lns.append(ln7[0])
     ax.legend()
     ax.set_xlabel("Easting (km)")
     ax.set_ylabel("Northing (km)")
     return ax
 
 
-def plot_bundle(sol_x, adat, ddat, times, depths, x, dac=True):
+def plot_bundle(
+    sol_x, adat, ddat, times, depths, x, mdat=None, final_posit=None
+):
     vehicle_speed_plot(
         sol_x, ddat, times, depths, direction="both", x_true=x, ttw=False
     )
@@ -666,12 +672,21 @@ def plot_bundle(sol_x, adat, ddat, times, depths, x, dac=True):
         sol_x,
         adat,
         ddat,
-        direction="north",
+        direction="both",
         x_true=x,
         adcp=True,
+        mdat=mdat,
     )
     inferred_adcp_error_plot(sol_x, adat, ddat, direction="both", x_true=x)
-    vehicle_posit_plot(sol_x, ddat, times, depths, x_true=x, dead_reckon=True)
+    vehicle_posit_plot(
+        sol_x,
+        ddat,
+        times,
+        depths,
+        x_true=x,
+        dead_reckon=True,
+        final_posit=final_posit,
+    )
 
 
 def display_uncertainty(AtAinv, A, v_points, c_points, n_obs: Tuple):
@@ -716,17 +731,7 @@ def solution_variance_plot(AtAinv, v_points, c_points):
     ax.set_yticks(x_ticks)
     ax.set_xticklabels(x_labels, rotation=45)
     ax.set_yticklabels(y_labels)
-
-    # plt.subplot(1, 2, 2)
-    # ax = plt.gca()
-    # ax.plot(np.diagonal(AtAinv[rows].todense()))
-    # ax.set_title("Error Variance (diagonal of left)")
-    # ax.set_xticks(x_ticks)
-    # ax.set_xticklabels(x_labels, rotation=60)
-    # ax.set_ylabel("Variance")
-    # ax.set_xlabel("Vehicle\t\t\t\t\t\t\tCurrent".expandtabs(8))
-    # ax.axvline(len(v_points) - 0.5, 0, 1)
-    # plt.tight_layout()
+    fig.colorbar(ax)
 
 
 def influence_plot(AtAinv, A, v_points, c_points, n_obs):

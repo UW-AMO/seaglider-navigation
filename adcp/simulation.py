@@ -597,7 +597,9 @@ def true_solution(curr_df, v_df, final_depths, sim_params):
     # max depth from sim_params.  Thus need to interpolate current to
     # the calculated ascending depths
     cdf = curr_df.append(
-        pd.DataFrame(index=final_depths, columns=["curr_e", "curr_n"])
+        pd.DataFrame(
+            index=final_depths, columns=["curr_e", "curr_n"], dtype=np.float64
+        )
     )
     cdf = cdf.sort_index()
     cdf = cdf.interpolate(method="index")
