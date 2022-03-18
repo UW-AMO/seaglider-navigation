@@ -392,12 +392,7 @@ trial19 = Trial(
 )
 
 
-Variant = namedtuple(
-    "Variant",
-    [
-        "data_params",
-    ],
-)
+Variant = namedtuple("Variant", ["data_params"])
 var_a = Variant({"dive": 1980097})
 var_b = Variant({"dive": 1980099})
 var_c = Variant({"dive": 1960131})
