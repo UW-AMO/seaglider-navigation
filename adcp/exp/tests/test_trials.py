@@ -2,11 +2,10 @@ import pytest
 from adcp.exp.psearch2d import ParameterSearch2D
 from adcp.exp.psearch2d_trials import (
     trial2,
-    trial2c,
+    var_a,
+    var_c,
     trial12,
-    trial12c,
     trial16,
-    trial16c,
 )
 
 
@@ -14,7 +13,7 @@ from adcp.exp.psearch2d_trials import (
 def test_default_integration_trial2a():
     experiment = ParameterSearch2D(
         **{**trial2.prob_params, **{"rho_vs": [1e-2]}, **{"rho_cs": [1e-1]}},
-        **trial2.sim_params,
+        **var_a.sim_params,
     )
     results = experiment.run(visuals=False)["metrics"]
 
@@ -25,8 +24,8 @@ def test_default_integration_trial2a():
 @pytest.mark.slow
 def test_default_integration_trial2c():
     experiment = ParameterSearch2D(
-        **{**trial2c.prob_params, **{"rho_vs": [1e-3]}, **{"rho_cs": [1e-2]}},
-        **trial2c.sim_params,
+        **{**trial2.prob_params, **{"rho_vs": [1e-3]}, **{"rho_cs": [1e-2]}},
+        **var_c.sim_params,
     )
     results = experiment.run(visuals=False)["metrics"]
 
@@ -38,7 +37,7 @@ def test_default_integration_trial2c():
 def test_default_integration_trial12():
     experiment = ParameterSearch2D(
         **{**trial12.prob_params, **{"rho_vs": [1e-7]}, **{"rho_cs": [1e-6]}},
-        **trial12.sim_params,
+        **var_a.sim_params,
     )
     results = experiment.run(visuals=False)["metrics"]
 
@@ -49,8 +48,8 @@ def test_default_integration_trial12():
 @pytest.mark.slow
 def test_default_integration_trial12c():
     experiment = ParameterSearch2D(
-        **{**trial12c.prob_params, **{"rho_vs": [1e-6]}, **{"rho_cs": [1e-3]}},
-        **trial12c.sim_params,
+        **{**trial12.prob_params, **{"rho_vs": [1e-6]}, **{"rho_cs": [1e-3]}},
+        **var_c.sim_params,
     )
     results = experiment.run(visuals=False)["metrics"]
 
@@ -62,7 +61,7 @@ def test_default_integration_trial12c():
 def test_default_integration_trial16():
     experiment = ParameterSearch2D(
         **{**trial16.prob_params, **{"rho_vs": [1e-6]}, **{"rho_cs": [1e-2]}},
-        **trial16.sim_params,
+        **var_a.sim_params,
     )
     results = experiment.run(visuals=False)["metrics"]
 
@@ -73,8 +72,8 @@ def test_default_integration_trial16():
 @pytest.mark.slow
 def test_default_integration_trial16c():
     experiment = ParameterSearch2D(
-        **{**trial16c.prob_params, **{"rho_vs": [1e-6]}, **{"rho_cs": [1e-5]}},
-        **trial16c.sim_params,
+        **{**trial16.prob_params, **{"rho_vs": [1e-6]}, **{"rho_cs": [1e-5]}},
+        **var_c.sim_params,
     )
     results = experiment.run(visuals=False)["metrics"]
 
