@@ -50,24 +50,47 @@ def interpolate_mooring(mdat: dict, target: Union[List, pd.Timestamp]):
         dictionary with keys "time", "depth", "u", and "v".  Same format
         as argument mdat.
     """
-    if hasattr(target, "__iter__"):
-        new_mdat = {"time": [], "depth": [], "u": [], "v": []}
-        for time in target:
+    if hasattr(target, "__len__"):
+        length = len(target)
+        new_mdat = {
+            "time": np.empty(length, dtype="datetime64[ns]"),
+            "depth": [],
+            "u": [],
+            "v": [],
+        }
+        for i, time in enumerate(target):
             mini_mdat = interpolate_mooring(mdat, time)
-            new_mdat["time"] = np.concatenate(
-                (new_mdat["time"], mini_mdat["time"])
-            )
+            new_mdat["time"][i] = mini_mdat["time"][0]
             new_mdat["depth"].append(mini_mdat["depth"])
             new_mdat["u"].append(mini_mdat["u"])
             new_mdat["v"].append(mini_mdat["v"])
+        max_num_depths = max((len(depths.T) for depths in new_mdat["depth"]))
+        max_num_us = max((len(us.T) for us in new_mdat["u"]))
+        max_num_vs = max((len(vs.T) for vs in new_mdat["v"]))
+        max_dim = max(max_num_depths, max_num_us, max_num_vs)
+
+        def pad_ragged(arr, length, fill):
+            new_arr = np.empty((1, length))
+            new_arr[:] = fill
+            new_arr[0, length - len(arr.T) :] = arr
+            return new_arr
+
+        new_mdat["time"] = pd.Index(new_mdat["time"])
+        new_mdat["depth"] = np.concatenate(
+            [pad_ragged(el, max_dim, 0) for el in new_mdat["depth"]]
+        )
+        new_mdat["u"] = np.concatenate(
+            [pad_ragged(el, max_dim, np.nan) for el in new_mdat["u"]]
+        )
+        new_mdat["v"] = np.concatenate(
+            [pad_ragged(el, max_dim, np.nan) for el in new_mdat["v"]]
+        )
         return new_mdat
 
     left_time = max([t for t in mdat["time"] if t <= target])
     left_ind = np.argwhere(left_time == mdat["time"])[0, 0]
     right_time = min([t for t in mdat["time"] if t >= target])
     right_ind = np.argwhere(right_time == mdat["time"])[0, 0]
-    left_depths = mdat["depth"][left_ind]
-    right_depths = mdat["depth"][right_ind]
     left_u = mdat["u"][left_ind]
     right_u = mdat["u"][right_ind]
     left_v = mdat["v"][left_ind]
@@ -82,10 +105,13 @@ def interpolate_mooring(mdat: dict, target: Union[List, pd.Timestamp]):
         }
 
     # Determine interpolation depths
+    non_nan_ind = ~np.isnan(left_u + right_u + left_v + right_v)
+    left_depths = mdat["depth"][left_ind, non_nan_ind]
+    right_depths = mdat["depth"][right_ind, non_nan_ind]
+
     interp_max = min(left_depths.max(), right_depths.max())
     interp_min = max(left_depths.min(), right_depths.min())
-    if len(left_depths) != len(right_depths):
-        raise ValueError
+
     interp_depths = np.linspace(
         interp_min,
         interp_max,
@@ -100,8 +126,8 @@ def interpolate_mooring(mdat: dict, target: Union[List, pd.Timestamp]):
             np.repeat([mdat["time"][right_ind].value], len(right_depths)),
         )
     )
-    us = np.concatenate((left_u, right_u))
-    vs = np.concatenate((left_v, right_v))
+    us = np.concatenate((left_u[non_nan_ind], right_u[non_nan_ind]))
+    vs = np.concatenate((left_v[non_nan_ind], right_v[non_nan_ind]))
     u_interp = interp2d(xs, ys, us, kind="linear")
     v_interp = interp2d(xs, ys, vs, kind="linear")
 

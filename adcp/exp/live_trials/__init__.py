@@ -88,7 +88,6 @@ class Cabage17(Experiment):
         first_buoy_top_depth = np.nan_to_num(
             first_buoy_depths, nan=np.inf
         ).min()
-        last_time = data.ddat["depth"].index.max()
         last_time_buoy_idx = np.argmin(np.abs(last_time - mdat["time"]))
         last_buoy_currs_e = mdat["u"][last_time_buoy_idx]
         last_buoy_currs_n = mdat["v"][last_time_buoy_idx]
