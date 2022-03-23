@@ -11,7 +11,7 @@ import datetime as dt
 # 3rd party libraries
 import h5py
 from scipy.io import loadmat
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, interp2d
 import numpy as np
 import pandas as pd
 
@@ -36,6 +36,78 @@ def load_mooring(filename):
     arrays["time"] = pd.to_datetime(arrays["time"].squeeze())
     arrays.pop("datenumber")
     return arrays
+
+
+def interpolate_mooring(mdat, target):
+    """Calculate mini mdat that is interpolated for a single time.
+
+    Returns:
+        dictionary with keys "time", "depth", "u", and "v"
+    """
+    left_time = max([t for t in mdat["time"] if t <= target])
+    left_ind = np.argwhere(left_time == mdat["time"])[0, 0]
+    right_time = min([t for t in mdat["time"] if t >= target])
+    right_ind = np.argwhere(right_time == mdat["time"])[0, 0]
+    left_depths = mdat["depth"][left_ind]
+    right_depths = mdat["depth"][right_ind]
+    left_u = mdat["u"][left_ind]
+    right_u = mdat["u"][right_ind]
+    left_v = mdat["v"][left_ind]
+    right_v = mdat["v"][right_ind]
+
+    if left_ind == right_ind:
+        lambda_ = 1
+        return {
+            "time": np.array([target]),
+            "depth": mdat["depth"][left_ind].reshape((1, -1)),
+            "u": mdat["u"][left_ind].reshape((1, -1)),
+            "v": mdat["v"][left_ind].reshape((1, -1)),
+        }
+
+    lambda_ = (mdat["time"][right_ind] - target) / (
+        mdat["time"][right_ind] - mdat["time"][left_ind]
+    )
+
+    all_depths = np.concatenate((left_depths, right_depths))
+    sortable = np.argsort(all_depths)
+    lambda_depths = []
+
+    def side(ind):
+        """Determines whether a depth index came from left or right depths.
+
+        Returns either lambda_ or 1-lambda_, respectively
+        """
+        if ind < len(left_depths):
+            return "l"
+        return "r"
+
+    for l_ind, r_ind in zip(sortable[:-1], sortable[1:]):
+        l_side = side(l_ind)
+        r_side = side(r_ind)
+        if l_side != r_side:
+            l_weight = lambda_ if l_side == "l" else 1 - lambda_
+            r_weight = lambda_ if r_side == "l" else 1 - lambda_
+            lambda_depths.append(
+                l_weight * all_depths[l_ind] + r_weight * all_depths[r_ind]
+            )
+    xs = all_depths
+    ys = np.concatenate(
+        (
+            np.repeat([mdat["time"][left_ind].value], len(left_depths)),
+            np.repeat([mdat["time"][right_ind].value], len(right_depths)),
+        )
+    )
+    us = np.concatenate((left_u, right_u))
+    vs = np.concatenate((left_v, right_v))
+    u_interp = interp2d(xs, ys, us, kind="linear")
+    v_interp = interp2d(xs, ys, vs, kind="linear")
+
+    return {
+        "time": np.array([target]),
+        "depth": np.array(lambda_depths).reshape((1, -1)),
+        "u": u_interp(lambda_depths, target.value).reshape((1, -1)),
+        "v": v_interp(lambda_depths, target.value).reshape((1, -1)),
+    }
 
 
 def load_dive(run_num):
