@@ -78,6 +78,8 @@ class Cabage17(Experiment):
         # identify which buoy data is relevant to trial
         mdat = dp.load_mooring("CBX16_T3_AUG2017.mat")
         first_time = data.ddat["depth"].index.min()
+        last_time = data.ddat["depth"].index.max()
+        mdat = dp.interpolate_mooring(mdat, [first_time, last_time])
         first_time_buoy_idx = np.argmin(np.abs(first_time - mdat["time"]))
         first_buoy_currs_e = mdat["u"][first_time_buoy_idx]
         first_buoy_currs_n = mdat["v"][first_time_buoy_idx]

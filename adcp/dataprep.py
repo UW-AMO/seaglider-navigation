@@ -7,6 +7,7 @@ Created on Thu Dec 12 00:45:24 2019
 # built-in library
 from pathlib import Path
 import datetime as dt
+from typing import Union, List
 
 # 3rd party libraries
 import h5py
@@ -38,12 +39,29 @@ def load_mooring(filename):
     return arrays
 
 
-def interpolate_mooring(mdat, target):
+def interpolate_mooring(mdat: dict, target: Union[List, pd.Timestamp]):
     """Calculate mini mdat that is interpolated for a single time.
 
+    Arguments:
+        mdat: mooring data loaded from load_mooring
+        target: time or times to interpolate data to.
+
     Returns:
-        dictionary with keys "time", "depth", "u", and "v"
+        dictionary with keys "time", "depth", "u", and "v".  Same format
+        as argument mdat.
     """
+    if hasattr(target, "__iter__"):
+        new_mdat = {"time": [], "depth": [], "u": [], "v": []}
+        for time in target:
+            mini_mdat = interpolate_mooring(mdat, time)
+            new_mdat["time"] = np.concatenate(
+                (new_mdat["time"], mini_mdat["time"])
+            )
+            new_mdat["depth"].append(mini_mdat["depth"])
+            new_mdat["u"].append(mini_mdat["u"])
+            new_mdat["v"].append(mini_mdat["v"])
+        return new_mdat
+
     left_time = max([t for t in mdat["time"] if t <= target])
     left_ind = np.argwhere(left_time == mdat["time"])[0, 0]
     right_time = min([t for t in mdat["time"] if t >= target])
@@ -56,7 +74,6 @@ def interpolate_mooring(mdat, target):
     right_v = mdat["v"][right_ind]
 
     if left_ind == right_ind:
-        lambda_ = 1
         return {
             "time": np.array([target]),
             "depth": mdat["depth"][left_ind].reshape((1, -1)),
@@ -64,32 +81,18 @@ def interpolate_mooring(mdat, target):
             "v": mdat["v"][left_ind].reshape((1, -1)),
         }
 
-    lambda_ = (mdat["time"][right_ind] - target) / (
-        mdat["time"][right_ind] - mdat["time"][left_ind]
+    # Determine interpolation depths
+    interp_max = min(left_depths.max(), right_depths.max())
+    interp_min = max(left_depths.min(), right_depths.min())
+    if len(left_depths) != len(right_depths):
+        raise ValueError
+    interp_depths = np.linspace(
+        interp_min,
+        interp_max,
+        len(left_depths),
     )
-
     all_depths = np.concatenate((left_depths, right_depths))
-    sortable = np.argsort(all_depths)
-    lambda_depths = []
 
-    def side(ind):
-        """Determines whether a depth index came from left or right depths.
-
-        Returns either lambda_ or 1-lambda_, respectively
-        """
-        if ind < len(left_depths):
-            return "l"
-        return "r"
-
-    for l_ind, r_ind in zip(sortable[:-1], sortable[1:]):
-        l_side = side(l_ind)
-        r_side = side(r_ind)
-        if l_side != r_side:
-            l_weight = lambda_ if l_side == "l" else 1 - lambda_
-            r_weight = lambda_ if r_side == "l" else 1 - lambda_
-            lambda_depths.append(
-                l_weight * all_depths[l_ind] + r_weight * all_depths[r_ind]
-            )
     xs = all_depths
     ys = np.concatenate(
         (
@@ -104,9 +107,9 @@ def interpolate_mooring(mdat, target):
 
     return {
         "time": np.array([target]),
-        "depth": np.array(lambda_depths).reshape((1, -1)),
-        "u": u_interp(lambda_depths, target.value).reshape((1, -1)),
-        "v": v_interp(lambda_depths, target.value).reshape((1, -1)),
+        "depth": interp_depths.reshape((1, -1)),
+        "u": u_interp(interp_depths, target.value).reshape((1, -1)),
+        "v": v_interp(interp_depths, target.value).reshape((1, -1)),
     }
 
 

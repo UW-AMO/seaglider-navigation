@@ -23,7 +23,7 @@ def test_interpolate_mooring(mock_mdat):
 
     assert result["time"][0] == target
     assert (
-        np.linalg.norm(result["depth"] - np.array([3.8, 8.2, 9.8, 11.6, 12.4]))
+        np.linalg.norm(result["depth"] - np.array([5, 6.75, 8.5, 10.25, 12.0]))
         < 1e-14
     )
     assert np.linalg.norm(result["u"] - result["v"]) < 1e-14
