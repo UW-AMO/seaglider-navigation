@@ -146,7 +146,7 @@ def inferred_adcp_error_plot(
             label="Ascending-backsolve",
         )
         lines = [*lines, ln6, ln7]
-
+    ax.invert_yaxis()
     ax.legend()
     return ax
 
