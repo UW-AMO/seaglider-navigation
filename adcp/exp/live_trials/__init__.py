@@ -205,7 +205,7 @@ class Cabage17(Experiment):
 
 
 Trial = namedtuple("Trial", ["ex", "solve_params"])
-trial1 = Trial(Cabage17, {"rho_r": 1e-4})
+trial1 = Trial(Cabage17, {})
 trial2 = Trial(Cabage17, {"current_order": 3, "vehicle_order": 3})
 trial3 = Trial(Cabage17, {"vehicle_vel": "otg-cov"})
 trial4 = Trial(
