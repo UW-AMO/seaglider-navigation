@@ -68,6 +68,8 @@ class Cabage17(Experiment):
         Xs = prob.shape.Xs
         EV = prob.shape.EV
         NV = prob.shape.NV
+        EC = prob.shape.EC
+        NC = prob.shape.NC
 
         east_posit = (Xs @ EV @ x_sol)[gps_time_idx]
         north_posit = (Xs @ NV @ x_sol)[gps_time_idx]
@@ -167,7 +169,7 @@ class Cabage17(Experiment):
         ascent_df["delta_e"] = ascent_df["state_e"] - ascent_df["buoy_e"]
         ascent_df["delta_n"] = ascent_df["state_n"] - ascent_df["buoy_n"]
 
-        mean_squared_error = (
+        current_error = (
             trapezoid(descent_df["delta_e"] ** 2, descent_df.index)
             + trapezoid(descent_df["delta_n"] ** 2, descent_df.index)
             + trapezoid(ascent_df["delta_e"] ** 2, ascent_df.index)
@@ -179,6 +181,42 @@ class Cabage17(Experiment):
             - ascent_df.index[0]
         )
 
+        # Measurement error metrics
+        z_ttw_n = mb.get_zttw(prob.data.ddat, "north", prob.config.t_scale)
+        z_ttw_e = mb.get_zttw(prob.data.ddat, "east", prob.config.t_scale)
+        A, B = mb.uv_select(
+            prob.data.times,
+            prob.data.depths,
+            prob.data.ddat,
+            prob.data.adat,
+            vehicle_vel=prob.config.vehicle_vel,
+        )
+        ttw_sol_n = (A @ prob.shape.Vs @ NV - B @ prob.shape.CV @ NC) @ x_sol
+        ttw_sol_e = (A @ prob.shape.Vs @ EV - B @ prob.shape.CV @ EC) @ x_sol
+        ttw_mse = np.linalg.norm(z_ttw_n - ttw_sol_n) ** 2 / (2 * len(z_ttw_n))
+        ttw_mse += np.linalg.norm(z_ttw_e - ttw_sol_e) ** 2 / (
+            2 * len(z_ttw_e)
+        )
+        A, B = mb.adcp_select(
+            prob.data.times,
+            prob.data.depths,
+            prob.data.ddat,
+            prob.data.adat,
+            vehicle_vel=prob.config.vehicle_vel,
+        )
+        z_adcp_n = mb.get_zadcp(prob.data.adat, "north", prob.config.t_scale)
+        z_adcp_e = mb.get_zadcp(prob.data.adat, "east", prob.config.t_scale)
+        adcp_sol_n = (A @ prob.shape.Vs @ NV - B @ prob.shape.CV @ NC) @ x_sol
+        adcp_sol_e = (A @ prob.shape.Vs @ EV - B @ prob.shape.CV @ EC) @ x_sol
+        adcp_mse = np.linalg.norm(z_adcp_n - adcp_sol_n) ** 2 / (
+            2 * len(z_adcp_n)
+        )
+        adcp_mse += np.linalg.norm(z_adcp_e - adcp_sol_e) ** 2 / (
+            2 * len(z_adcp_e)
+        )
+
+        print("ttw_mse: ", ttw_mse)
+        print("adcp_mse: ", adcp_mse)
         # Plotting.
         legacy = mb.legacy_select(
             prob.shape.m,
@@ -201,7 +239,7 @@ class Cabage17(Experiment):
                 final_posit=last_gps_posit,
             )
 
-        return {"metrics": [nav_error, mean_squared_error]}
+        return {"metrics": [nav_error, current_error]}
 
 
 Trial = namedtuple("Trial", ["ex", "solve_params"])
