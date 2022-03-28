@@ -551,6 +551,73 @@ trial21 = Trial(
         "rho_cs": np.logspace(1e-5, 1e-6, 2),
     },
 )
+trial22 = Trial(
+    ParameterSearch2D,
+    {
+        "vehicle_vel": "otg",
+        **basic_solve_params,
+        "current_order": 2,
+        "vehicle_order": 2,
+    },
+)
+trial23 = Trial(
+    ParameterSearch2D,
+    {
+        "vehicle_vel": "otg-cov",
+        **basic_solve_params,
+        "current_order": 2,
+        "vehicle_order": 2,
+    },
+)
+trial24 = Trial(
+    ParameterSearch2D,
+    {
+        "vehicle_vel": "otg",
+        **basic_solve_params,
+        "current_order": 3,
+        "vehicle_order": 3,
+    },
+)
+trial25 = Trial(
+    ParameterSearch2D,
+    {
+        "vehicle_vel": "otg-cov",
+        **basic_solve_params,
+        "current_order": 3,
+        "vehicle_order": 3,
+    },
+)
+trial26 = Trial(
+    ParameterSearch2D,
+    {
+        "vehicle_vel": "otg",
+        **basic_solve_params,
+        "current_order": 2,
+        "vehicle_order": 2,
+        "conditioner": None,
+    },
+)
+trial27 = Trial(
+    ParameterSearch2D,
+    {
+        "vehicle_vel": "otg",
+        **basic_solve_params,
+        "current_order": 2,
+        "vehicle_order": 2,
+        "t_scale": 1e3,
+    },
+)
+trial28 = Trial(
+    ParameterSearch2D,
+    {
+        "vehicle_vel": "otg",
+        **basic_solve_params,
+        "current_order": 2,
+        "vehicle_order": 2,
+        "rho_t": 1e4,
+    },
+)
+
 
 Variant = namedtuple("Variaent", ["data_params"])
 var_a = Variant({"dive": 1980097})

@@ -7,8 +7,16 @@ import adcp.exp.live_trials as trials
 trials_folder = Path(__file__).parent / "adcp" / "exp" / "live_trials"
 
 
-ts = ("trial5", "trial6", "trial7", "trial8")
-vs = ("var_a", "var_b", "var_c", "var_d", "var_e", "var_f", "var_g", "var_h")
+ts = (
+    "trial22",
+    "trial23",
+    "trial24",
+    "trial25",
+    "trial26",
+    "trial27",
+    "trial28",
+)
+vs = ("var_a",)
 t_v = product(ts, vs)
 for t, v in t_v:
     trial = getattr(trials, t)
