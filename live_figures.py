@@ -22,7 +22,7 @@ for t, v in t_v:
     trial = getattr(trials, t)
     variant = getattr(trials, v)
     exp.run(
-        trials.Cabage17,
+        trial.ex,
         prob_params=trial.solve_params,
         sim_params=variant.data_params,
         logfile="live_trials.db",
