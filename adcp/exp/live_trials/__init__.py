@@ -250,8 +250,8 @@ class Cabage17(Experiment):
 class ParameterSearch2D(Cabage17):
     def __init__(
         self,
-        rho_vs=np.logspace(1e-10, 1e-1, 10),
-        rho_cs=np.logspace(1e-10, 1e-1, 10),
+        rho_vs=np.logspace(-10, -1, 10),
+        rho_cs=np.logspace(-10, -1, 10),
         **kwargs,
     ):
         self.sub_problem_kwargs = kwargs
@@ -275,8 +275,10 @@ class ParameterSearch2D(Cabage17):
         i1, j1, i2, j2 = self.best_parameters()
         if visuals:
             self.display_errmaps(i1, j1, i2, j2)
+            print("Best Navigation Solution")
             self.display_solutions(i1, j1)
             if i1 != i2 or j1 != j2:
+                print("Best Current Solution")
                 self.display_solutions(i2, j2)
             else:
                 print("... and it's also the best current solution")
@@ -320,19 +322,21 @@ class ParameterSearch2D(Cabage17):
         return i1, j1, i2, j2
 
     def display_errmaps(self, i1, j1, i2, j2):
+        print("Navigation Error Map")
         viz.show_errmap(
             self.errmap,
             0,
             self.rho_vs,
             self.rho_cs,
-            norm=colors.LogNorm(vmin=3e1, vmax=3e3),
+            norm=colors.LogNorm(vmin=1e0, vmax=1e6),
         )
+        print("Current Error Map")
         viz.show_errmap(
             self.errmap,
             1,
             self.rho_vs,
             self.rho_cs,
-            norm=colors.LogNorm(vmin=1e-2, vmax=1e0),
+            norm=colors.LogNorm(vmin=1e-1, vmax=1e0),
         )
         # %%
         print(
@@ -547,8 +551,8 @@ trial21 = Trial(
         "vehicle_vel": "otg",
         "current_order": 2,
         "vehicle_order": 2,
-        "rho_vs": np.logspace(1e-5, 1e-6, 2),
-        "rho_cs": np.logspace(1e-5, 1e-6, 2),
+        "rho_vs": np.logspace(-5, -6, 2),
+        "rho_cs": np.logspace(-5, -6, 2),
     },
 )
 trial22 = Trial(
