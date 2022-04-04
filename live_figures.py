@@ -12,11 +12,9 @@ ts = (
     "trial23",
     "trial24",
     "trial25",
-    "trial26",
-    "trial27",
     "trial28",
 )
-vs = ("var_a",)
+vs = ("var_e",)
 t_v = product(ts, vs)
 for t, v in t_v:
     trial = getattr(trials, t)
@@ -27,4 +25,5 @@ for t, v in t_v:
         sim_params=variant.data_params,
         logfile="live_trials.db",
         trials_folder=trials_folder,
+        debug=True,
     )

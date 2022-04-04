@@ -336,7 +336,7 @@ class ParameterSearch2D(Cabage17):
             1,
             self.rho_vs,
             self.rho_cs,
-            norm=colors.LogNorm(vmin=1e-1, vmax=1e0),
+            norm=colors.LogNorm(vmin=1e-2, vmax=1e0),
         )
         # %%
         print(
@@ -621,8 +621,29 @@ trial28 = Trial(
         "rho_t": 1e4,
     },
 )
-
-
+trial29 = Trial(
+    ParameterSearch2D,
+    {
+        "vehicle_vel": "otg",
+        **basic_solve_params,
+        "current_order": 2,
+        "vehicle_order": 2,
+        "t_scale": 1e3,
+        "conditioner": None,
+    },
+)
+trial30 = Trial(
+    ParameterSearch2D,
+    {
+        "vehicle_vel": "otg",
+        **basic_solve_params,
+        "rho_vs": np.logspace(-10, -8, 3),
+        "rho_cs": np.logspace(-8, -6, 3),
+        "current_order": 2,
+        "vehicle_order": 2,
+        "rho_t": 1e4,
+    },
+)
 Variant = namedtuple("Variant", ["data_params"])
 var_a = Variant({"dive": 1980097})
 var_b = Variant({"dive": 1980099})
