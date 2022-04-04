@@ -25,5 +25,5 @@ for t, v in t_v:
         sim_params=variant.data_params,
         logfile="live_trials.db",
         trials_folder=trials_folder,
-        debug=True,
+        debug=False,
     )
