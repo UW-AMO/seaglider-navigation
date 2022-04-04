@@ -209,15 +209,6 @@ class ParameterSearch2D(Experiment):
             prob.data.depths,
             self.x,
         )
-        weights = adcp.Weights(
-            self.rho_vs[i],
-            self.rho_cs[j],
-            self.rho_t,
-            self.rho_a,
-            self.rho_g,
-            self.rho_r,
-        )
-        prob = adcp.GliderProblem(self.data, self.config, weights)
         n_ttw_e = len(mb.get_zttw(prob.data.ddat, "east", prob.config.t_scale))
         n_ttw_n = len(
             mb.get_zttw(prob.data.ddat, "north", prob.config.t_scale)
