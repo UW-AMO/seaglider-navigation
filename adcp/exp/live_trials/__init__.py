@@ -644,6 +644,19 @@ trial30 = Trial(
         "rho_t": 1e4,
     },
 )
+trial31 = Trial(
+    ParameterSearch2D,
+    {
+        "vehicle_vel": "otg",
+        **basic_solve_params,
+        "rho_vs": np.logspace(-9, -5, 3),
+        "rho_cs": np.logspace(-9, -5, 3),
+        "current_order": 2,
+        "vehicle_order": 2,
+        "rho_a": 1e-5,
+        "rho_t": 1e3,
+    },
+)
 Variant = namedtuple("Variant", ["data_params"])
 var_a = Variant({"dive": 1980097})
 var_b = Variant({"dive": 1980099})
