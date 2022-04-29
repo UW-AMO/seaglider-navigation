@@ -481,6 +481,8 @@ def gen_kalman_mat(data, config, shape, weights, root: bool = False):
             config.vehicle_order,
             config.conditioner,
             config.t_scale,
+            depths=data.depths[data.idx_vehicle],
+            vehicle_method=config.vehicle_vel,
         )
     else:
         Qvinv = scipy.sparse.csr_matrix(

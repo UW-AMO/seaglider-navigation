@@ -287,7 +287,7 @@ def vehicle_Qblocks(
     if vehicle_method == "otg-cov":
         dds = depths[1:] - depths[:-1]
         depth_rates = dds / dts
-        dds = reduce_condition(dts, method=conditioner)
+        dds = reduce_condition(dds, method=conditioner)
     else:
         dds = np.zeros_like(dts)
         depth_rates = np.ones_like(dts)
@@ -343,7 +343,6 @@ def vehicle_Qinv(
     """Creates the precision matrix for smoothing the vehicle with velocity
     covariance rho.
     """
-
     Qs = vehicle_Qblocks(
         times,
         rho,
@@ -456,7 +455,7 @@ def vehicle_G_given_C(
     elif current_order != 2:
         raise ValueError
     if vehicle_order == 2:
-        Gs = [np.array([[x_c], [1]]) for x_c in x_given_c]
+        Gs = [np.array([[1], [x_c]]) for x_c in x_given_c]
     elif vehicle_order == 3:
         Gs = [
             np.array([[dr, 0], [0, 1], [x_w, x_c]])
