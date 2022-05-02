@@ -274,6 +274,7 @@ def vehicle_Qblocks(
     depths=None,
     vehicle_method="otg",
     current_order=2,
+    rho_c=None,
 ):
     """Create the diagonal blocks of the kalman matrix for smoothing
     vehicle motion"""
@@ -293,9 +294,9 @@ def vehicle_Qblocks(
         depth_rates = np.ones_like(dts)
     dts = reduce_condition(dts, method=conditioner)
     if current_order == 2:
-        covariances = dds**3 / depth_rates**2 / 12
+        covariances = rho_c / rho * dds**3 / depth_rates**2 / 12
     elif current_order == 3:
-        covariances = dds**5 / depth_rates**2 / 720
+        covariances = rho_c / rho * dds**5 / depth_rates**2 / 720
     else:
         raise ValueError
 
@@ -339,6 +340,7 @@ def vehicle_Qinv(
     depths=None,
     vehicle_method="otg",
     current_order=2,
+    rho_c=None,
 ):
     """Creates the precision matrix for smoothing the vehicle with velocity
     covariance rho.
@@ -352,6 +354,7 @@ def vehicle_Qinv(
         depths,
         vehicle_method,
         current_order,
+        rho_c,
     )
     Qinvs = [np.linalg.inv(Q) for Q in Qs]
     return scipy.sparse.block_diag(Qinvs)
@@ -366,6 +369,7 @@ def vehicle_Q(
     depths=None,
     vehicle_method="otg",
     current_order=2,
+    rho_c=None,
 ):
     """Creates the covariance matrix for smoothing the vehicle with velocity
     covariance rho.
@@ -380,6 +384,7 @@ def vehicle_Q(
         depths,
         vehicle_method,
         current_order,
+        rho_c,
     )
     return scipy.sparse.block_diag(Qs)
 
