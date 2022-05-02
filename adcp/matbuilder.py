@@ -447,11 +447,16 @@ def vehicle_G_given_C(
             "With current method, vehicle order must be < current order"
         )
     vehicle_depths = depths[idx_vehicle]
+    # intermediate_depths = np.array([depths[s] for s in intermediate_idx])
     delta_times = times[1:] - times[:-1]
     dts = delta_times.astype(float) / 1e9 / t_scale  # raw dts in nanoseconds
-    dds = vehicle_depths[1:] - vehicle_depths[:-1]
+    delta_depths = depths[1:] - depths[:-1]
+    intermediate_idx = [
+        slice(a, b) for a, b in zip(idx_vehicle[:-1], idx_vehicle[1:])
+    ]  # depth indices in between each vehicle depth
+    dds = np.array([delta_depths[idx] for idx in intermediate_idx])
+    depth_rates = (vehicle_depths[1:] - vehicle_depths[:-1]) / dts
 
-    depth_rates = dds / dts
     x_given_c = dds / (2 * depth_rates)
     x_given_c = np.nan_to_num(x_given_c, nan=0, posinf=0)
     if current_order == 3:
@@ -460,22 +465,39 @@ def vehicle_G_given_C(
     elif current_order != 2:
         raise ValueError
     if vehicle_order == 2:
-        Gs = [np.array([[1], [x_c]]) for x_c in x_given_c]
+        Gs = [np.vstack((np.ones((1, len(x_c))), x_c)) for x_c in x_given_c]
     elif vehicle_order == 3:
         Gs = [
-            np.array([[dr, 0], [0, 1], [x_w, x_c]])
+            np.vstack(
+                (
+                    np.ravel(
+                        (dr * np.ones(len(x_c)), np.zeros(len(x_c))), order="F"
+                    ),
+                    np.ravel(
+                        (np.zeros(len(x_c)), np.ones(len(x_c))), order="F"
+                    ),
+                    np.ravel((x_w, x_c), order="F"),
+                )
+            )
             for x_c, x_w, dr in zip(x_given_c, x_given_w, depth_rates)
         ]
     else:
         raise ValueError
 
-    Gs = np.array(Gs)
-    all_Gs = np.zeros((2 * Gs.shape[0], *Gs.shape[1:]))
-    all_Gs[::2] = -Gs
-    all_Gs[1::2] = Gs
-    indices = np.repeat(idx_vehicle, 2)[1:-1]
-    indptr = np.arange(0, len(indices) + 1, 2)
-    return scipy.sparse.bsr_matrix((all_Gs, indices, indptr), shape=mat_shape)
+    mini_G_width = current_order - 1
+    G_rows = []
+    for i, G in enumerate(Gs):
+        G_block = np.zeros((G.shape[0], G.shape[1] + mini_G_width))
+        G_block[:, :-mini_G_width] = G
+        G_block[:, mini_G_width:] += -G
+        G_row = scipy.sparse.csc_matrix((vehicle_order, mini_G_width * n))
+        curr_cols = slice(
+            idx_vehicle[i] * mini_G_width,
+            (idx_vehicle[i + 1] + 1) * mini_G_width,
+        )
+        G_row[:, curr_cols] = G_block
+        G_rows.append(G_row)
+    return scipy.sparse.vstack(G_rows)
 
 
 def depth_Qblocks(

@@ -508,8 +508,8 @@ def gen_kalman_mat(data, config, shape, weights, root: bool = False):
     EC = shape.EC
     NC = shape.NC
 
-    Gv_c_E = Gv @ EV - Gvc @ EC
-    Gv_c_N = Gv @ NV - Gvc @ NC
+    Gv_c_E = Gv @ EV + Gvc @ EC
+    Gv_c_N = Gv @ NV + Gvc @ NC
 
     if root:
         Mv = np.linalg.cholesky(Qvinv.todense()).T
