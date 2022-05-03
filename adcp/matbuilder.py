@@ -293,14 +293,16 @@ def vehicle_Qblocks(
         intermediate_idx = [
             slice(a, b) for a, b in zip(idx_vehicle[:-1], idx_vehicle[1:])
         ]  # depth indices in between each vehicle depth
-        dds = np.array([delta_depths[idx] for idx in intermediate_idx])
+        dds = np.array(
+            [delta_depths[idx] for idx in intermediate_idx], dtype=object
+        )
         flat_dds = reduce_condition(np.concatenate(dds), method=conditioner)
         new_dds = []
         curr_idx = 0
         for length in [len(arr) for arr in dds]:
             new_dds.append(np.array(flat_dds[curr_idx : curr_idx + length]))
             curr_idx += length
-        dds = np.array(new_dds)
+        dds = np.array(new_dds, dtype=object)
     else:
         dds = np.zeros_like(dts)
         depth_rates = np.ones_like(dts)
@@ -470,7 +472,9 @@ def vehicle_G_given_C(
     intermediate_idx = [
         slice(a, b) for a, b in zip(idx_vehicle[:-1], idx_vehicle[1:])
     ]  # depth indices in between each vehicle depth
-    dds = np.array([delta_depths[idx] for idx in intermediate_idx])
+    dds = np.array(
+        [delta_depths[idx] for idx in intermediate_idx], dtype=object
+    )
     depth_rates = (vehicle_depths[1:] - vehicle_depths[:-1]) / dts
 
     x_given_c = dds / (2 * depth_rates)
@@ -506,7 +510,7 @@ def vehicle_G_given_C(
         G_block = np.zeros((G.shape[0], G.shape[1] + mini_G_width))
         G_block[:, :-mini_G_width] = G
         G_block[:, mini_G_width:] += -G
-        G_row = scipy.sparse.csc_matrix((vehicle_order, mini_G_width * n))
+        G_row = scipy.sparse.lil_matrix((vehicle_order, mini_G_width * n))
         curr_cols = slice(
             idx_vehicle[i] * mini_G_width,
             (idx_vehicle[i + 1] + 1) * mini_G_width,

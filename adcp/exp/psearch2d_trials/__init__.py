@@ -38,6 +38,7 @@ trial22 = Trial(
         "rho_vs": np.logspace(1e-5, 1e-6, 3),
     }
 )
+trial23 = Trial({**trial18.solve_params, "conditioner": None})
 
 Variant = namedtuple("Variant", ["ex", "sim_params"])
 var_a = Variant(ParameterSearch2D, {})
