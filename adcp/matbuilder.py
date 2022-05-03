@@ -272,6 +272,7 @@ def vehicle_Qblocks(
     conditioner=conditioner,
     t_scale=t_scale,
     depths=None,
+    idx_vehicle=None,
     vehicle_method="otg",
     current_order=2,
     rho_c=None,
@@ -286,9 +287,20 @@ def vehicle_Qblocks(
     delta_times = times[1:] - times[:-1]
     dts = delta_times.astype(float) / 1e9 / t_scale
     if vehicle_method == "otg-cov":
-        dds = depths[1:] - depths[:-1]
-        depth_rates = dds / dts
-        dds = reduce_condition(dds, method=conditioner)
+        vehicle_depths = depths[idx_vehicle]
+        depth_rates = (vehicle_depths[1:] - vehicle_depths[:-1]) / dts
+        delta_depths = depths[1:] - depths[:-1]
+        intermediate_idx = [
+            slice(a, b) for a, b in zip(idx_vehicle[:-1], idx_vehicle[1:])
+        ]  # depth indices in between each vehicle depth
+        dds = np.array([delta_depths[idx] for idx in intermediate_idx])
+        flat_dds = reduce_condition(np.concatenate(dds), method=conditioner)
+        new_dds = []
+        curr_idx = 0
+        for length in [len(arr) for arr in dds]:
+            new_dds.append(np.array(flat_dds[curr_idx : curr_idx + length]))
+            curr_idx += length
+        dds = np.array(new_dds)
     else:
         dds = np.zeros_like(dts)
         depth_rates = np.ones_like(dts)
@@ -299,7 +311,7 @@ def vehicle_Qblocks(
         covariances = rho_c / rho * dds**5 / depth_rates**2 / 720
     else:
         raise ValueError
-
+    covariances = np.vectorize(np.sum)(covariances)
     cond = q_cond(dts, dim=order)
     if cond > 1e3:
         warnings.warn(ConditionWarning(cond))
@@ -338,6 +350,7 @@ def vehicle_Qinv(
     conditioner=conditioner,
     t_scale=t_scale,
     depths=None,
+    idx_vehicle=None,
     vehicle_method="otg",
     current_order=2,
     rho_c=None,
@@ -352,6 +365,7 @@ def vehicle_Qinv(
         conditioner,
         t_scale,
         depths,
+        idx_vehicle,
         vehicle_method,
         current_order,
         rho_c,
@@ -367,6 +381,7 @@ def vehicle_Q(
     conditioner=conditioner,
     t_scale=t_scale,
     depths=None,
+    idx_vehicle=None,
     vehicle_method="otg",
     current_order=2,
     rho_c=None,
@@ -382,6 +397,7 @@ def vehicle_Q(
         conditioner,
         t_scale,
         depths,
+        idx_vehicle,
         vehicle_method,
         current_order,
         rho_c,
