@@ -484,6 +484,7 @@ def gen_kalman_mat(data, config, shape, weights, root: bool = False):
             depths=data.depths,
             idx_vehicle=data.idx_vehicle,
             vehicle_method=config.vehicle_vel,
+            current_order=config.current_order,
             rho_c=weights.rho_c,
         )
     else:

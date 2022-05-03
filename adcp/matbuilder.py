@@ -470,7 +470,8 @@ def vehicle_G_given_C(
     dts = delta_times.astype(float) / 1e9 / t_scale  # raw dts in nanoseconds
     delta_depths = depths[1:] - depths[:-1]
     intermediate_idx = [
-        slice(a, b) for a, b in zip(idx_vehicle[:-1], idx_vehicle[1:])
+        slice(a, b) if b > a else slice(a, b, -1)
+        for a, b in zip(idx_vehicle[:-1], idx_vehicle[1:])
     ]  # depth indices in between each vehicle depth
     dds = np.array(
         [delta_depths[idx] for idx in intermediate_idx], dtype=object
@@ -511,10 +512,9 @@ def vehicle_G_given_C(
         G_block[:, :-mini_G_width] = G
         G_block[:, mini_G_width:] += -G
         G_row = scipy.sparse.lil_matrix((vehicle_order, mini_G_width * n))
-        curr_cols = slice(
-            idx_vehicle[i] * mini_G_width,
-            (idx_vehicle[i + 1] + 1) * mini_G_width,
-        )
+        l_col = min(idx_vehicle[i], idx_vehicle[i + 1]) * mini_G_width
+        r_col = (max(idx_vehicle[i], idx_vehicle[i + 1]) + 1) * mini_G_width
+        curr_cols = slice(l_col, r_col)
         G_row[:, curr_cols] = G_block
         G_rows.append(G_row)
     return scipy.sparse.vstack(G_rows)
