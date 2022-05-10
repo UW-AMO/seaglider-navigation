@@ -8,6 +8,9 @@ parser = argparse.ArgumentParser(description="Run a trial on actual data.")
 parser.add_argument("trial", metavar="trial", help="trial id to run")
 parser.add_argument("variant", metavar="variant", help="variant id to run")
 parser.add_argument("--debug", action="store_true", help="debug mode?")
+parser.add_argument(
+    "--dpi", action="store", default=72, help="matplotlib figure dpi."
+)
 
 
 namespace = parser.parse_args()
@@ -28,4 +31,5 @@ adcp.exp.run(
     logfile="live_trials.db",
     trials_folder=Path(__file__).absolute().parent,
     debug=namespace.debug,
+    matplotlib_dpi=namespace.dpi,
 )

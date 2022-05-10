@@ -219,6 +219,7 @@ def run(
     sim_params=None,
     trials_folder=Path(__file__).absolute().parent / "trials",
     output_extension: str = "html",
+    matplotlib_dpi: int = 72,
 ):
     """Run the selected experiment.
 
@@ -231,6 +232,8 @@ def run(
         trials_folder (path-like): The folder to store both output and
             logfile.
         output_extension: what output type to produce using nbconvert.
+        matplotlib_resolution: dpi for matplotlib images.  Not yet
+            functional.
     """
     if not debug and REPO.is_dirty():
         raise RuntimeError(
@@ -292,7 +295,7 @@ def run(
 
     if isinstance(ex, type):
         nb, metrics = _run_in_notebook_if_possible(
-            ex, sim_params, prob_params, trials_folder
+            ex, sim_params, prob_params, trials_folder, matplotlib_dpi
         )
     else:
         warnings.warn(
@@ -328,12 +331,15 @@ def run(
 
 
 def _run_in_notebook_if_possible(
-    ex: type, sim_params, prob_params, trials_folder
+    ex: type, sim_params, prob_params, trials_folder, matplotlib_dpi=72
 ):
     mod_name = ex.__module__
     code = (
         "import importlib\n"
+        "import matplotlib as mpl\n"
         "from numpy import array\n"
+        f"mpl.rcParams['figure.dpi'] = {matplotlib_dpi}\n"
+        f"mpl.rcParams['savefig.dpi'] = {matplotlib_dpi}\n"
         f"experiment_module = importlib.import_module('{mod_name}')\n"
         f"experiment_class = experiment_module.{ex.__name__}\n"
         f"sim_params = {sim_params}\n"
